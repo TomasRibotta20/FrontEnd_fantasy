@@ -1,60 +1,86 @@
+import React from 'react';
 import { useForm } from '../../hooks/useForm';
+import FormField from './FormField';
+import Button_1 from '../button/Button_1';
 
-export const CustoFormHookForm = () => {
-  const { formValues, handleChange, resetForm } = useForm();
+export interface FormFieldConfig {
+  name: string;
+  label: string;
+  type: 'text' | 'email' | 'password' | 'number' | 'tel';
+  placeholder?: string;
+  required?: boolean;
+}
+
+interface CustoFormHookFormProps {
+  title?: string;
+  fields: FormFieldConfig[];
+  buttonText?: string;
+  buttonVariant?: 'primary' | 'secondary' | 'danger';
+  buttonSize?: 'sm' | 'md' | 'lg';
+  onSubmit?: (formValues: Record<string, string>) => void;
+  initialValues?: Record<string, string>;
+  className?: string;
+  disabled?: boolean;
+}
+
+export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
+  title = 'Custom Form',
+  fields,
+  buttonText = 'Submit',
+  buttonVariant = 'primary',
+  buttonSize = 'md',
+  onSubmit,
+  initialValues = {},
+  className = '',
+
+}) => {
+  // Crear valores iniciales basados en los campos
+  const defaultInitialValues = fields.reduce((acc, field) => {
+    acc[field.name] = initialValues[field.name] || '';
+    return acc;
+  }, {} as Record<string, string>);
+
+  const { formValues, handleChange, resetForm } = useForm(defaultInitialValues);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log(formValues);
-    resetForm(); // Reset form values after submission
+
+    if (onSubmit) {
+      onSubmit(formValues);
+    } else {
+      console.log('Form submitted:', formValues);
+    }
+
+    resetForm();
   };
 
   return (
-    <div>
-      <h2 className="form_title">CustoFormHook Form</h2>
-      <form className="form" onSubmit={handleSubmit}>
-        <div className="form_group">
-          <label htmlFor="email" className="form_label">
-            Email
-          </label>
-          <input
-            type="text"
-            id="email"
-            name="email"
-            className="form_imput"
-            value={formValues.email}
+    <div
+      className={`${className} flex flex-col items-center border-4 border-gray-600 p-8 rounded-lg bg-white opacity-80 shadow-lg w-100 font-sans`}
+    >
+      <h2 className="form_title mb-4 text-3xl font-semibold text-black text-center">
+        {title}
+      </h2>
+      <form
+        className="form flex flex-col items-center w-full font-semibold text-black"
+        onSubmit={handleSubmit}
+      >
+        {fields.map((field) => (
+          <FormField
+            key={field.name}
+            label={field.label}
+            type={field.type}
+            name={field.name}
+            value={formValues[field.name] || ''}
             onChange={handleChange}
+            placeholder={field.placeholder}
+            required={field.required}
           />
-        </div>
-        <div className="form_group">
-          <label htmlFor="username" className="form_label">
-            Username
-          </label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            className="form_imput"
-            value={formValues.username}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="form_group">
-          <label htmlFor="password" className="form_label">
-            Password
-          </label>
-          <input
-            type="text"
-            id="password"
-            name="password"
-            className="form_imput"
-            value={formValues.password}
-            onChange={handleChange}
-          />
-        </div>
-        <button className="button" type="submit">
-          Submit
-        </button>
+        ))}
+
+        <Button_1 type="submit" variant={buttonVariant} size={buttonSize} disabled={false}>
+          {buttonText}
+        </Button_1>
       </form>
     </div>
   );
