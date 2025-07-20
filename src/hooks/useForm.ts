@@ -2,14 +2,8 @@ import { useState } from "react";
 
 type InputElements = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
-const initialFormValues = {
-  email: '',
-  username: '',
-  password: ''
-};
-
-export const useForm = (initialValues = initialFormValues) => {
-  const [formValues, setFormValues] = useState(initialValues);
+export const useForm = <T extends Record<string, string>>(initialValues: T) => {
+  const [formValues, setFormValues] = useState<T>(initialValues);
 
   function handleChange(event: React.ChangeEvent<InputElements>) {
     const { name, value } = event.target;
@@ -23,6 +17,6 @@ export const useForm = (initialValues = initialFormValues) => {
   return {
     formValues,
     handleChange,
-    resetForm}
-
-}
+    resetForm
+  };
+};

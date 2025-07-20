@@ -1,11 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import ballLogo from '../assets/Ball_Logo.png';
 import lettersLogo from '../assets/Letters_Logo.png';
 
 export const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const handleButtonClick = () => {
-    console.log('¡Botón clickeado!');
-    // Aquí puedes agregar la lógica que necesites
+    navigate('/club');
   };
 
   return (
@@ -42,9 +44,9 @@ export const LandingPage: React.FC = () => {
 
       {/* Contenido principal */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
-        {/* Imagenes principales superpuestas - MÁXIMO TAMAÑO */}
+        {/* Imagenes principales superpuestas*/}
         <div className="mb-2 flex flex-col items-center relative w-full max-w-none">
-          {/* Pelota que gira - círculo perfecto GIGANTE */}
+          {/* Pelota que gira*/}
           <div className="animate-spin-slow relative z-10">
             <img
               src={ballLogo}
@@ -53,7 +55,7 @@ export const LandingPage: React.FC = () => {
             />
           </div>
 
-          {/* Logo principal superpuesto - GIGANTE MAS GRANDE QUE LA PELOTA */}
+          {/* Logo principal */}
           <div className="transform transition-transform duration-300 hover:scale-105 relative z-20 -mt-16 md:-mt-20 lg:-mt-24">
             <img
               src={lettersLogo}
@@ -63,7 +65,7 @@ export const LandingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Texto principal agrandado */}
+        {/* Texto principal*/}
         <p
           className="text-lg md:text-xl lg:text-2xl xl:text-3xl text-white mb-8 text-center max-w-5xl font-medium leading-relaxed"
           style={{
