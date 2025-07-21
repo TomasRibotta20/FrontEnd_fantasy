@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 //import { CustoFormHookForm } from './components/forms/CustoFormHookForm';
 import NavBar from './components/navbar/navbar';
-import LandingPage from './pages/landingpage';
-import Club from './pages/clubCRUD/ClubName';
-import ClubReadUpdateDelete from './pages/clubCRUD/ClubReadUpdateDelete';
+import LandingPage from './components/pages/landingpage';
+import Club from './components/pages/clubCRUD/ClubName';
+import ClubReadUpdateDelete from './components/pages/clubCRUD/ClubReadUpdateDelete';
 import CardDefault from './components/CardDefault';
 
 function App() {
@@ -13,7 +13,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />}></Route>
         <Route path="/club" element={<Club />}></Route>
-        <Route path="/ClubReadUpdateDelete" element={<ClubReadUpdateDelete />} />
+        <Route
+          path="/ClubReadUpdateDelete"
+          element={<ClubReadUpdateDelete />}
+        />
         <Route
           path="/CardDefault"
           element={

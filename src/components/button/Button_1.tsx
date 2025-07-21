@@ -20,7 +20,7 @@ function Button_1({
   type = 'button',
 }: Button_1Props) {
   const baseClasses =
-    'group relative font-semibold rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-105 active:scale-95';
+    'group relative font-semibold rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer';
 
   const variants = {
     primary:
