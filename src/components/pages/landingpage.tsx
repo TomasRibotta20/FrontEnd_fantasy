@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import ballLogo from '../assets/Ball_Logo.png';
-import lettersLogo from '../assets/Letters_Logo.png';
+import ballLogo from '../../assets/Ball_Logo.png';
+import lettersLogo from '../../assets/Letters_Logo.png';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="relative h-[calc(100vh-64px)] w-full overflow-hidden">
+    <div className="relative h-screen w-full overflow-hidden">
       {/* Estilos CSS personalizados para la animación */}
       <style
         dangerouslySetInnerHTML={{
@@ -36,6 +36,7 @@ export const LandingPage: React.FC = () => {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/Background_LandingPage.png')`,
+          
         }}
       >
         {/* Overlay opcional para mejorar la legibilidad */}

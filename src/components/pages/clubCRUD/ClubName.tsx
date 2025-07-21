@@ -1,6 +1,6 @@
-import  { useState } from 'react';
-import { CustoFormHookForm } from '../../components/forms/CustoFormHookForm';
-import type { FormFieldConfig } from '../../components/forms/CustoFormHookForm';
+import { useState } from 'react';
+import { CustoFormHookForm } from '../../forms/CustoFormHookForm';
+import type { FormFieldConfig } from '../../forms/CustoFormHookForm';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -55,7 +55,7 @@ function Club() {
         className="bg-cover bg-center bg-no-repeat flex justify-center items-center relative"
         style={{
           backgroundImage: `url('/Background_LandingPage.png')`,
-          height: 'calc(100vh - 64px)', // Resta la altura de la navbar (h-16 = 64px)
+          minHeight: '100vh',
         }}
       >
         <div className="absolute inset-0 bg-black opacity-30 z-0"></div>
