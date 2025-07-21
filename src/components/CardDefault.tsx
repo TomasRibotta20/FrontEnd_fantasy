@@ -3,7 +3,8 @@ import { Button_1 } from './button';
 
 interface Club {
   id: number;
-  name: string;
+  id_api: number;
+  nombre: string;
   // add other properties as needed
 }
 interface CardDefaultProps {
@@ -28,7 +29,7 @@ function CardDefault({
 
   return (
     <div className={`${baseClasses} ${size} ${className}`} data-type={type}>
-      {club.id && club.name ? (
+      {club.id && club.nombre ? (
         <div
           className="flex flex-col items-center "
           style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
@@ -43,7 +44,7 @@ function CardDefault({
             className="text-lg font-semibold"
             style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
           >
-            Nombre: {club.name}
+            Nombre: {club.nombre}
           </h3>
         </div>
       ) : null}

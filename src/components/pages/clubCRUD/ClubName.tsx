@@ -3,6 +3,7 @@ import { CustoFormHookForm } from '../../forms/CustoFormHookForm';
 import type { FormFieldConfig } from '../../forms/CustoFormHookForm';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+// Removed invalid import of Crypto from 'crypto-js'
 
 function Club() {
   const navigate = useNavigate();
@@ -12,10 +13,12 @@ function Club() {
     text: string;
   } | null>(null);
   // Configuración del formulario de registro
+
+
   const registrationFields: FormFieldConfig[] = [
     {
-      name: 'name',
-      label: 'Nombre',
+      name: 'nombre',
+      label: 'nombre',
       type: 'text',
       placeholder: 'Ingrese el nombre aqui',
       required: true,
@@ -28,10 +31,14 @@ function Club() {
     setIsLoading(true);
     setMessage(null);
     console.log('Datos de registro:', formValues);
+      const clubValues = {
+        nombre: formValues.nombre,
+        id_api: crypto.randomUUID(),
+      };
     try {
       const response = await axios.post(
         'http://localhost:3000/api/clubs',
-        formValues
+        clubValues
       );
       console.log('Registro exitoso:', response.data);
       setMessage({ type: 'success', text: 'Club registrado exitosamente!' });

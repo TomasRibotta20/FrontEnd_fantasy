@@ -9,19 +9,15 @@ function ClubReadUpdateDelete() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+
   interface Club {
     id: number;
-    name: string;
-    // add other properties as needed
+    id_api: number;
+    nombre: string;
   }
+
   const [editingClub, setEditingClub] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
-
-  interface Club {
-    id: number;
-    name: string;
-  }
-
   const [clubs, setClubs] = useState<Club[]>([]);
 
   useEffect(() => {
@@ -59,7 +55,6 @@ function ClubReadUpdateDelete() {
       setIsLoading(false);
     }
   };
-
   const deleteClub = async (clubId: number) => {
     setIsLoading(true);
     try {
@@ -84,7 +79,7 @@ function ClubReadUpdateDelete() {
     const club = clubs.find((c) => c.id === clubId);
     if (club) {
       setEditingClub(clubId);
-      setEditName(club.name);
+      setEditName(club.nombre);
     }
   };
 
@@ -93,11 +88,11 @@ function ClubReadUpdateDelete() {
 
     try {
       await axios.patch(`http://localhost:3000/api/clubs/${clubId}`, {
-        name: editName,
+        nombre: editName,
       });
       setClubs((prevClubs) =>
         prevClubs.map((club) =>
-          club.id === clubId ? { ...club, name: editName } : club
+          club.id === clubId ? { ...club, nombre: editName } : club
         )
       );
       setMessage({
