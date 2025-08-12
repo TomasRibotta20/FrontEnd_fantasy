@@ -18,7 +18,7 @@ function Club() {
   const registrationFields: FormFieldConfig[] = [
     {
       name: 'nombre',
-      label: 'nombre',
+      label: 'Nombre',
       type: 'text',
       placeholder: 'Ingrese el nombre aqui',
       required: true,

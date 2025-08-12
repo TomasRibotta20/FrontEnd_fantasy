@@ -65,20 +65,35 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
         className="form flex flex-col items-center w-full font-semibold text-black"
         onSubmit={handleSubmit}
       >
-        {fields.map((field) => (
-          <FormField
-            key={field.name}
-            label={field.label}
-            type={field.type}
-            name={field.name}
-            value={formValues[field.name] || ''}
-            onChange={handleChange}
-            placeholder={field.placeholder}
-            required={field.required}
-          />
-        ))}
+        <div
+          className={`w-full space-y-4 ${
+            className.includes('!w-[600px]')
+              ? 'max-w-full space-y-8'
+              : 'max-w-md'
+          }`}
+        >
+          {fields.map((field) => (
+            <div key={field.name} className="w-full">
+              <FormField
+                label={field.label}
+                type={field.type}
+                name={field.name}
+                value={formValues[field.name] || ''}
+                onChange={handleChange}
+                placeholder={field.placeholder}
+                required={field.required}
+              />
+            </div>
+          ))}
+        </div>
 
-        <Button_1 type="submit" variant={buttonVariant} size={buttonSize} disabled={false}>
+        <Button_1
+          type="submit"
+          variant={buttonVariant}
+          size={buttonSize}
+          disabled={false}
+          className={className.includes('!w-[600px]') ? 'mt-10 w-full' : ''}
+        >
           {buttonText}
         </Button_1>
       </form>

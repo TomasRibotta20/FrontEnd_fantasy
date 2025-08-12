@@ -1,31 +1,49 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-//import { CustoFormHookForm } from './components/forms/CustoFormHookForm';
 import NavBar from './components/navbar/navbar';
 import LandingPage from './components/pages/landingpage';
 import Club from './components/pages/clubCRUD/ClubName';
 import ClubReadUpdateDelete from './components/pages/clubCRUD/ClubReadUpdateDelete';
-import CardDefault from './components/CardDefault';
+import CreateUser from './components/pages/register/CreateUser';
+import Login from './components/pages/auth/Login';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 function App() {
   return (
-    <BrowserRouter>
-      <NavBar />
-      <Routes>
-        <Route path="/" element={<LandingPage />}></Route>
-        <Route path="/club" element={<Club />}></Route>
-        <Route
-          path="/ClubReadUpdateDelete"
-          element={<ClubReadUpdateDelete />}
-        />
-        <Route
-          path="/CardDefault"
-          element={
-            // Replace the following club object with a real club or mock as needed
-            <CardDefault club={{ id: 1, name: 'Sample Club' }} />
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <NavBar />
+        <Routes>
+          <Route path="/" element={<LandingPage />}></Route>
+          <Route path="/CreateUser" element={<CreateUser />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/club"
+            element={
+              <ProtectedRoute>
+                <Club />
+              </ProtectedRoute>
+            }
+          ></Route>
+          <Route
+            path="/ClubName"
+            element={
+              <ProtectedRoute>
+                <Club />
+              </ProtectedRoute>
+            }
+          ></Route>
+          <Route
+            path="/ClubReadUpdateDelete"
+            element={
+              <ProtectedRoute>
+                <ClubReadUpdateDelete />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
