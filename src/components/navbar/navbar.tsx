@@ -18,13 +18,9 @@ type NavigationItem = {
 };
 
 const navigation: NavigationItem[] = [
-  //{ name: 'Equipo', href: '#', current: false },
-  //{ name: 'Mercado', href: '#', current: false },
-];
-
-const equipoMenuItems = [
-  { name: 'Ver equipo', href: '#' },
-  { name: 'Estadisticas', href: '#' },
+  { name: 'Equipo', href: '/UpdateTeam', current: false },
+  { name: 'Jornada', href: '#', current: false },
+  { name: 'Mercado', href: '#', current: false },
 ];
 
 function classNames(...classes: (string | undefined | null | false)[]) {
@@ -42,65 +38,44 @@ export default function NavBar() {
   return (
     <Disclosure
       as="nav"
-      className="bg-gray-800 fixed top-0 left-0 right-0 z-50 w-full"
+      className="fixed top-0 left-0 right-0 z-50 w-full backdrop-blur-lg bg-white/25 border-b-2 border-white/40 shadow-2xl"
     >
-      <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 ">
+      <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
           <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
             {/* Mobile menu button*/}
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:ring-2 focus:ring-white focus:outline-hidden focus:ring-inset">
+            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-lg p-2 text-white hover:bg-white/20 hover:text-white focus:ring-2 focus:ring-white/50 focus:outline-hidden transition-all duration-200 border border-white/30">
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
                 aria-hidden="true"
-                className="block size-6 group-data-open:hidden"
+                className="block size-6 group-data-open:hidden drop-shadow-md"
               />
               <XMarkIcon
                 aria-hidden="true"
-                className="hidden size-6 group-data-open:block"
+                className="hidden size-6 group-data-open:block drop-shadow-md"
               />
             </DisclosureButton>
           </div>
           <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
             <div className="flex shrink-0 items-center">
               <button
-                onClick={() => (window.location.href = '/')}
-                className="transform transition-transform duration-300 hover:scale-123 relative hover:opacity-80 "
+                onClick={() => {
+                  const destination = isAuthenticated ? '/LoggedMenu' : '/';
+                  navigate(destination);
+                }}
+                className="transform transition-all duration-300 hover:scale-110 relative hover:opacity-80 hover:drop-shadow-2xl"
                 aria-label="Ir a página principal"
               >
                 <img
                   alt="Logo - Ir a inicio"
                   src="./src/assets/Ball_logo.png"
-                  className="h-12 w-auto"
+                  className="h-12 w-auto drop-shadow-lg"
                 />
               </button>
             </div>
             <div className="hidden sm:ml-6 sm:block">
-              <div className="flex space-x-4 items-center h-16">
-                {/* Menú dropdown para Equipo */}
-                <Menu as="div" className="relative">
-                  <div>
-                    <MenuButton className="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800">
-                      Equipo
-                    </MenuButton>
-                  </div>
-                  <MenuItems
-                    transition
-                    className="absolute left-0 z-10 mt-2 w-48 origin-top-left rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 transition focus:outline-hidden data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
-                  >
-                    {equipoMenuItems.map((item) => (
-                      <MenuItem key={item.name}>
-                        <a
-                          href={item.href}
-                          className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
-                        >
-                          {item.name}
-                        </a>
-                      </MenuItem>
-                    ))}
-                  </MenuItems>
-                </Menu>
-
+              <div className="flex space-x-3 items-center h-16">
                 {navigation.map((item) => (
                   <a
                     key={item.name}
@@ -108,9 +83,9 @@ export default function NavBar() {
                     aria-current={item.current ? 'page' : undefined}
                     className={classNames(
                       item.current
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                      'rounded-md px-3 py-2 text-sm font-medium'
+                        ? 'bg-white/30 text-white shadow-xl border-white/50'
+                        : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                      'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2'
                     )}
                   >
                     {item.name}
@@ -122,16 +97,16 @@ export default function NavBar() {
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             {/* Mostrar botones de login/register si no está autenticado */}
             {!isAuthenticated ? (
-              <div className="flex space-x-4">
+              <div className="flex space-x-3">
                 <button
                   onClick={() => navigate('/CreateUser')}
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-white hover:bg-white/20 hover:text-white px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200 border-2 border-white/30 hover:border-white/50 drop-shadow-md"
                 >
                   Registrarse
                 </button>
                 <button
                   onClick={() => navigate('/login')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200 shadow-xl hover:shadow-2xl border-2 border-white/30 drop-shadow-md"
                 >
                   Iniciar Sesión
                 </button>
@@ -140,42 +115,51 @@ export default function NavBar() {
               /* Profile dropdown para usuarios autenticados */
               <Menu as="div" className="relative ml-3">
                 <div>
-                  <MenuButton className="relative flex rounded-full bg-gray-800 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800">
+                  <MenuButton className="relative flex items-center space-x-2 rounded-full bg-white/25 hover:bg-white/30 pl-1 pr-4 py-1 text-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white/50 transition-all duration-200 border-2 border-white/40 hover:border-white/60 drop-shadow-md">
                     <span className="absolute -inset-1.5" />
                     <span className="sr-only">Open user menu</span>
-                    <div className="flex items-center space-x-2">
-                      <img
-                        alt=""
-                        src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
-                        className="size-8 rounded-full"
-                      />
-                      <span className="text-white text-sm">
-                        {user?.username}
-                      </span>
-                    </div>
+                    <img
+                      alt=""
+                      src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
+                      className="size-8 rounded-full border-2 border-white/50 shadow-md"
+                    />
+                    <span className="text-white font-bold drop-shadow-md">
+                      {user?.username}
+                    </span>
                   </MenuButton>
                 </div>
                 <MenuItems
                   transition
-                  className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 transition focus:outline-hidden data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
+                  className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-xl backdrop-blur-lg bg-white/95 py-1 shadow-2xl border-2 border-white/40 transition focus:outline-hidden data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
                 >
                   <MenuItem>
-                    <div className="block px-4 py-2 text-sm text-gray-500 border-b">
-                      {user?.email}
+                    <div className="block px-4 py-3 text-sm text-gray-600 border-b border-gray-200 bg-gray-50/50">
+                      <p className="font-semibold text-gray-800">
+                        {user?.username}
+                      </p>
+                      <p className="text-xs mt-0.5">{user?.email}</p>
                     </div>
                   </MenuItem>
                   <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
+                      className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
                     >
                       Tu Perfil
                     </a>
                   </MenuItem>
                   <MenuItem>
+                    <button
+                      onClick={() => navigate('/admin')}
+                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
+                    >
+                      Panel de Administración
+                    </button>
+                  </MenuItem>
+                  <MenuItem>
                     <a
                       href="#"
-                      className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
+                      className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
                     >
                       Configuración
                     </a>
@@ -183,7 +167,7 @@ export default function NavBar() {
                   <MenuItem>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
+                      className="block w-full text-left px-4 py-2.5 text-sm text-red-600 data-focus:bg-red-50 data-focus:text-red-700 data-focus:outline-hidden transition-colors duration-150 font-medium border-t border-gray-200"
                     >
                       Cerrar Sesión
                     </button>
@@ -195,27 +179,8 @@ export default function NavBar() {
         </div>
       </div>
 
-      <DisclosurePanel className="sm:hidden">
-        <div className="space-y-1 px-2 pt-2 pb-3">
-          {/* Menú dropdown para Equipo en móvil */}
-          <div className="space-y-1">
-            <div className="bg-gray-900 text-white block rounded-md px-3 py-2 text-base font-medium">
-              Equipo
-            </div>
-            <div className="pl-4 space-y-1">
-              {equipoMenuItems.map((item) => (
-                <DisclosureButton
-                  key={item.name}
-                  as="a"
-                  href={item.href}
-                  className="text-gray-300 hover:bg-gray-700 hover:text-white block rounded-md px-3 py-2 text-sm font-medium"
-                >
-                  {item.name}
-                </DisclosureButton>
-              ))}
-            </div>
-          </div>
-
+      <DisclosurePanel className="sm:hidden backdrop-blur-lg bg-white/20 border-t-2 border-white/30">
+        <div className="space-y-2 px-3 pt-3 pb-4">
           {navigation.map((item) => (
             <DisclosureButton
               key={item.name}
@@ -224,9 +189,9 @@ export default function NavBar() {
               aria-current={item.current ? 'page' : undefined}
               className={classNames(
                 item.current
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                'block rounded-md px-3 py-2 text-base font-medium'
+                  ? 'bg-white/30 text-white shadow-xl border-white/50'
+                  : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                'block rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
               )}
             >
               {item.name}

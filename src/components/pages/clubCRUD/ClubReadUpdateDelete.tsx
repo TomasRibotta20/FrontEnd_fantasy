@@ -13,11 +13,29 @@ function ClubReadUpdateDelete() {
   interface Club {
     id: number;
     id_api: number;
+    codigo: string;
     nombre: string;
+    logo: string;
+    pais: string;
+    fundado: number;
+    estadio_nombre: string;
+    estadio_ciudad: string;
+    estadio_capacidad: number;
+    estadio_imagen: string;
   }
 
   const [editingClub, setEditingClub] = useState<number | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editData, setEditData] = useState({
+    nombre: '',
+    codigo: '',
+    logo: '',
+    pais: '',
+    fundado: '',
+    estadio_nombre: '',
+    estadio_ciudad: '',
+    estadio_capacidad: '',
+    estadio_imagen: '',
+  });
   const [clubs, setClubs] = useState<Club[]>([]);
 
   useEffect(() => {
@@ -79,7 +97,17 @@ function ClubReadUpdateDelete() {
     const club = clubs.find((c) => c.id === clubId);
     if (club) {
       setEditingClub(clubId);
-      setEditName(club.nombre);
+      setEditData({
+        nombre: club.nombre || '',
+        codigo: club.codigo || '',
+        logo: club.logo || '',
+        pais: club.pais || '',
+        fundado: club.fundado ? club.fundado.toString() : '',
+        estadio_nombre: club.estadio_nombre || '',
+        estadio_ciudad: club.estadio_ciudad || '',
+        estadio_capacidad: club.estadio_capacidad ? club.estadio_capacidad.toString() : '',
+        estadio_imagen: club.estadio_imagen || '',
+      });
     }
   };
 
@@ -87,12 +115,23 @@ function ClubReadUpdateDelete() {
     setIsLoading(true);
 
     try {
-      await axios.patch(`http://localhost:3000/api/clubs/${clubId}`, {
-        nombre: editName,
-      });
+      const updateData = {
+        nombre: editData.nombre,
+        codigo: editData.codigo,
+        logo: editData.logo,
+        pais: editData.pais,
+        fundado: editData.fundado ? parseInt(editData.fundado) : 0,
+        estadio_nombre: editData.estadio_nombre,
+        estadio_ciudad: editData.estadio_ciudad,
+        estadio_capacidad: editData.estadio_capacidad ? parseInt(editData.estadio_capacidad) : 0,
+        estadio_imagen: editData.estadio_imagen,
+      };
+
+      await axios.patch(`http://localhost:3000/api/clubs/${clubId}`, updateData);
+      
       setClubs((prevClubs) =>
         prevClubs.map((club) =>
-          club.id === clubId ? { ...club, nombre: editName } : club
+          club.id === clubId ? { ...club, ...updateData } : club
         )
       );
       setMessage({
@@ -100,7 +139,17 @@ function ClubReadUpdateDelete() {
         text: 'Club editado con éxito.',
       });
       setEditingClub(null);
-      setEditName('');
+      setEditData({
+        nombre: '',
+        codigo: '',
+        logo: '',
+        pais: '',
+        fundado: '',
+        estadio_nombre: '',
+        estadio_ciudad: '',
+        estadio_capacidad: '',
+        estadio_imagen: '',
+      });
     } catch (error) {
       console.error('Error al editar club:', error);
       setMessage({
@@ -114,7 +163,17 @@ function ClubReadUpdateDelete() {
 
   const cancelEdit = () => {
     setEditingClub(null);
-    setEditName('');
+    setEditData({
+      nombre: '',
+      codigo: '',
+      logo: '',
+      pais: '',
+      fundado: '',
+      estadio_nombre: '',
+      estadio_ciudad: '',
+      estadio_capacidad: '',
+      estadio_imagen: '',
+    });
   };
 
   return (
@@ -175,24 +234,135 @@ function ClubReadUpdateDelete() {
           clubs.map((club: Club) => (
             <div key={club.id} className="mb-4">
               {editingClub === club.id ? (
-                <div className="border-4 border-gray-600 p-4 w-70 h-40 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between inner-shadow-lg">
-                  <div className="mb-3">
-                    <label className="block text-xl font-medium text-black mb-1 text-center">
-                      Nombre del Club
-                    </label>
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nombre del club"
-                    />
+                <div className="border-4 border-gray-600 p-4 w-80 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col inner-shadow-lg max-h-96 overflow-y-auto">
+                  <h3 className="text-xl font-medium text-black mb-3 text-center">
+                    Editar Club
+                  </h3>
+                  
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Nombre del Club
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.nombre}
+                        onChange={(e) => setEditData({...editData, nombre: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Nombre del club"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Código
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.codigo}
+                        onChange={(e) => setEditData({...editData, codigo: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Código del club"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Logo (URL)
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.logo}
+                        onChange={(e) => setEditData({...editData, logo: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="URL del logo"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        País
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.pais}
+                        onChange={(e) => setEditData({...editData, pais: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="País"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Año de Fundación
+                      </label>
+                      <input
+                        type="number"
+                        value={editData.fundado}
+                        onChange={(e) => setEditData({...editData, fundado: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Año de fundación"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Nombre del Estadio
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.estadio_nombre}
+                        onChange={(e) => setEditData({...editData, estadio_nombre: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Nombre del estadio"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Ciudad del Estadio
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.estadio_ciudad}
+                        onChange={(e) => setEditData({...editData, estadio_ciudad: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ciudad del estadio"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Capacidad del Estadio
+                      </label>
+                      <input
+                        type="number"
+                        value={editData.estadio_capacidad}
+                        onChange={(e) => setEditData({...editData, estadio_capacidad: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Capacidad del estadio"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Imagen del Estadio (URL)
+                      </label>
+                      <input
+                        type="text"
+                        value={editData.estadio_imagen}
+                        onChange={(e) => setEditData({...editData, estadio_imagen: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="URL de la imagen del estadio"
+                      />
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  <div className="flex gap-2 mt-auto">
                     <Button_1
                       type="button"
                       onClick={() => saveEdit(club.id)}
-                      disabled={isLoading || !editName.trim()}
+                      disabled={isLoading || !editData.nombre.trim()}
                       size="sm"
                       className="w-25 h-10 flex items-center justify-center"
                     >

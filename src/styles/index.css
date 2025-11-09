@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+/* Animaciones personalizadas para transiciones suaves */
+@keyframes smoothBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+    animation-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+@keyframes fadeInGently {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Animación de confetti mejorada */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-12vh) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(50vh) rotate(180deg) scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(110vh) rotate(360deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* Clases utilitarias personalizadas */
+.animate-smooth-bounce {
+  animation: smoothBounce 1.2s ease-in-out;
+}
+
+.animate-fade-in-gentle {
+  animation: fadeInGently 0.6s ease-out;
+}
+
+.confetti-piece {
+  animation: confettiFall 4.5s linear forwards;
+}
+
+/* Optimizaciones para GPU */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}

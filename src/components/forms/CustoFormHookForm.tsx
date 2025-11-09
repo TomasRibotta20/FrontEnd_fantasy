@@ -32,7 +32,6 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
   onSubmit,
   initialValues = {},
   className = '',
-
 }) => {
   // Crear valores iniciales basados en los campos
   const defaultInitialValues = fields.reduce((acc, field) => {
@@ -56,19 +55,19 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
 
   return (
     <div
-      className={`${className} flex flex-col items-center border-4 border-gray-600 p-8 rounded-lg bg-white opacity-80 shadow-lg w-100 font-sans`}
+      className={`${className} flex flex-col items-center border-2 border-white/40 p-8 rounded-2xl bg-white/25 backdrop-blur-lg shadow-2xl w-100 font-sans`}
     >
-      <h2 className="form_title mb-4 text-3xl font-semibold text-black text-center">
+      <h2 className="form_title mb-6 text-4xl font-bold text-white text-center drop-shadow-lg">
         {title}
       </h2>
       <form
-        className="form flex flex-col items-center w-full font-semibold text-black"
+        className="form flex flex-col items-center w-full font-semibold text-white"
         onSubmit={handleSubmit}
       >
         <div
           className={`w-full space-y-4 ${
             className.includes('!w-[600px]')
-              ? 'max-w-full space-y-8'
+              ? 'max-w-full space-y-6'
               : 'max-w-md'
           }`}
         >

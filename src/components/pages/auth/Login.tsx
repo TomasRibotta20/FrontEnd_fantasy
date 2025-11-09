@@ -48,7 +48,7 @@ function Login() {
 
       // Redirigir al usuario logueado
       setTimeout(() => {
-        navigate('/ClubName');
+        navigate('/LoggedMenu');
       }, 1000);
     } catch (error) {
       console.error('Error al hacer login:', error);
@@ -89,9 +89,11 @@ function Login() {
       <div className="absolute inset-0 flex items-center justify-center z-20">
         {message && (
           <div
-            className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-lg shadow-lg ${
-              message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } text-white font-medium min-w-[300px] text-center`}
+            className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-2xl shadow-2xl backdrop-blur-lg border-2 ${
+              message.type === 'success'
+                ? 'bg-green-500/90 border-green-400/50'
+                : 'bg-red-500/90 border-red-400/50'
+            } text-white font-bold min-w-[300px] text-center drop-shadow-xl`}
           >
             {message.text}
           </div>
@@ -108,11 +110,11 @@ function Login() {
           className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
         />
         <div className="absolute bottom-4 text-center">
-          <p className="text-white text-sm">
+          <p className="text-white text-base font-semibold drop-shadow-md">
             ¿No tienes cuenta?{' '}
             <button
               onClick={() => navigate('/CreateUser')}
-              className="text-blue-400 hover:text-blue-300 underline"
+              className="text-yellow-300 hover:text-yellow-200 underline font-bold transition-colors duration-200"
             >
               Regístrate aquí
             </button>

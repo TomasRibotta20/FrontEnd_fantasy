@@ -45,25 +45,38 @@ function CreateUser() {
     console.log('Datos que se envían al backend:', userValues);
 
     try {
-      const response = await apiClient.post('/auth/register', userValues);
-      console.log('Registro exitoso:', response.data);
+      // Primero registrar el usuario
+      const registerResponse = await apiClient.post(
+        '/auth/register',
+        userValues
+      );
+      console.log('Registro exitoso:', registerResponse.data);
 
-      // Extraer los datos del usuario de la respuesta
-      const userData = response.data.data || response.data;
+      // Después hacer login automático con las mismas credenciales
+      const loginValues = {
+        email: formValues.email,
+        password: formValues.password,
+      };
 
-      console.log('Usuario registrado:', userData);
+      const loginResponse = await apiClient.post('/auth/login', loginValues);
+      console.log('Login automático exitoso:', loginResponse.data);
 
-      // Loguear automáticamente al usuario (el token viene en la cookie)
+      // Extraer los datos del usuario de la respuesta del login
+      const userData = loginResponse.data.data;
+
+      console.log('Usuario logueado automáticamente:', userData);
+
+      // Loguear al usuario (el token viene en la cookie del login)
       login(userData);
 
       setMessage({
         type: 'success',
-        text: 'Usuario registrado exitosamente! Redirigiendo...',
+        text: 'Usuario registrado e iniciado sesión exitosamente! Redirigiendo...',
       });
 
       // Redirigir al usuario logueado
       setTimeout(() => {
-        navigate('/ClubName');
+        navigate('/CreateTeam');
       }, 1000);
     } catch (error: unknown) {
       const axiosError = error as AxiosError;
@@ -73,6 +86,12 @@ function CreateUser() {
       console.error('Response headers:', axiosError.response?.headers);
 
       let errorMessage = 'Error al registrar el Usuario. Inténtalo de nuevo.';
+
+      // Determinar si el error fue en registro o login
+      if (axiosError.config?.url?.includes('/auth/login')) {
+        errorMessage =
+          'Usuario registrado, pero error al iniciar sesión automáticamente. Por favor, inicia sesión manualmente.';
+      }
 
       // Mostrar mensaje específico del backend si está disponible
       if (
@@ -124,9 +143,11 @@ function CreateUser() {
       <div className="absolute inset-0 flex items-center justify-center z-20">
         {message && (
           <div
-            className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-lg shadow-lg ${
-              message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } text-white font-medium min-w-[300px] text-center`}
+            className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-2xl shadow-2xl backdrop-blur-lg border-2 ${
+              message.type === 'success'
+                ? 'bg-green-500/90 border-green-400/50'
+                : 'bg-red-500/90 border-red-400/50'
+            } text-white font-bold min-w-[300px] text-center drop-shadow-xl`}
           >
             {message.text}
           </div>
@@ -142,6 +163,17 @@ function CreateUser() {
           disabled={isLoading}
           className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
         />
+        <div className="absolute bottom-4 text-center">
+          <p className="text-white text-base font-semibold drop-shadow-md">
+            ¿Ya tienes cuenta?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-yellow-300 hover:text-yellow-200 underline font-bold transition-colors duration-200"
+            >
+              Inicia sesión aquí
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

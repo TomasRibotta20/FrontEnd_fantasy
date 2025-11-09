@@ -7,7 +7,7 @@ export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleButtonClick = () => {
-    navigate('/club');
+    navigate('/login');
   };
 
   return (
@@ -36,7 +36,6 @@ export const LandingPage: React.FC = () => {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/Background_LandingPage.png')`,
-          
         }}
       >
         {/* Overlay opcional para mejorar la legibilidad */}
@@ -80,16 +79,16 @@ export const LandingPage: React.FC = () => {
         {/* Botón principal */}
         <button
           onClick={handleButtonClick}
-          className="group relative px-10 py-5 bg-gradient-to-r from-green-500 to-blue-600 text-white text-2xl font-semibold rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-105 hover:from-green-600 hover:to-blue-700 active:scale-95"
+          className="group relative px-12 py-5 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white text-2xl font-bold rounded-2xl shadow-2xl backdrop-blur-lg border-2 border-white/40 hover:border-white/60 transform transition-all duration-300 hover:scale-105 active:scale-95 drop-shadow-2xl"
           style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
         >
-          <span className="relative z-10">Ingresa ahora</span>
+          <span className="relative z-10 drop-shadow-md">Ingresa ahora</span>
 
           {/* Efecto de brillo al hover */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
 
           {/* Anillo de focus */}
-          <div className="absolute inset-0 rounded-full ring-2 ring-blue-400 ring-opacity-0 group-focus:ring-opacity-50 transition-all duration-300"></div>
+          <div className="absolute inset-0 rounded-2xl ring-2 ring-white/50 ring-opacity-0 group-focus:ring-opacity-50 transition-all duration-300"></div>
         </button>
       </div>
     </div>

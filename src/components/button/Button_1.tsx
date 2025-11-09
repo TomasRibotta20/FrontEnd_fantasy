@@ -20,7 +20,7 @@ function Button_1({
   type = 'button',
 }: Button_1Props) {
   const baseClasses =
-    'group relative font-semibold rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer';
+    'group relative font-bold rounded-2xl shadow-2xl hover:shadow-2xl transform transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer border-2 border-white/40 hover:border-white/60 backdrop-blur-lg drop-shadow-xl';
 
   const variants = {
     primary:
@@ -32,9 +32,9 @@ function Button_1({
   };
 
   const sizes = {
-    sm: 'px-6 py-3 text-lg',
-    md: 'px-8 py-4 text-xl',
-    lg: 'px-10 py-5 text-2xl',
+    sm: 'px-6 py-3 text-base',
+    md: 'px-8 py-3.5 text-lg',
+    lg: 'px-10 py-4 text-xl',
   };
 
   return (
@@ -49,13 +49,13 @@ function Button_1({
       }`}
       style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
     >
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 drop-shadow-md">{children}</span>
 
       {/* Efecto de brillo al hover */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-400 to-blue-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
 
       {/* Anillo de focus */}
-      <div className="absolute inset-0 rounded-full ring-2 ring-blue-500 ring-opacity-0 group-focus:ring-opacity-50 transition-all duration-300"></div>
+      <div className="absolute inset-0 rounded-2xl ring-2 ring-white/50 ring-opacity-0 group-focus:ring-opacity-50 transition-all duration-300"></div>
     </button>
   );
 }
