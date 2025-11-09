@@ -5,6 +5,7 @@
 El endpoint `GET /api/admin/config` **NO EXISTE** en el backend.
 
 ### Evidencia:
+
 ```
 GET http://localhost:3000/api/admin/config
 [HTTP/1.1 404 Not Found]
@@ -15,7 +16,7 @@ GET http://localhost:3000/api/admin/config
 ## ✅ Lo que SÍ funciona:
 
 - ✅ `POST /api/admin/set-jornada-activa` - Funciona correctamente
-- ✅ `POST /api/admin/habilitar-modificaciones` - Funciona correctamente  
+- ✅ `POST /api/admin/habilitar-modificaciones` - Funciona correctamente
 - ✅ `POST /api/admin/deshabilitar-modificaciones` - Funciona correctamente
 
 ---
@@ -37,6 +38,7 @@ El frontend ahora actualiza el estado **localmente** después de cada acción, s
 **Descripción:** Devuelve la configuración actual del sistema
 
 **Response esperado:**
+
 ```json
 {
   "jornadaActiva": 5,
@@ -45,6 +47,7 @@ El frontend ahora actualiza el estado **localmente** después de cada acción, s
 ```
 
 **Campos:**
+
 - `jornadaActiva`: (number | null) - ID de la jornada actualmente activa, o null si no hay ninguna
 - `modificacionesHabilitadas`: (boolean) - true si los usuarios pueden modificar equipos, false si están bloqueados
 
@@ -70,17 +73,17 @@ Implementar el endpoint:
 ```javascript
 app.get('/api/admin/config', async (req, res) => {
   const config = await db.query('SELECT * FROM configuracion WHERE id = 1');
-  
+
   if (config.length === 0) {
     return res.json({
       jornadaActiva: null,
-      modificacionesHabilitadas: true
+      modificacionesHabilitadas: true,
     });
   }
-  
+
   res.json({
     jornadaActiva: config[0].jornada_activa,
-    modificacionesHabilitadas: config[0].modificaciones_habilitadas
+    modificacionesHabilitadas: config[0].modificaciones_habilitadas,
   });
 });
 ```
@@ -95,7 +98,7 @@ let modificacionesHabilitadas = true;
 app.get('/api/admin/config', (req, res) => {
   res.json({
     jornadaActiva,
-    modificacionesHabilitadas
+    modificacionesHabilitadas,
   });
 });
 
@@ -121,11 +124,13 @@ app.post('/api/admin/deshabilitar-modificaciones', (req, res) => {
 ## 🎯 Estado Actual:
 
 ### Frontend: ✅ FUNCIONANDO
+
 - El frontend ahora funciona correctamente
 - Muestra los cambios inmediatamente
 - No depende del endpoint faltante
 
 ### Backend: ⏳ PENDIENTE
+
 - Necesita implementar `GET /api/admin/config`
 - Los demás endpoints funcionan correctamente
 
@@ -137,7 +142,7 @@ app.post('/api/admin/deshabilitar-modificaciones', (req, res) => {
 2. Deberías ver inmediatamente en "Configuración Actual": **Jornada Activa: 5** 🎯
 3. Haz clic en "🔒 Bloquear"
 4. Deberías ver inmediatamente: **🔴 Bloqueadas**
-5. Haz clic en "✓ Habilitar"  
+5. Haz clic en "✓ Habilitar"
 6. Deberías ver inmediatamente: **🟢 Habilitadas**
 
 **Todo debería funcionar ahora, incluso sin el endpoint `/api/admin/config`**

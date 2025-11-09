@@ -48,7 +48,10 @@ const GestionJornadasAdmin = () => {
       // Si es un error 404 o 403, mostrar componente de endpoint no disponible
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosError = err as { response?: { status: number } };
-        if (axiosError.response?.status === 404 || axiosError.response?.status === 403) {
+        if (
+          axiosError.response?.status === 404 ||
+          axiosError.response?.status === 403
+        ) {
           setEndpointNoDisponible(true);
           return;
         }
@@ -62,9 +65,7 @@ const GestionJornadasAdmin = () => {
   // Si el endpoint no está disponible, mostrar componente especial
   if (endpointNoDisponible) {
     return (
-      <EndpointNoDisponible
-        mensaje="Los endpoints de jornadas aún no están implementados en el backend"
-      />
+      <EndpointNoDisponible mensaje="Los endpoints de jornadas aún no están implementados en el backend" />
     );
   }
 
@@ -72,15 +73,18 @@ const GestionJornadasAdmin = () => {
     try {
       console.log('🔍 Cargando configuración del servidor...');
       const data = await adminService.getConfig();
-      
+
       // Verificar si recibimos datos válidos
       if (data && typeof data === 'object') {
         console.log('📥 Configuración recibida del servidor');
-        
+
         // Extraer jornadaActiva - puede venir como número o como objeto con id
         let jornadaActivaId: number | null = null;
         if (data.jornadaActiva !== undefined && data.jornadaActiva !== null) {
-          if (typeof data.jornadaActiva === 'object' && 'id' in data.jornadaActiva) {
+          if (
+            typeof data.jornadaActiva === 'object' &&
+            'id' in data.jornadaActiva
+          ) {
             // Si es un objeto, extraer el id
             jornadaActivaId = (data.jornadaActiva as { id: number }).id;
           } else if (typeof data.jornadaActiva === 'number') {
@@ -91,29 +95,40 @@ const GestionJornadasAdmin = () => {
             jornadaActivaId = parseInt(data.jornadaActiva);
           }
         }
-        
+
         // Actualizar con los datos del servidor
         const newConfig: ConfiguracionSistema = {
           jornadaActiva: jornadaActivaId,
-          modificacionesHabilitadas: data.modificacionesHabilitadas !== undefined ? data.modificacionesHabilitadas : false
+          modificacionesHabilitadas:
+            data.modificacionesHabilitadas !== undefined
+              ? data.modificacionesHabilitadas
+              : false,
         };
-        
-        console.log('✅ Config actualizada: jornadaActiva=' + newConfig.jornadaActiva + ', modificaciones=' + newConfig.modificacionesHabilitadas);
+
+        console.log(
+          '✅ Config actualizada: jornadaActiva=' +
+            newConfig.jornadaActiva +
+            ', modificaciones=' +
+            newConfig.modificacionesHabilitadas
+        );
         setConfig(newConfig);
       } else {
         console.warn('⚠️ Datos de configuración inválidos');
       }
     } catch (err) {
-      const statusCode = (err as { response?: { status: number } })?.response?.status;
-      
+      const statusCode = (err as { response?: { status: number } })?.response
+        ?.status;
+
       if (statusCode === 404) {
-        console.warn('⚠️ Endpoint /api/admin/config no existe - el backend debe implementarlo');
+        console.warn(
+          '⚠️ Endpoint /api/admin/config no existe - el backend debe implementarlo'
+        );
       } else if (statusCode === 401 || statusCode === 403) {
         console.warn('⚠️ Sin autorización para obtener configuración');
       } else {
         console.error('❌ Error al cargar configuración:', err);
       }
-      
+
       // Mantener valores por defecto si no podemos cargar del servidor
       console.log('📌 Usando configuración por defecto');
     }
@@ -130,39 +145,39 @@ const GestionJornadasAdmin = () => {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
       const jornadaIdNum = parseInt(jornadaIdInput);
-      
+
       // Actualizar UI optimísticamente
       console.log('🔄 Actualizando config con jornadaActiva: ' + jornadaIdNum);
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: jornadaIdNum,
-        modificacionesHabilitadas: config.modificacionesHabilitadas
+        modificacionesHabilitadas: config.modificacionesHabilitadas,
       };
       setConfig(newConfig);
-      
+
       // ESPERAR la respuesta del servidor para confirmar
       await adminService.setJornadaActiva(jornadaIdInput);
       console.log('✅ Jornada activa establecida en el servidor');
-      
+
       setSuccess(`✅ Jornada ${jornadaIdInput} establecida como activa`);
       setJornadaIdInput('');
-      
+
       // Recargar jornadas para ver el cambio del flag "activa"
       await loadJornadas();
-      
+
       // Auto-ocultar mensaje después de 5 segundos
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('❌ Error al establecer jornada activa:', err);
       setError(`❌ Error al establecer jornada ${jornadaIdInput} como activa`);
-      
+
       // Revertir cambio local si falló en el servidor
       setConfig({
         jornadaActiva: null,
-        modificacionesHabilitadas: config.modificacionesHabilitadas
+        modificacionesHabilitadas: config.modificacionesHabilitadas,
       });
-      
+
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
@@ -174,32 +189,34 @@ const GestionJornadasAdmin = () => {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
       // Actualizar UI optimísticamente
       console.log('🔒 Bloqueando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
-        modificacionesHabilitadas: false
+        modificacionesHabilitadas: false,
       };
       setConfig(newConfig);
-      
+
       // ESPERAR la respuesta del servidor
       await adminService.deshabilitarModificaciones();
       console.log('✅ Modificaciones bloqueadas en el servidor');
-      
-      setSuccess('🔒 Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos');
-      
+
+      setSuccess(
+        '🔒 Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos'
+      );
+
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('❌ Error al bloquear modificaciones:', err);
       setError('❌ Error al bloquear modificaciones');
-      
+
       // Revertir cambio si falló
       setConfig({
         jornadaActiva: config.jornadaActiva,
-        modificacionesHabilitadas: true
+        modificacionesHabilitadas: true,
       });
-      
+
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
@@ -211,32 +228,34 @@ const GestionJornadasAdmin = () => {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
       // Actualizar UI optimísticamente
       console.log('✅ Habilitando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
-        modificacionesHabilitadas: true
+        modificacionesHabilitadas: true,
       };
       setConfig(newConfig);
-      
+
       // ESPERAR la respuesta del servidor
       await adminService.habilitarModificaciones();
       console.log('✅ Modificaciones habilitadas en el servidor');
-      
-      setSuccess('✅ Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos');
-      
+
+      setSuccess(
+        '✅ Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos'
+      );
+
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('❌ Error al habilitar modificaciones:', err);
       setError('❌ Error al habilitar modificaciones');
-      
+
       // Revertir cambio si falló
       setConfig({
         jornadaActiva: config.jornadaActiva,
-        modificacionesHabilitadas: false
+        modificacionesHabilitadas: false,
       });
-      
+
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
@@ -244,9 +263,7 @@ const GestionJornadasAdmin = () => {
   };
 
   const handleProcesarJornada = async (jornadaId: number) => {
-    if (
-      !confirm(`¿Estás seguro de procesar la jornada ${jornadaId}?`)
-    ) {
+    if (!confirm(`¿Estás seguro de procesar la jornada ${jornadaId}?`)) {
       return;
     }
 
@@ -286,11 +303,7 @@ const GestionJornadasAdmin = () => {
   };
 
   const handleActualizarEstadisticas = async (jornadaId: number) => {
-    if (
-      !confirm(
-        `¿Actualizar estadísticas de la jornada ${jornadaId}?`
-      )
-    ) {
+    if (!confirm(`¿Actualizar estadísticas de la jornada ${jornadaId}?`)) {
       return;
     }
 
@@ -321,15 +334,24 @@ const GestionJornadasAdmin = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-white/10 p-3 rounded-lg">
               <p className="font-bold mb-1">1️⃣ Activar Jornada</p>
-              <p className="text-xs">Selecciona una jornada y haz click en "Activar". Los usuarios podrán configurar sus equipos.</p>
+              <p className="text-xs">
+                Selecciona una jornada y haz click en "Activar". Los usuarios
+                podrán configurar sus equipos.
+              </p>
             </div>
             <div className="bg-white/10 p-3 rounded-lg">
               <p className="font-bold mb-1">2️⃣ Gestionar Modificaciones</p>
-              <p className="text-xs">Usa "Habilitar/Deshabilitar Modificaciones" para controlar si los usuarios pueden cambiar sus equipos.</p>
+              <p className="text-xs">
+                Usa "Habilitar/Deshabilitar Modificaciones" para controlar si
+                los usuarios pueden cambiar sus equipos.
+              </p>
             </div>
             <div className="bg-white/10 p-3 rounded-lg">
               <p className="font-bold mb-1">3️⃣ Procesar Puntos</p>
-              <p className="text-xs">Una vez finalizada la jornada, usa "Ver Detalle" → "Procesar Jornada" para calcular puntos.</p>
+              <p className="text-xs">
+                Una vez finalizada la jornada, usa "Ver Detalle" → "Procesar
+                Jornada" para calcular puntos.
+              </p>
             </div>
           </div>
         </div>
@@ -341,8 +363,8 @@ const GestionJornadasAdmin = () => {
               <span className="text-3xl">❌</span>
               <span className="text-lg font-bold">{error}</span>
             </div>
-            <button 
-              onClick={() => setError(null)} 
+            <button
+              onClick={() => setError(null)}
               className="text-2xl hover:bg-red-700 px-3 py-1 rounded transition-colors"
             >
               ✕
@@ -356,8 +378,8 @@ const GestionJornadasAdmin = () => {
               <span className="text-3xl">✅</span>
               <span className="text-lg font-bold">{success}</span>
             </div>
-            <button 
-              onClick={() => setSuccess(null)} 
+            <button
+              onClick={() => setSuccess(null)}
               className="text-2xl hover:bg-green-700 px-3 py-1 rounded transition-colors"
             >
               ✕
@@ -372,18 +394,20 @@ const GestionJornadasAdmin = () => {
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border-2 border-white/30">
-              <p className="text-white/80 text-sm mb-2 font-semibold">Jornada Activa</p>
+              <p className="text-white/80 text-sm mb-2 font-semibold">
+                Jornada Activa
+              </p>
               <div className="flex items-center gap-2">
                 <p className="text-white text-4xl font-bold">
                   {config.jornadaActiva || 'Ninguna'}
                 </p>
-                {config.jornadaActiva && (
-                  <span className="text-2xl">🎯</span>
-                )}
+                {config.jornadaActiva && <span className="text-2xl">🎯</span>}
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border-2 border-white/30">
-              <p className="text-white/80 text-sm mb-2 font-semibold">Estado Modificaciones</p>
+              <p className="text-white/80 text-sm mb-2 font-semibold">
+                Estado Modificaciones
+              </p>
               <div className="flex items-center gap-3">
                 <p
                   className={`text-3xl font-bold ${
@@ -496,82 +520,85 @@ const GestionJornadasAdmin = () => {
               {jornadas
                 .sort((a, b) => a.id - b.id)
                 .map((jornada) => (
-                <div
-                  key={jornada.id}
-                  className={`bg-black/30 rounded-lg p-6 border-2 ${
-                    jornada.activa
-                      ? 'border-green-500 shadow-lg shadow-green-500/50'
-                      : 'border-white/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-2xl font-bold text-white">
-                        {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
-                      </h3>
-                      {jornada.activa && (
-                        <span className="px-3 py-1 bg-green-500 text-white text-sm font-bold rounded-full">
-                          ACTIVA
-                        </span>
+                  <div
+                    key={jornada.id}
+                    className={`bg-black/30 rounded-lg p-6 border-2 ${
+                      jornada.activa
+                        ? 'border-green-500 shadow-lg shadow-green-500/50'
+                        : 'border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-2xl font-bold text-white">
+                          {jornada.nombre ||
+                            `Jornada ${jornada.numero || jornada.id}`}
+                        </h3>
+                        {jornada.activa && (
+                          <span className="px-3 py-1 bg-green-500 text-white text-sm font-bold rounded-full">
+                            ACTIVA
+                          </span>
+                        )}
+                        {jornada.puntosCalculados && (
+                          <span className="px-3 py-1 bg-blue-500 text-white text-sm font-bold rounded-full">
+                            ✓ PROCESADA
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-400">ID: {jornada.id}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {jornada.temporada && (
+                        <p className="text-gray-300">
+                          <span className="text-gray-400">Temporada:</span>{' '}
+                          {String(jornada.temporada)}
+                        </p>
                       )}
-                      {jornada.puntosCalculados && (
-                        <span className="px-3 py-1 bg-blue-500 text-white text-sm font-bold rounded-full">
-                          ✓ PROCESADA
-                        </span>
+                      {jornada.etapa && (
+                        <p className="text-gray-300">
+                          <span className="text-gray-400">Etapa:</span>{' '}
+                          {String(jornada.etapa)}
+                        </p>
                       )}
                     </div>
-                    <p className="text-gray-400">ID: {jornada.id}</p>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    {jornada.temporada && (
-                      <p className="text-gray-300">
-                        <span className="text-gray-400">Temporada:</span> {String(jornada.temporada)}
-                      </p>
-                    )}
-                    {jornada.etapa && (
-                      <p className="text-gray-300">
-                        <span className="text-gray-400">Etapa:</span> {String(jornada.etapa)}
-                      </p>
-                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                      <button
+                        onClick={() => handleProcesarJornada(jornada.id)}
+                        disabled={loading}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                      >
+                        ⚡ Procesar
+                      </button>
+                      <button
+                        onClick={() => handleRecalcularPuntajes(jornada.id)}
+                        disabled={loading}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                      >
+                        🔄 Recalcular
+                      </button>
+                      <button
+                        onClick={() => handleActualizarEstadisticas(jornada.id)}
+                        disabled={loading}
+                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                      >
+                        📊 Actualizar Stats
+                      </button>
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `/admin/jornadas/${jornada.id}/detalle`,
+                            '_blank'
+                          )
+                        }
+                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
+                      >
+                        👁️ Ver Detalle
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                    <button
-                      onClick={() => handleProcesarJornada(jornada.id)}
-                      disabled={loading}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                    >
-                      ⚡ Procesar
-                    </button>
-                    <button
-                      onClick={() => handleRecalcularPuntajes(jornada.id)}
-                      disabled={loading}
-                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                    >
-                      🔄 Recalcular
-                    </button>
-                    <button
-                      onClick={() => handleActualizarEstadisticas(jornada.id)}
-                      disabled={loading}
-                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                    >
-                      📊 Actualizar Stats
-                    </button>
-                    <button
-                      onClick={() =>
-                        window.open(
-                          `/admin/jornadas/${jornada.id}/detalle`,
-                          '_blank'
-                        )
-                      }
-                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
-                    >
-                      👁️ Ver Detalle
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>

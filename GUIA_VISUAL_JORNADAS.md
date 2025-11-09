@@ -40,6 +40,7 @@
 ```
 
 **Funcionalidades:**
+
 - ✅ Vista consolidada de todas las jornadas
 - ✅ Controles administrativos agrupados
 - ✅ Indicadores visuales de estado
@@ -78,6 +79,7 @@
 ```
 
 **Funcionalidades:**
+
 - ✅ Resumen de rendimiento global
 - ✅ Grid de jornadas con estados visuales
 - ✅ Puntos destacados por jornada
@@ -121,6 +123,7 @@
 ```
 
 **Funcionalidades:**
+
 - ✅ Puntaje total destacado
 - ✅ Lista ordenada de jugadores
 - ✅ Estadísticas agregadas
@@ -142,6 +145,7 @@
 ```
 
 **Características:**
+
 - ✅ Compacto y visual
 - ✅ Actualización automática
 - ✅ Métricas clave
@@ -179,6 +183,7 @@
 ```
 
 **Funcionalidades:**
+
 - ✅ Vista administrativa completa
 - ✅ Tabla detallada de estadísticas
 - ✅ Ordenamiento por puntos
@@ -189,18 +194,21 @@
 ## 🎨 Paleta de Colores
 
 ### Estados de Jornada
+
 - **Activa**: 🟢 Verde (`green-500`)
 - **Inactiva**: ⚪ Gris (`gray-400`)
 - **Procesada**: 🔵 Azul (`blue-500`)
 - **Pendiente**: 🟡 Amarillo (`yellow-400`)
 
 ### Indicadores
+
 - **Éxito**: Verde (`green-500`)
 - **Error**: Rojo (`red-500`)
 - **Advertencia**: Amarillo (`yellow-500`)
 - **Info**: Azul (`blue-500`)
 
 ### Componentes
+
 - **Puntos**: Amarillo-Naranja (`yellow-400` to `orange-500`)
 - **Acciones**: Diversos gradientes según función
 - **Fondos**: Glass-morphism con `backdrop-blur`
@@ -210,6 +218,7 @@
 ## 🔄 Flujos de Navegación
 
 ### Usuario Normal
+
 ```
 LoggedMenu
     ↓
@@ -219,6 +228,7 @@ LoggedMenu
 ```
 
 ### Administrador
+
 ```
 AdminPage
     ↓

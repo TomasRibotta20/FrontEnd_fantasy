@@ -33,7 +33,8 @@ const DetalleJornada = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [esJornadaActiva, setEsJornadaActiva] = useState(false);
-  const [modificacionesHabilitadas, setModificacionesHabilitadas] = useState(false);
+  const [modificacionesHabilitadas, setModificacionesHabilitadas] =
+    useState(false);
   const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ const DetalleJornada = () => {
 
     try {
       setLoading(true);
-      
+
       // Cargar jornada
       const jornadaData = await jornadasService.getJornadaById(Number(id));
       setJornada(jornadaData);
@@ -58,39 +59,54 @@ const DetalleJornada = () => {
         // Intentar primero con el servicio de admin
         const config = await adminService.getConfig();
         console.log('📊 Config obtenida:', config);
-        
+
         // Verificar si esta jornada es la activa
         const esActiva = config.jornadaActiva === Number(id);
-        console.log(`🎯 Jornada ${id} es activa: ${esActiva} (jornadaActiva: ${config.jornadaActiva})`);
-        
+        console.log(
+          `🎯 Jornada ${id} es activa: ${esActiva} (jornadaActiva: ${config.jornadaActiva})`
+        );
+
         setEsJornadaActiva(esActiva);
         setModificacionesHabilitadas(config.modificacionesHabilitadas);
       } catch (configError) {
-        console.warn('⚠️ Error al cargar configuración desde admin, intentando endpoints públicos:', configError);
-        
+        console.warn(
+          '⚠️ Error al cargar configuración desde admin, intentando endpoints públicos:',
+          configError
+        );
+
         // Fallback: Usar endpoints públicos
         try {
           const [jornadaActivaRes, estadoModsRes] = await Promise.all([
-            fetch('http://localhost:3000/api/config/jornada-activa', { credentials: 'include' }),
-            fetch('http://localhost:3000/api/config/estado-modificaciones', { credentials: 'include' })
+            fetch('http://localhost:3000/api/config/jornada-activa', {
+              credentials: 'include',
+            }),
+            fetch('http://localhost:3000/api/config/estado-modificaciones', {
+              credentials: 'include',
+            }),
           ]);
-          
+
           const jornadaActivaData = await jornadaActivaRes.json();
           const estadoModsData = await estadoModsRes.json();
-          
+
           console.log('📊 Jornada activa data:', jornadaActivaData);
           console.log('📊 Estado modificaciones data:', estadoModsData);
-          
+
           const jornadaActivaId = jornadaActivaData?.data?.jornada?.id || null;
-          const modsHabilitadas = estadoModsData?.data?.modificacionesHabilitadas || false;
-          
+          const modsHabilitadas =
+            estadoModsData?.data?.modificacionesHabilitadas || false;
+
           const esActiva = jornadaActivaId === Number(id);
-          console.log(`🎯 Jornada ${id} es activa: ${esActiva} (jornadaActivaId: ${jornadaActivaId})`);
-          
+          console.log(
+            `🎯 Jornada ${id} es activa: ${esActiva} (jornadaActivaId: ${jornadaActivaId})`
+          );
+
           setEsJornadaActiva(esActiva);
           setModificacionesHabilitadas(modsHabilitadas);
         } catch (fallbackError) {
-          console.error('❌ Error al cargar configuración desde endpoints públicos:', fallbackError);
+          console.error(
+            '❌ Error al cargar configuración desde endpoints públicos:',
+            fallbackError
+          );
           setEsJornadaActiva(false);
           setModificacionesHabilitadas(false);
         }
@@ -105,11 +121,16 @@ const DetalleJornada = () => {
 
       // Cargar partidos de esta jornada
       try {
-        const partidosRes = await fetch(`http://localhost:3000/partidos?jornadaId=${id}`, {
-          credentials: 'include'
-        });
+        const partidosRes = await fetch(
+          `http://localhost:3000/partidos?jornadaId=${id}`,
+          {
+            credentials: 'include',
+          }
+        );
         const partidosData = await partidosRes.json();
-        setPartidos(Array.isArray(partidosData) ? partidosData : partidosData?.data || []);
+        setPartidos(
+          Array.isArray(partidosData) ? partidosData : partidosData?.data || []
+        );
       } catch (partidosError) {
         console.warn('No se pudieron cargar los partidos:', partidosError);
         setPartidos([]);
@@ -126,20 +147,29 @@ const DetalleJornada = () => {
   };
 
   const handleProcesarJornada = async () => {
-    if (!id || !confirm('¿Estás seguro de procesar esta jornada? Esto calculará los puntos de todos los jugadores.')) return;
+    if (
+      !id ||
+      !confirm(
+        '¿Estás seguro de procesar esta jornada? Esto calculará los puntos de todos los jugadores.'
+      )
+    )
+      return;
 
     try {
       setProcesando(true);
       setError(null);
-      const response = await fetch(`http://localhost:3000/api/admin/jornadas/${id}/procesar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ activarJornada: true })
-      });
+      const response = await fetch(
+        `http://localhost:3000/api/admin/jornadas/${id}/procesar`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ activarJornada: true }),
+        }
+      );
 
       const data = await response.json();
-      
+
       if (response.ok) {
         setSuccess(`✅ ${data.message || 'Jornada procesada correctamente'}`);
         await loadJornadaData(); // Recargar datos
@@ -158,21 +188,30 @@ const DetalleJornada = () => {
   };
 
   const handleRecalcularPuntajes = async () => {
-    if (!id || !confirm('¿Estás seguro de recalcular los puntajes de esta jornada?')) return;
+    if (
+      !id ||
+      !confirm('¿Estás seguro de recalcular los puntajes de esta jornada?')
+    )
+      return;
 
     try {
       setProcesando(true);
       setError(null);
-      const response = await fetch(`http://localhost:3000/api/admin/jornadas/${id}/recalcular`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
-      });
+      const response = await fetch(
+        `http://localhost:3000/api/admin/jornadas/${id}/recalcular`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        }
+      );
 
       const data = await response.json();
-      
+
       if (response.ok) {
-        setSuccess(`✅ ${data.message || 'Puntajes recalculados correctamente'}`);
+        setSuccess(
+          `✅ ${data.message || 'Puntajes recalculados correctamente'}`
+        );
         await loadJornadaData(); // Recargar datos
         setTimeout(() => setSuccess(null), 5000);
       } else {
@@ -235,14 +274,10 @@ const DetalleJornada = () => {
             </h1>
             <div className="mt-2 space-y-1">
               {jornada.temporada && (
-                <p className="text-gray-300">
-                  Temporada: {jornada.temporada}
-                </p>
+                <p className="text-gray-300">Temporada: {jornada.temporada}</p>
               )}
               {jornada.etapa && (
-                <p className="text-gray-300">
-                  Etapa: {jornada.etapa}
-                </p>
+                <p className="text-gray-300">Etapa: {jornada.etapa}</p>
               )}
             </div>
           </div>
@@ -272,9 +307,7 @@ const DetalleJornada = () => {
             <p className="text-gray-300 text-sm mb-2">Modificaciones</p>
             <p
               className={`text-2xl font-bold ${
-                modificacionesHabilitadas
-                  ? 'text-green-400'
-                  : 'text-red-400'
+                modificacionesHabilitadas ? 'text-green-400' : 'text-red-400'
               }`}
             >
               {modificacionesHabilitadas ? '✓ Permitidas' : '🔒 Bloqueadas'}
@@ -339,19 +372,25 @@ const DetalleJornada = () => {
         {success && (
           <div className="bg-green-600 text-white p-4 rounded-lg mb-6 flex items-center justify-between animate-pulse">
             <span className="font-semibold">{success}</span>
-            <button onClick={() => setSuccess(null)} className="text-2xl">✕</button>
+            <button onClick={() => setSuccess(null)} className="text-2xl">
+              ✕
+            </button>
           </div>
         )}
         {error && (
           <div className="bg-red-600 text-white p-4 rounded-lg mb-6 flex items-center justify-between animate-pulse">
             <span className="font-semibold">{error}</span>
-            <button onClick={() => setError(null)} className="text-2xl">✕</button>
+            <button onClick={() => setError(null)} className="text-2xl">
+              ✕
+            </button>
           </div>
         )}
 
         {/* Botones de Acción (Solo para Admins) */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
-          <h2 className="text-xl font-bold text-white mb-4">⚙️ Acciones de Administrador</h2>
+          <h2 className="text-xl font-bold text-white mb-4">
+            ⚙️ Acciones de Administrador
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={handleProcesarJornada}
@@ -394,7 +433,7 @@ const DetalleJornada = () => {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
-                          minute: '2-digit'
+                          minute: '2-digit',
                         })}
                       </p>
                       <div className="flex items-center gap-4">
@@ -408,17 +447,22 @@ const DetalleJornada = () => {
                         </div>
                         <div className="flex-1">
                           <p className="text-white font-semibold">
-                            {partido.visitante?.nombre || `Club ${partido.visitanteId}`}
+                            {partido.visitante?.nombre ||
+                              `Club ${partido.visitanteId}`}
                           </p>
                         </div>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        partido.estado === 'FT' ? 'bg-green-600 text-white' :
-                        partido.estado === 'LIVE' ? 'bg-red-600 text-white animate-pulse' :
-                        'bg-gray-600 text-white'
-                      }`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          partido.estado === 'FT'
+                            ? 'bg-green-600 text-white'
+                            : partido.estado === 'LIVE'
+                            ? 'bg-red-600 text-white animate-pulse'
+                            : 'bg-gray-600 text-white'
+                        }`}
+                      >
                         {partido.estado_detalle || partido.estado}
                       </span>
                     </div>
@@ -442,11 +486,13 @@ const DetalleJornada = () => {
 
           {puntajes.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
-              <p className="text-lg mb-2">⚠️ No hay puntajes registrados para esta jornada</p>
+              <p className="text-lg mb-2">
+                ⚠️ No hay puntajes registrados para esta jornada
+              </p>
               <p className="text-sm">
-                {esJornadaActiva 
-                  ? "Usa el botón 'Procesar Jornada' arriba para calcular los puntos" 
-                  : "Esta jornada aún no ha sido procesada"}
+                {esJornadaActiva
+                  ? "Usa el botón 'Procesar Jornada' arriba para calcular los puntos"
+                  : 'Esta jornada aún no ha sido procesada'}
               </p>
             </div>
           ) : (

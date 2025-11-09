@@ -5,9 +5,9 @@ interface Props {
   mostrarBotonVolver?: boolean;
 }
 
-const EndpointNoDisponible = ({ 
+const EndpointNoDisponible = ({
   mensaje = 'Esta funcionalidad aún no está disponible en el backend',
-  mostrarBotonVolver = true 
+  mostrarBotonVolver = true,
 }: Props) => {
   const navigate = useNavigate();
 
@@ -19,15 +19,17 @@ const EndpointNoDisponible = ({
           <h2 className="text-3xl font-bold text-white mb-4">
             Funcionalidad en Desarrollo
           </h2>
-          <p className="text-white/80 text-lg mb-6">
-            {mensaje}
-          </p>
-          
+          <p className="text-white/80 text-lg mb-6">{mensaje}</p>
+
           <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-6">
             <p className="text-yellow-200 text-sm">
-              <strong>Nota para el desarrollador:</strong><br />
-              Los endpoints del backend para esta funcionalidad aún no están implementados.
-              Por favor, verifica la documentación en <code className="bg-black/30 px-2 py-1 rounded">BACKEND_ENDPOINTS_JORNADAS.md</code>
+              <strong>Nota para el desarrollador:</strong>
+              <br />
+              Los endpoints del backend para esta funcionalidad aún no están
+              implementados. Por favor, verifica la documentación en{' '}
+              <code className="bg-black/30 px-2 py-1 rounded">
+                BACKEND_ENDPOINTS_JORNADAS.md
+              </code>
             </p>
           </div>
 
@@ -51,7 +53,9 @@ const EndpointNoDisponible = ({
 
         {/* Información adicional */}
         <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
-          <h3 className="text-white font-bold mb-3">📝 Endpoints necesarios:</h3>
+          <h3 className="text-white font-bold mb-3">
+            📝 Endpoints necesarios:
+          </h3>
           <div className="space-y-2 text-sm text-gray-300">
             <div className="bg-black/30 p-2 rounded font-mono">
               GET /jornadas

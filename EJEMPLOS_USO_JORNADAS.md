@@ -5,6 +5,7 @@
 ### 1. Acceso como Usuario Regular
 
 #### Ver mis jornadas y puntos
+
 ```
 1. Login en la aplicación
 2. En el menú principal, hacer clic en "Jornadas y Puntos" 🏆
@@ -13,6 +14,7 @@
 ```
 
 #### Ver detalle de puntos en una jornada
+
 ```
 1. Desde /jornadas, hacer clic en "Ver Detalle →"
 2. Ver el puntaje total de tu equipo
@@ -21,6 +23,7 @@
 ```
 
 #### Widget de puntos en dashboard
+
 ```
 1. El widget se muestra automáticamente en LoggedMenu
 2. Muestra siempre tus estadísticas actualizadas
@@ -34,6 +37,7 @@
 #### Establecer una jornada activa
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. En "Establecer Jornada Activa"
@@ -43,6 +47,7 @@
 ```
 
 **Resultado esperado:**
+
 - La jornada queda marcada como activa
 - Los usuarios pueden ver que es la jornada actual
 - Se actualiza la configuración del sistema
@@ -52,6 +57,7 @@
 #### Bloquear modificaciones de equipos
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. En "Control de Modificaciones"
@@ -60,6 +66,7 @@
 ```
 
 **Resultado esperado:**
+
 - Los usuarios no pueden modificar sus equipos
 - El estado cambia a "🔴 Bloqueadas" en la configuración
 
@@ -68,6 +75,7 @@
 #### Habilitar modificaciones de equipos
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. En "Control de Modificaciones"
@@ -76,6 +84,7 @@
 ```
 
 **Resultado esperado:**
+
 - Los usuarios pueden modificar sus equipos
 - El estado cambia a "🟢 Habilitadas"
 
@@ -84,6 +93,7 @@
 #### Procesar una jornada
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. Buscar la jornada deseada
@@ -93,6 +103,7 @@
 ```
 
 **Resultado esperado:**
+
 - Se calculan los puntos de todos los equipos
 - La jornada queda marcada como procesada
 - Los usuarios pueden ver sus puntos
@@ -102,6 +113,7 @@
 #### Recalcular puntajes
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. Buscar la jornada deseada
@@ -111,6 +123,7 @@
 ```
 
 **Resultado esperado:**
+
 - Se recalculan los puntos sin llamar a APIs externas
 - Útil para correcciones o ajustes
 
@@ -119,6 +132,7 @@
 #### Actualizar estadísticas de una jornada
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. Buscar la jornada deseada
@@ -128,6 +142,7 @@
 ```
 
 **Resultado esperado:**
+
 - Se actualizan las estadísticas de los jugadores
 - Se consultan las APIs externas si es necesario
 
@@ -136,6 +151,7 @@
 #### Ver detalle completo de una jornada
 
 **Paso a paso:**
+
 ```
 1. Ir a /admin/jornadas
 2. Buscar la jornada deseada
@@ -144,6 +160,7 @@
 ```
 
 **Información mostrada:**
+
 - Estado completo de la jornada
 - Tabla con todos los puntajes de jugadores
 - Estadísticas individuales (goles, asistencias, etc.)
@@ -208,6 +225,7 @@
 **Escenario:** Los puntos se calcularon incorrectamente
 
 **Solución:**
+
 ```
 1. Ir a /admin/jornadas
 2. Hacer clic en "🔄 Recalcular" en la jornada afectada
@@ -221,6 +239,7 @@
 **Escenario:** Quiero ver qué jugadores puntuaron más
 
 **Solución:**
+
 ```
 1. Ir a /admin/jornadas/:id/detalle
 2. Ver tabla ordenada por puntos (de mayor a menor)
@@ -234,6 +253,7 @@
 **Escenario:** Un usuario reporta que no aparecen sus puntos
 
 **Solución:**
+
 ```
 1. Verificar que la jornada esté procesada (✓ PROCESADA)
 2. Verificar que el usuario tenía equipo configurado
@@ -247,6 +267,7 @@
 **Escenario:** Quiero ver solo las jornadas de 2021
 
 **Solución:**
+
 ```
 1. Ir a /admin/jornadas o /jornadas
 2. En el input de filtro, escribir "2021"
@@ -261,15 +282,19 @@
 ### Para Administradores
 
 1. **Siempre bloquear antes de procesar**
+
    - Evita que usuarios modifiquen equipos durante el cálculo
 
 2. **Verificar fecha actual vs fecha de jornada**
+
    - No procesar jornadas que aún no han terminado
 
 3. **Usar recalcular solo cuando necesario**
+
    - Es más rápido pero no actualiza desde APIs externas
 
 4. **Revisar detalle antes de comunicar**
+
    - Verificar que todos los puntos sean correctos
 
 5. **Mantener una sola jornada activa**
@@ -278,12 +303,15 @@
 ### Para Usuarios
 
 1. **Configurar equipo temprano**
+
    - No esperar al último momento antes del bloqueo
 
 2. **Verificar jornada activa**
+
    - Asegurarse de modificar el equipo correcto
 
 3. **Revisar puntos regularmente**
+
    - Ver el widget de puntos en el dashboard
 
 4. **Consultar historial**
@@ -298,6 +326,7 @@
 **Causa:** Las modificaciones están bloqueadas
 
 **Solución:**
+
 - Verificar en /admin/jornadas si está "🔴 Bloqueadas"
 - Esperar a que admin habilite modificaciones
 - O esperar a la siguiente jornada
@@ -309,6 +338,7 @@
 **Causa:** La jornada no ha sido procesada
 
 **Solución:**
+
 - Verificar si tiene badge "✓ PROCESADA"
 - Si no, esperar a que admin procese
 - Si sí pero no hay puntos, contactar admin
@@ -320,6 +350,7 @@
 **Causa:** Error en cálculo o estadísticas
 
 **Solución:**
+
 - Reportar al admin
 - Admin debe usar "🔄 Recalcular"
 - Si persiste, usar "📊 Actualizar Stats" y luego "⚡ Procesar"
@@ -331,6 +362,7 @@
 **Causa:** Backend no responde o no hay conexión
 
 **Solución:**
+
 - Verificar que backend esté corriendo en localhost:3000
 - Hacer clic en "🔄 Recargar"
 - Revisar consola del navegador para más detalles
@@ -342,11 +374,13 @@
 ### Obtener configuración actual
 
 **Request:**
+
 ```
 GET /admin/config
 ```
 
 **Response:**
+
 ```json
 {
   "jornadaActiva": 2,
@@ -359,11 +393,13 @@ GET /admin/config
 ### Obtener historial de equipo
 
 **Request:**
+
 ```
 GET /equipos/1/historial
 ```
 
 **Response:**
+
 ```json
 {
   "jornadas": [
@@ -386,11 +422,13 @@ GET /equipos/1/historial
 ### Obtener puntos de equipo en jornada
 
 **Request:**
+
 ```
 GET /equipos/1/jornadas/2
 ```
 
 **Response:**
+
 ```json
 {
   "equipoId": 1,

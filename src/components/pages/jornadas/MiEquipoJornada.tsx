@@ -36,7 +36,7 @@ const MiEquipoJornada = () => {
 
       // Obtener mi equipo
       const miEquipo = await equiposService.getMiEquipoConPuntos();
-      
+
       if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
         const equipoId = (miEquipo as { id: number }).id;
 
@@ -100,18 +100,15 @@ const MiEquipoJornada = () => {
               ← Volver a Jornadas
             </button>
             <h1 className="text-4xl font-bold text-white">
-              🏆 Mi Equipo - {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
+              🏆 Mi Equipo -{' '}
+              {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
             </h1>
             <div className="mt-2 space-y-1">
               {jornada.temporada && (
-                <p className="text-gray-300">
-                  Temporada: {jornada.temporada}
-                </p>
+                <p className="text-gray-300">Temporada: {jornada.temporada}</p>
               )}
               {jornada.etapa && (
-                <p className="text-gray-300">
-                  Etapa: {jornada.etapa}
-                </p>
+                <p className="text-gray-300">Etapa: {jornada.etapa}</p>
               )}
             </div>
           </div>

@@ -19,21 +19,25 @@ El administrador puede:
 #### Controles de Sistema:
 
 1. **Establecer Jornada Activa**
+
    - Endpoint: `POST /admin/set-jornada-activa`
    - Activa una jornada específica para que los usuarios puedan participar
 
 2. **Habilitar/Deshabilitar Modificaciones**
-   - Endpoints: 
+
+   - Endpoints:
      - `POST /admin/habilitar-modificaciones`
      - `POST /admin/deshabilitar-modificaciones`
    - Permite o bloquea que los usuarios modifiquen sus equipos
 
 3. **Procesar Jornada**
+
    - Endpoint: `POST /admin/jornadas/:id/procesar`
    - Calcula los puntos de todos los equipos para una jornada
    - Opción de activar la jornada automáticamente
 
 4. **Recalcular Puntajes**
+
    - Endpoint: `POST /admin/jornadas/:id/recalcular`
    - Recalcula los puntos sin llamar a APIs externas
 
@@ -165,17 +169,17 @@ src/
 
 ### Usuarios Autenticados
 
-| Ruta | Componente | Descripción |
-|------|-----------|-------------|
-| `/jornadas` | `JornadasUsuario` | Lista de todas las jornadas con puntos |
+| Ruta                      | Componente        | Descripción                                 |
+| ------------------------- | ----------------- | ------------------------------------------- |
+| `/jornadas`               | `JornadasUsuario` | Lista de todas las jornadas con puntos      |
 | `/jornadas/:id/mi-equipo` | `MiEquipoJornada` | Detalle de puntos del equipo en una jornada |
 
 ### Administradores
 
-| Ruta | Componente | Descripción |
-|------|-----------|-------------|
-| `/admin/jornadas` | `GestionJornadasAdmin` | Panel de control de jornadas |
-| `/admin/jornadas/:id/detalle` | `DetalleJornada` | Vista detallada de una jornada |
+| Ruta                          | Componente             | Descripción                    |
+| ----------------------------- | ---------------------- | ------------------------------ |
+| `/admin/jornadas`             | `GestionJornadasAdmin` | Panel de control de jornadas   |
+| `/admin/jornadas/:id/detalle` | `DetalleJornada`       | Vista detallada de una jornada |
 
 ## 📊 Interfaces y Tipos
 
@@ -234,27 +238,18 @@ interface HistorialEquipo {
 1. **Configurar nueva jornada**
    - Habilitar modificaciones
    - Establecer como jornada activa
-   
 2. **Los usuarios configuran sus equipos**
-   
 3. **Bloquear modificaciones** cuando comience la jornada
-   
 4. **Actualizar estadísticas** después de los partidos
-   
 5. **Procesar jornada** para calcular puntos
-   
 6. **Revisar resultados** en la vista de detalle
 
 ### Para Usuarios:
 
 1. **Configurar equipo** cuando las modificaciones estén habilitadas
-   
 2. **Ver jornadas activas** y próximas
-   
 3. **Consultar puntos** después del procesamiento
-   
 4. **Revisar detalle** de rendimiento por jornada
-   
 5. **Ver historial** completo de participación
 
 ## 🎯 Próximas Mejoras Sugeridas

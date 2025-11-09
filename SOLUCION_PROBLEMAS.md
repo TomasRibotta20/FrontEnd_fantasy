@@ -3,9 +3,11 @@
 ## ❌ Error: Pantalla Blanca en LoggedMenu
 
 ### Causa
+
 El componente `WidgetPuntos` intenta cargar datos de endpoints que aún no existen.
 
 ### Solución Aplicada ✅
+
 - El widget ahora maneja errores gracefully
 - Si no puede cargar datos, simplemente no se muestra
 - No rompe el resto de la interfaz
@@ -15,6 +17,7 @@ El componente `WidgetPuntos` intenta cargar datos de endpoints que aún no exist
 ## ❌ Error 404: Cannot GET /jornadas
 
 ### Causa
+
 El backend aún no tiene implementado el endpoint `/jornadas`
 
 ### Soluciones:
@@ -34,11 +37,11 @@ app.get('/jornadas', async (req, res) => {
     {
       id: 1,
       numero: 1,
-      temporada: "2024",
+      temporada: '2024',
       activa: true,
       permitirModificaciones: true,
-      puntosCalculados: false
-    }
+      puntosCalculados: false,
+    },
   ]);
 });
 
@@ -46,7 +49,7 @@ app.get('/jornadas', async (req, res) => {
 app.get('/api/admin/config', verificarAdmin, async (req, res) => {
   res.json({
     jornadaActiva: 1,
-    modificacionesHabilitadas: true
+    modificacionesHabilitadas: true,
   });
 });
 
@@ -55,8 +58,8 @@ app.get('/api/equipos/:id/historial', verificarAuth, async (req, res) => {
   res.json({
     jornadas: [
       { jornadaId: 1, numero: 1, puntajeTotal: 35 },
-      { jornadaId: 2, numero: 2, puntajeTotal: 42 }
-    ]
+      { jornadaId: 2, numero: 2, puntajeTotal: 42 },
+    ],
   });
 });
 ```
@@ -73,30 +76,30 @@ export const jornadasMock = [
   {
     id: 1,
     numero: 1,
-    temporada: "2024",
+    temporada: '2024',
     activa: true,
     permitirModificaciones: true,
     puntosCalculados: false,
-    fechaInicio: "2024-01-01",
-    fechaFin: "2024-01-07"
+    fechaInicio: '2024-01-01',
+    fechaFin: '2024-01-07',
   },
   {
     id: 2,
     numero: 2,
-    temporada: "2024",
+    temporada: '2024',
     activa: false,
     permitirModificaciones: false,
     puntosCalculados: true,
-    fechaInicio: "2024-01-08",
-    fechaFin: "2024-01-14"
-  }
+    fechaInicio: '2024-01-08',
+    fechaFin: '2024-01-14',
+  },
 ];
 
 export const historialMock = {
   jornadas: [
     { jornadaId: 1, numero: 1, puntajeTotal: 35 },
-    { jornadaId: 2, numero: 2, puntajeTotal: 42 }
-  ]
+    { jornadaId: 2, numero: 2, puntajeTotal: 42 },
+  ],
 };
 ```
 
@@ -121,6 +124,7 @@ export const jornadasService = {
 ## ❌ Error 403: Forbidden
 
 ### Causa
+
 El usuario no tiene permisos de administrador o la sesión no es válida.
 
 ### Soluciones:
@@ -157,6 +161,7 @@ app.use('/api/admin', (req, res, next) => {
 ## ✅ Estado Actual del Sistema
 
 ### Componentes Listos ✅
+
 - ✅ Todos los componentes de UI
 - ✅ Manejo de errores graceful
 - ✅ Componente de "Endpoint No Disponible"
@@ -165,6 +170,7 @@ app.use('/api/admin', (req, res, next) => {
 - ✅ Servicios con fallback
 
 ### Endpoints Necesarios ⏳
+
 - ⏳ `GET /jornadas`
 - ⏳ `GET /jornadas/:id`
 - ⏳ `GET /api/admin/config`
@@ -185,11 +191,13 @@ app.use('/api/admin', (req, res, next) => {
 ### 1. Navegar a las rutas:
 
 **Usuario normal:**
+
 ```
 http://localhost:5173/jornadas
 ```
 
 **Administrador:**
+
 ```
 http://localhost:5173/admin/jornadas
 ```
@@ -244,6 +252,7 @@ localStorage.getItem('authUser');
 ## 📝 Checklist antes de usar el sistema
 
 ### Frontend ✅
+
 - [x] Componentes creados
 - [x] Rutas configuradas
 - [x] Manejo de errores
@@ -251,6 +260,7 @@ localStorage.getItem('authUser');
 - [x] Estilos aplicados
 
 ### Backend (Tu responsabilidad)
+
 - [ ] Endpoints de jornadas implementados
 - [ ] Endpoints de admin implementados
 - [ ] Endpoints de estadísticas implementados
@@ -265,10 +275,12 @@ localStorage.getItem('authUser');
 ## 🚀 Próximos Pasos
 
 1. **Implementar endpoints en el backend**
+
    - Usa la documentación en `BACKEND_ENDPOINTS_JORNADAS.md`
    - Implementa uno por uno y prueba cada uno
 
 2. **Probar cada funcionalidad**
+
    - Crear jornada
    - Activar jornada
    - Bloquear/desbloquear modificaciones
@@ -294,6 +306,7 @@ localStorage.getItem('authUser');
 ## 📞 Contacto
 
 Si tienes dudas sobre:
+
 - **Frontend**: Ya está todo implementado y documentado
 - **Backend**: Revisa `BACKEND_ENDPOINTS_JORNADAS.md` para la especificación completa
 

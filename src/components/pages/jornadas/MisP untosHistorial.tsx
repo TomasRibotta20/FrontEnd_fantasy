@@ -25,36 +25,43 @@ const MisPuntosHistorial = () => {
   const loadHistorial = async () => {
     try {
       setLoading(true);
-      
+
       // Primero obtener mi equipo
-      const equipoRes = await fetch('http://localhost:3000/api/equipos/mi-equipo', {
-        credentials: 'include'
-      });
-      
+      const equipoRes = await fetch(
+        'http://localhost:3000/api/equipos/mi-equipo',
+        {
+          credentials: 'include',
+        }
+      );
+
       if (!equipoRes.ok) {
         throw new Error('No se pudo obtener el equipo');
       }
-      
+
       const equipoData = await equipoRes.json();
       const equipoId = equipoData?.data?.id || equipoData?.id;
-      
+
       if (!equipoId) {
         throw new Error('No tienes un equipo registrado');
       }
-      
+
       setMiEquipoId(equipoId);
-      
+
       // Obtener historial del equipo
-      const historialRes = await fetch(`http://localhost:3000/api/equipos/${equipoId}/historial`, {
-        credentials: 'include'
-      });
-      
+      const historialRes = await fetch(
+        `http://localhost:3000/api/equipos/${equipoId}/historial`,
+        {
+          credentials: 'include',
+        }
+      );
+
       const historialData = await historialRes.json();
       setHistorial(historialData?.data || historialData);
-      
     } catch (err) {
       console.error('Error al cargar historial:', err);
-      setError(err instanceof Error ? err.message : 'Error al cargar historial');
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar historial'
+      );
     } finally {
       setLoading(false);
     }
@@ -92,7 +99,8 @@ const MisPuntosHistorial = () => {
 
   const jornadas = historial?.jornadas || [];
   const puntajeTotal = jornadas.reduce((sum, j) => sum + j.puntajeTotal, 0);
-  const promedio = jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
+  const promedio =
+    jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
@@ -144,7 +152,11 @@ const MisPuntosHistorial = () => {
                   <div
                     key={jornada.jornadaId}
                     className="bg-black/30 rounded-lg p-4 border border-white/10 hover:border-white/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/equipos/${miEquipoId}/jornadas/${jornada.jornadaId}`)}
+                    onClick={() =>
+                      navigate(
+                        `/equipos/${miEquipoId}/jornadas/${jornada.jornadaId}`
+                      )
+                    }
                   >
                     <div className="flex items-center justify-between">
                       <div>

@@ -17,28 +17,30 @@ El frontend está enviando las peticiones correctamente, pero el backend necesit
 **Propósito**: Obtener la configuración actual del sistema
 
 **Response esperado**:
+
 ```json
 {
   "success": true,
   "data": {
-    "jornadaActiva": 2,  // ID de la jornada activa (null si ninguna)
-    "modificacionesHabilitadas": true  // Si los usuarios pueden modificar equipos
+    "jornadaActiva": 2, // ID de la jornada activa (null si ninguna)
+    "modificacionesHabilitadas": true // Si los usuarios pueden modificar equipos
   }
 }
 ```
 
 **Implementación sugerida**:
+
 ```javascript
 // Puede guardar esto en memoria, base de datos, o archivo
 let configuracionSistema = {
   jornadaActiva: null,
-  modificacionesHabilitadas: false
+  modificacionesHabilitadas: false,
 };
 
 router.get('/admin/config', authenticateAdmin, (req, res) => {
   res.json({
     success: true,
-    data: configuracionSistema
+    data: configuracionSistema,
   });
 });
 ```
@@ -50,13 +52,15 @@ router.get('/admin/config', authenticateAdmin, (req, res) => {
 **Propósito**: Establecer cuál jornada está activa actualmente
 
 **Request body**:
+
 ```json
 {
-  "jornadaId": "2"  // Puede venir como string o number
+  "jornadaId": "2" // Puede venir como string o number
 }
 ```
 
 **Lógica requerida**:
+
 1. Convertir `jornadaId` a número
 2. Verificar que la jornada existe
 3. **Desactivar todas las jornadas**: `UPDATE jornadas SET activa = false`
@@ -64,6 +68,7 @@ router.get('/admin/config', authenticateAdmin, (req, res) => {
 5. **Guardar en config**: `configuracionSistema.jornadaActiva = jornadaId`
 
 **Response esperado**:
+
 ```json
 {
   "success": true,
@@ -75,56 +80,55 @@ router.get('/admin/config', authenticateAdmin, (req, res) => {
 ```
 
 **Implementación sugerida**:
+
 ```javascript
-router.post('/admin/set-jornada-activa', authenticateAdmin, async (req, res) => {
-  try {
-    const jornadaId = parseInt(req.body.jornadaId);
-    
-    if (isNaN(jornadaId)) {
-      return res.status(400).json({
+router.post(
+  '/admin/set-jornada-activa',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const jornadaId = parseInt(req.body.jornadaId);
+
+      if (isNaN(jornadaId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'jornadaId debe ser un número válido',
+        });
+      }
+
+      // Verificar que la jornada existe
+      const jornada = await Jornada.findByPk(jornadaId);
+      if (!jornada) {
+        return res.status(404).json({
+          success: false,
+          message: `Jornada con ID ${jornadaId} no encontrada`,
+        });
+      }
+
+      // Desactivar todas las jornadas
+      await Jornada.update({ activa: false }, { where: {} });
+
+      // Activar la jornada seleccionada
+      await Jornada.update({ activa: true }, { where: { id: jornadaId } });
+
+      // Guardar en configuración
+      configuracionSistema.jornadaActiva = jornadaId;
+
+      res.json({
+        success: true,
+        message: `Jornada ${jornada.nombre} establecida como activa`,
+        data: { jornadaId },
+      });
+    } catch (error) {
+      console.error('Error al establecer jornada activa:', error);
+      res.status(500).json({
         success: false,
-        message: 'jornadaId debe ser un número válido'
+        message: 'Error al establecer jornada activa',
+        error: error.message,
       });
     }
-    
-    // Verificar que la jornada existe
-    const jornada = await Jornada.findByPk(jornadaId);
-    if (!jornada) {
-      return res.status(404).json({
-        success: false,
-        message: `Jornada con ID ${jornadaId} no encontrada`
-      });
-    }
-    
-    // Desactivar todas las jornadas
-    await Jornada.update(
-      { activa: false },
-      { where: {} }
-    );
-    
-    // Activar la jornada seleccionada
-    await Jornada.update(
-      { activa: true },
-      { where: { id: jornadaId } }
-    );
-    
-    // Guardar en configuración
-    configuracionSistema.jornadaActiva = jornadaId;
-    
-    res.json({
-      success: true,
-      message: `Jornada ${jornada.nombre} establecida como activa`,
-      data: { jornadaId }
-    });
-  } catch (error) {
-    console.error('Error al establecer jornada activa:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al establecer jornada activa',
-      error: error.message
-    });
   }
-});
+);
 ```
 
 ---
@@ -133,13 +137,15 @@ router.post('/admin/set-jornada-activa', authenticateAdmin, async (req, res) => 
 
 **Propósito**: Permitir que los usuarios modifiquen sus equipos
 
-**Request body**: *(vacío)*
+**Request body**: _(vacío)_
 
 **Lógica requerida**:
+
 1. **Actualizar todas las jornadas**: `UPDATE jornadas SET permitirModificaciones = true`
 2. **Guardar en config**: `configuracionSistema.modificacionesHabilitadas = true`
 
 **Response esperado**:
+
 ```json
 {
   "success": true,
@@ -148,31 +154,33 @@ router.post('/admin/set-jornada-activa', authenticateAdmin, async (req, res) => 
 ```
 
 **Implementación sugerida**:
+
 ```javascript
-router.post('/admin/habilitar-modificaciones', authenticateAdmin, async (req, res) => {
-  try {
-    // Habilitar modificaciones en todas las jornadas
-    await Jornada.update(
-      { permitirModificaciones: true },
-      { where: {} }
-    );
-    
-    // Guardar en configuración
-    configuracionSistema.modificacionesHabilitadas = true;
-    
-    res.json({
-      success: true,
-      message: 'Modificaciones habilitadas para todos los usuarios'
-    });
-  } catch (error) {
-    console.error('Error al habilitar modificaciones:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al habilitar modificaciones',
-      error: error.message
-    });
+router.post(
+  '/admin/habilitar-modificaciones',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      // Habilitar modificaciones en todas las jornadas
+      await Jornada.update({ permitirModificaciones: true }, { where: {} });
+
+      // Guardar en configuración
+      configuracionSistema.modificacionesHabilitadas = true;
+
+      res.json({
+        success: true,
+        message: 'Modificaciones habilitadas para todos los usuarios',
+      });
+    } catch (error) {
+      console.error('Error al habilitar modificaciones:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al habilitar modificaciones',
+        error: error.message,
+      });
+    }
   }
-});
+);
 ```
 
 ---
@@ -181,13 +189,15 @@ router.post('/admin/habilitar-modificaciones', authenticateAdmin, async (req, re
 
 **Propósito**: Bloquear los equipos para que los usuarios no puedan modificarlos
 
-**Request body**: *(vacío)*
+**Request body**: _(vacío)_
 
 **Lógica requerida**:
+
 1. **Actualizar todas las jornadas**: `UPDATE jornadas SET permitirModificaciones = false`
 2. **Guardar en config**: `configuracionSistema.modificacionesHabilitadas = false`
 
 **Response esperado**:
+
 ```json
 {
   "success": true,
@@ -196,31 +206,33 @@ router.post('/admin/habilitar-modificaciones', authenticateAdmin, async (req, re
 ```
 
 **Implementación sugerida**:
+
 ```javascript
-router.post('/admin/deshabilitar-modificaciones', authenticateAdmin, async (req, res) => {
-  try {
-    // Deshabilitar modificaciones en todas las jornadas
-    await Jornada.update(
-      { permitirModificaciones: false },
-      { where: {} }
-    );
-    
-    // Guardar en configuración
-    configuracionSistema.modificacionesHabilitadas = false;
-    
-    res.json({
-      success: true,
-      message: 'Modificaciones deshabilitadas para todos los usuarios'
-    });
-  } catch (error) {
-    console.error('Error al deshabilitar modificaciones:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al deshabilitar modificaciones',
-      error: error.message
-    });
+router.post(
+  '/admin/deshabilitar-modificaciones',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      // Deshabilitar modificaciones en todas las jornadas
+      await Jornada.update({ permitirModificaciones: false }, { where: {} });
+
+      // Guardar en configuración
+      configuracionSistema.modificacionesHabilitadas = false;
+
+      res.json({
+        success: true,
+        message: 'Modificaciones deshabilitadas para todos los usuarios',
+      });
+    } catch (error) {
+      console.error('Error al deshabilitar modificaciones:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al deshabilitar modificaciones',
+        error: error.message,
+      });
+    }
   }
-});
+);
 ```
 
 ---
@@ -247,6 +259,7 @@ CREATE TABLE jornadas (
 ```
 
 **Campos clave**:
+
 - `activa`: Indica si esta jornada es la activa actualmente (solo una debe ser `true`)
 - `permitirModificaciones`: Indica si los usuarios pueden modificar sus equipos para esta jornada
 
@@ -255,11 +268,13 @@ CREATE TABLE jornadas (
 ## 🔍 Cómo Verificar que Funciona
 
 ### 1. Probar GET /api/admin/config
+
 ```bash
 curl http://localhost:3000/api/admin/config -H "Cookie: connect.sid=YOUR_SESSION"
 ```
 
 **Debe devolver**:
+
 ```json
 {
   "success": true,
@@ -271,6 +286,7 @@ curl http://localhost:3000/api/admin/config -H "Cookie: connect.sid=YOUR_SESSION
 ```
 
 ### 2. Probar establecer jornada activa
+
 ```bash
 curl -X POST http://localhost:3000/api/admin/set-jornada-activa \
   -H "Content-Type: application/json" \
@@ -279,6 +295,7 @@ curl -X POST http://localhost:3000/api/admin/set-jornada-activa \
 ```
 
 **Debe devolver**:
+
 ```json
 {
   "success": true,
@@ -288,11 +305,13 @@ curl -X POST http://localhost:3000/api/admin/set-jornada-activa \
 ```
 
 ### 3. Verificar que la jornada se marcó como activa
+
 ```bash
 curl http://localhost:3000/api/jornadas
 ```
 
 **Debe mostrar**:
+
 ```json
 {
   "data": [
@@ -313,16 +332,18 @@ curl http://localhost:3000/api/jornadas
 ```
 
 ### 4. Verificar que la config se actualizó
+
 ```bash
 curl http://localhost:3000/api/admin/config -H "Cookie: connect.sid=YOUR_SESSION"
 ```
 
 **Debe devolver**:
+
 ```json
 {
   "success": true,
   "data": {
-    "jornadaActiva": 2,  // ← Ahora debe ser 2 ⭐
+    "jornadaActiva": 2, // ← Ahora debe ser 2 ⭐
     "modificacionesHabilitadas": false
   }
 }

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { equiposService, type HistorialEquipo } from '../../services/jornadasService';
+import {
+  equiposService,
+  type HistorialEquipo,
+} from '../../services/jornadasService';
 
 const WidgetPuntos = () => {
   const navigate = useNavigate();
@@ -14,7 +17,7 @@ const WidgetPuntos = () => {
   const loadPuntos = async () => {
     try {
       const miEquipo = await equiposService.getMiEquipoConPuntos();
-      
+
       if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
         const equipoId = (miEquipo as { id: number }).id;
         const historialData = await equiposService.getHistorialEquipo(equipoId);
@@ -34,14 +37,17 @@ const WidgetPuntos = () => {
     return null;
   }
 
-  const puntajeTotal = Array.isArray(historial.jornadas) 
-    ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0) 
+  const puntajeTotal = Array.isArray(historial.jornadas)
+    ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0)
     : 0;
-  const jornadasJugadas = Array.isArray(historial.jornadas) ? historial.jornadas.length : 0;
-  const promedio = jornadasJugadas > 0 ? Math.round(puntajeTotal / jornadasJugadas) : 0;
+  const jornadasJugadas = Array.isArray(historial.jornadas)
+    ? historial.jornadas.length
+    : 0;
+  const promedio =
+    jornadasJugadas > 0 ? Math.round(puntajeTotal / jornadasJugadas) : 0;
 
   return (
-    <div 
+    <div
       className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-6 shadow-lg border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform"
       onClick={() => navigate('/mis-puntos/historial')}
     >
@@ -49,7 +55,7 @@ const WidgetPuntos = () => {
         <h3 className="text-white font-bold text-lg">🏆 Tus Puntos</h3>
         <span className="text-white/70 text-sm">Ver más →</span>
       </div>
-      
+
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center">
           <p className="text-white/70 text-xs mb-1">Total</p>

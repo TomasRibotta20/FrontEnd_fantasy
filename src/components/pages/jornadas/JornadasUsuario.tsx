@@ -37,7 +37,7 @@ const JornadasUsuario = () => {
       // Obtener mi equipo para tener el ID
       try {
         const miEquipo = await equiposService.getMiEquipoConPuntos();
-        
+
         if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
           const id = (miEquipo as { id: number }).id;
           setEquipoId(id);
@@ -66,12 +66,17 @@ const JornadasUsuario = () => {
       // Si es un error 404 o 403, mostrar componente de endpoint no disponible
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosError = err as { response?: { status: number } };
-        if (axiosError.response?.status === 404 || axiosError.response?.status === 403) {
+        if (
+          axiosError.response?.status === 404 ||
+          axiosError.response?.status === 403
+        ) {
           setEndpointNoDisponible(true);
           return;
         }
       }
-      setError('Error al cargar jornadas. Verifica que el backend esté corriendo.');
+      setError(
+        'Error al cargar jornadas. Verifica que el backend esté corriendo.'
+      );
     } finally {
       setLoading(false);
     }
@@ -80,22 +85,24 @@ const JornadasUsuario = () => {
   // Si el endpoint no está disponible, mostrar componente especial
   if (endpointNoDisponible) {
     return (
-      <EndpointNoDisponible
-        mensaje="El sistema de jornadas aún no está configurado en el backend"
-      />
+      <EndpointNoDisponible mensaje="El sistema de jornadas aún no está configurado en el backend" />
     );
   }
 
   const getPuntajeJornada = (jornadaId: number): number => {
-    if (!historial || !historial.jornadas || !Array.isArray(historial.jornadas)) return 0;
+    if (!historial || !historial.jornadas || !Array.isArray(historial.jornadas))
+      return 0;
     // La estructura real es: jornadas[].jornada.id, no jornadaId
-    const jornadaData = historial.jornadas.find((j) => j.jornada?.id === jornadaId);
+    const jornadaData = historial.jornadas.find(
+      (j) => j.jornada?.id === jornadaId
+    );
     return jornadaData?.puntajeTotal || 0;
   };
 
-  const puntajeTotal = (historial?.jornadas && Array.isArray(historial.jornadas))
-    ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0)
-    : 0;
+  const puntajeTotal =
+    historial?.jornadas && Array.isArray(historial.jornadas)
+      ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0)
+      : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
@@ -116,9 +123,7 @@ const JornadasUsuario = () => {
         {/* Resumen de Puntos */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">
-              🏆 Tu Rendimiento
-            </h2>
+            <h2 className="text-2xl font-bold text-white">🏆 Tu Rendimiento</h2>
             <button
               onClick={() => navigate('/mis-puntos/historial')}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold flex items-center gap-2"
@@ -190,97 +195,106 @@ const JornadasUsuario = () => {
               {jornadas
                 .sort((a, b) => (b.numero || b.id) - (a.numero || a.id)) // Ordenar por número descendente (más reciente primero)
                 .map((jornada) => {
-                const miPuntaje = getPuntajeJornada(jornada.id);
-                const participe = miPuntaje > 0;
+                  const miPuntaje = getPuntajeJornada(jornada.id);
+                  const participe = miPuntaje > 0;
 
-                return (
-                  <div
-                    key={jornada.id}
-                    className={`bg-black/30 rounded-lg p-6 border-2 transition-all hover:scale-105 ${
-                      jornada.activa
-                        ? 'border-green-500 shadow-lg shadow-green-500/30'
-                        : participe
-                        ? 'border-blue-500/50'
-                        : 'border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <div className="text-gray-400 text-xs mb-1">
-                          Jornada #{jornada.numero || jornada.id}
+                  return (
+                    <div
+                      key={jornada.id}
+                      className={`bg-black/30 rounded-lg p-6 border-2 transition-all hover:scale-105 ${
+                        jornada.activa
+                          ? 'border-green-500 shadow-lg shadow-green-500/30'
+                          : participe
+                          ? 'border-blue-500/50'
+                          : 'border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className="text-gray-400 text-xs mb-1">
+                            Jornada #{jornada.numero || jornada.id}
+                          </div>
+                          <h3 className="text-xl font-bold text-white">
+                            {jornada.nombre ||
+                              `Jornada ${jornada.numero || jornada.id}`}
+                          </h3>
                         </div>
-                        <h3 className="text-xl font-bold text-white">
-                          {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
-                        </h3>
+                        {jornada.activa && (
+                          <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
+                            ACTIVA
+                          </span>
+                        )}
                       </div>
-                      {jornada.activa && (
-                        <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full animate-pulse">
-                          ACTIVA
-                        </span>
+
+                      <div className="mb-3 space-y-1">
+                        {jornada.temporada && (
+                          <p className="text-gray-400 text-sm">
+                            Temporada: {jornada.temporada}
+                          </p>
+                        )}
+                        {jornada.etapa && (
+                          <p className="text-gray-400 text-sm">
+                            Etapa: {jornada.etapa}
+                          </p>
+                        )}
+                      </div>
+
+                      {participe ? (
+                        <div className="bg-blue-600/30 rounded-lg p-4 border border-blue-500/50">
+                          <p className="text-gray-300 text-sm mb-1">
+                            Tus puntos
+                          </p>
+                          <p className="text-3xl font-bold text-yellow-400">
+                            {miPuntaje}
+                          </p>
+                        </div>
+                      ) : jornada.puntosCalculados ? (
+                        <div className="bg-gray-600/30 rounded-lg p-4 border border-gray-500/50">
+                          <p className="text-gray-400 text-sm text-center">
+                            No participaste
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-yellow-600/30 rounded-lg p-4 border border-yellow-500/50">
+                          <p className="text-yellow-200 text-sm text-center">
+                            ⏳ Puntos pendientes
+                          </p>
+                        </div>
+                      )}
+
+                      {participe && equipoId ? (
+                        <button
+                          onClick={() =>
+                            navigate(
+                              `/equipos/${equipoId}/jornadas/${jornada.id}`
+                            )
+                          }
+                          className="w-full mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
+                        >
+                          Ver Mi Equipo →
+                        </button>
+                      ) : jornada.activa ? (
+                        <button
+                          onClick={() =>
+                            navigate(`/jornadas/${jornada.id}/mi-equipo`)
+                          }
+                          className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
+                        >
+                          Configurar Equipo →
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          className="w-full mt-4 px-4 py-2 bg-gray-600 text-gray-400 rounded-lg font-semibold cursor-not-allowed"
+                        >
+                          {jornada.puntosCalculados
+                            ? 'No participaste'
+                            : 'Pendiente de procesar'}
+                        </button>
                       )}
                     </div>
-
-                    <div className="mb-3 space-y-1">
-                      {jornada.temporada && (
-                        <p className="text-gray-400 text-sm">
-                          Temporada: {jornada.temporada}
-                        </p>
-                      )}
-                      {jornada.etapa && (
-                        <p className="text-gray-400 text-sm">
-                          Etapa: {jornada.etapa}
-                        </p>
-                      )}
-                    </div>
-
-                    {participe ? (
-                      <div className="bg-blue-600/30 rounded-lg p-4 border border-blue-500/50">
-                        <p className="text-gray-300 text-sm mb-1">
-                          Tus puntos
-                        </p>
-                        <p className="text-3xl font-bold text-yellow-400">
-                          {miPuntaje}
-                        </p>
-                      </div>
-                    ) : jornada.puntosCalculados ? (
-                      <div className="bg-gray-600/30 rounded-lg p-4 border border-gray-500/50">
-                        <p className="text-gray-400 text-sm text-center">
-                          No participaste
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="bg-yellow-600/30 rounded-lg p-4 border border-yellow-500/50">
-                        <p className="text-yellow-200 text-sm text-center">
-                          ⏳ Puntos pendientes
-                        </p>
-                      </div>
-                    )}
-
-                    {participe && equipoId ? (
-                      <button 
-                        onClick={() => navigate(`/equipos/${equipoId}/jornadas/${jornada.id}`)}
-                        className="w-full mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
-                      >
-                        Ver Mi Equipo →
-                      </button>
-                    ) : jornada.activa ? (
-                      <button 
-                        onClick={() => navigate(`/jornadas/${jornada.id}/mi-equipo`)}
-                        className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                      >
-                        Configurar Equipo →
-                      </button>
-                    ) : (
-                      <button 
-                        disabled
-                        className="w-full mt-4 px-4 py-2 bg-gray-600 text-gray-400 rounded-lg font-semibold cursor-not-allowed"
-                      >
-                        {jornada.puntosCalculados ? 'No participaste' : 'Pendiente de procesar'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>

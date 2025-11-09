@@ -42,12 +42,14 @@ const DetalleJornadaEquipo = () => {
         setData(jsonData?.data || jsonData);
       } catch (err) {
         console.error('Error al cargar detalle:', err);
-        setError(err instanceof Error ? err.message : 'Error al cargar detalle');
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar detalle'
+        );
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadData();
   }, [equipoId, jornadaId]);
 
@@ -105,22 +107,32 @@ const DetalleJornadaEquipo = () => {
             </div>
             <div className="bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
               <p className="text-white/80 text-sm mb-1">Puntos Totales</p>
-              <p className="text-white text-5xl font-bold">{data.puntajeTotal}</p>
+              <p className="text-white text-5xl font-bold">
+                {data.puntajeTotal}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Tabla de Jugadores */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6">📋 Detalle de Puntos</h2>
-          
+          <h2 className="text-2xl font-bold text-white mb-6">
+            📋 Detalle de Puntos
+          </h2>
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/20">
-                  <th className="text-left text-white font-semibold py-3 px-4">Jugador</th>
-                  <th className="text-left text-white font-semibold py-3 px-4">Posición</th>
-                  <th className="text-center text-white font-semibold py-3 px-4">Puntos</th>
+                  <th className="text-left text-white font-semibold py-3 px-4">
+                    Jugador
+                  </th>
+                  <th className="text-left text-white font-semibold py-3 px-4">
+                    Posición
+                  </th>
+                  <th className="text-center text-white font-semibold py-3 px-4">
+                    Puntos
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -153,7 +165,10 @@ const DetalleJornadaEquipo = () => {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-white/30">
-                  <td colSpan={2} className="py-4 px-4 text-white font-bold text-lg">
+                  <td
+                    colSpan={2}
+                    className="py-4 px-4 text-white font-bold text-lg"
+                  >
                     Total
                   </td>
                   <td className="py-4 px-4 text-center">

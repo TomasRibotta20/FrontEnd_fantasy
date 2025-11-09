@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { equiposService, estadisticasService } from '../../../services/jornadasService';
+import {
+  equiposService,
+  estadisticasService,
+} from '../../../services/jornadasService';
 
 interface TestResult {
   success: boolean;
@@ -17,7 +20,10 @@ const DebugEndpoints = () => {
       const data = await fn();
       setResultados((prev) => ({ ...prev, [nombre]: { success: true, data } }));
     } catch (error) {
-      setResultados((prev) => ({ ...prev, [nombre]: { success: false, error: String(error) } }));
+      setResultados((prev) => ({
+        ...prev,
+        [nombre]: { success: false, error: String(error) },
+      }));
     } finally {
       setLoading(null);
     }
@@ -26,28 +32,28 @@ const DebugEndpoints = () => {
   const tests = [
     {
       nombre: 'Mi Equipo',
-      fn: () => equiposService.getMiEquipoConPuntos()
+      fn: () => equiposService.getMiEquipoConPuntos(),
     },
     {
       nombre: 'Historial Equipo (ID: 1)',
-      fn: () => equiposService.getHistorialEquipo(1)
+      fn: () => equiposService.getHistorialEquipo(1),
     },
     {
       nombre: 'Historial Equipo (ID: 2)',
-      fn: () => equiposService.getHistorialEquipo(2)
+      fn: () => equiposService.getHistorialEquipo(2),
     },
     {
       nombre: 'Puntajes Jornada 1',
-      fn: () => estadisticasService.getPuntajesJornada(1)
+      fn: () => estadisticasService.getPuntajesJornada(1),
     },
     {
       nombre: 'Puntajes Jornada 2',
-      fn: () => estadisticasService.getPuntajesJornada(2)
+      fn: () => estadisticasService.getPuntajesJornada(2),
     },
     {
       nombre: 'Puntajes Equipo 1 - Jornada 2',
-      fn: () => equiposService.getPuntajesEquipoJornada(1, 2)
-    }
+      fn: () => equiposService.getPuntajesEquipoJornada(1, 2),
+    },
   ];
 
   return (
@@ -72,7 +78,10 @@ const DebugEndpoints = () => {
 
         <div className="space-y-4">
           {Object.entries(resultados).map(([nombre, resultado]) => (
-            <div key={nombre} className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div
+              key={nombre}
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20"
+            >
               <h3 className="text-xl font-bold text-white mb-4">
                 {resultado.success ? '✅' : '❌'} {nombre}
               </h3>
