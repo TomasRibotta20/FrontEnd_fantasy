@@ -24,47 +24,24 @@ export const FormField: React.FC<FormFieldProps> = ({
   className = '',
 }) => {
   return (
-    <div
-      className={`form_group ${className}`}
-      style={{
-        marginBottom: '1rem',
-        marginTop: '0.1rem',
-        alignItems: 'center',
-        display: 'flex',
-        textShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-      }}
-    >
+    <div className={`form_group ${className} flex flex-col space-y-2`}>
       <label
         htmlFor={name}
-        className="form_label"
-        style={{
-          display: 'block',
-          marginBottom: '0.5rem',
-          marginRight: '2rem',
-          textShadow: '0 0 5px rgba(0, 0, 0, 0.3)',
-          fontSize: '1.2rem',
-        }}
+        className="form_label text-white text-base font-bold drop-shadow-md"
       >
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-yellow-300 ml-1">*</span>}
       </label>
       <input
         type={type}
         id={name}
         name={name}
-        className="form_imput"
+        className="w-full px-4 py-3 border-2 border-white/40 rounded-xl bg-white/20 backdrop-blur-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all duration-200 font-medium"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         required={required}
         disabled={disabled}
-        style={{
-          width: '100%',
-          padding: '0.5rem',
-          borderRadius: '0.25rem',
-          border: '1px solid #ccc',
-          textAlign: 'center',
-        }}
       />
     </div>
   );
