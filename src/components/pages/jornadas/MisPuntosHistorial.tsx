@@ -71,9 +71,27 @@ const MisPuntosHistorial = () => {
         );
 
         const historialData = await historialRes.json();
-        setHistorial(historialData?.data || historialData);
+        console.log('📊 [MisPuntosHistorial] Respuesta completa:', historialData);
+        
+        // El backend devuelve { data: [...] } donde data es un ARRAY directo
+        const dataArray = historialData?.data || historialData;
+        console.log('📊 [MisPuntosHistorial] Data extraída:', dataArray);
+        console.log('📊 [MisPuntosHistorial] Es array?', Array.isArray(dataArray));
+        
+        // Si es un array, envolver en objeto con propiedad jornadas
+        if (Array.isArray(dataArray)) {
+          console.log('✅ [MisPuntosHistorial] Convirtiendo array a formato esperado');
+          setHistorial({ jornadas: dataArray });
+        } else if (dataArray?.jornadas && Array.isArray(dataArray.jornadas)) {
+          // Si ya tiene la propiedad jornadas (formato antiguo)
+          console.log('✅ [MisPuntosHistorial] Formato con jornadas encontrado');
+          setHistorial(dataArray);
+        } else {
+          console.warn('⚠️ [MisPuntosHistorial] Formato desconocido, usando array vacío');
+          setHistorial({ jornadas: [] });
+        }
       } catch (err) {
-        console.error('Error al cargar historial:', err);
+        console.error('❌ [MisPuntosHistorial] Error al cargar historial:', err);
         setError(
           err instanceof Error ? err.message : 'Error al cargar historial'
         );
@@ -116,12 +134,18 @@ const MisPuntosHistorial = () => {
   }
 
   const jornadas = historial?.jornadas || [];
-  const puntajeTotal = jornadas.reduce((sum, j) => sum + j.puntajeTotal, 0);
+  console.log('📊 [Renderizando] Total de jornadas:', jornadas.length);
+  console.log('📊 [Renderizando] Jornadas:', jornadas);
+  
+  const puntajeTotal = jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0);
   const promedio =
     jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
+  
+  console.log('📊 [Renderizando] Puntaje total calculado:', puntajeTotal);
+  console.log('📊 [Renderizando] Promedio:', promedio);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -140,7 +164,7 @@ const MisPuntosHistorial = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Puntos Totales</p>
-            <p className="text-white text-5xl font-bold">{puntajeTotal}</p>
+            <p className="text-white text-5xl font-bold">{puntajeTotal.toFixed(1)}</p>
           </div>
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Jornadas Jugadas</p>
@@ -148,7 +172,7 @@ const MisPuntosHistorial = () => {
           </div>
           <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Promedio</p>
-            <p className="text-white text-5xl font-bold">{promedio}</p>
+            <p className="text-white text-5xl font-bold">{promedio.toFixed(1)}</p>
           </div>
         </div>
 

@@ -14,6 +14,7 @@ interface MenuCard {
 }
 
 interface Player {
+  id?: number;
   apiId: number;
   name: string;
   firstName?: string;
@@ -26,6 +27,7 @@ interface Player {
   jerseyNumber: number;
   position: unknown;
   esTitular?: boolean;
+  puntaje?: number;
 }
 
 // Interfaz para el formato que viene del backend
@@ -67,6 +69,8 @@ const LoggedMenu = () => {
         if (response.data && response.data.jugadores) {
           console.log('Jugadores recibidos:', response.data.jugadores);
 
+          const equipoId = response.data.id;
+
           // Mapear los jugadores desde la estructura del backend
           const mappedPlayers = response.data.jugadores.map(
             (item: BackendPlayerResponse, index: number) => {
@@ -76,6 +80,7 @@ const LoggedMenu = () => {
               const jugador = item.jugador;
 
               return {
+                id: jugador.id,
                 apiId: jugador.apiId || index,
                 name: jugador.name || '',
                 firstName: jugador.firstname || '',
@@ -102,6 +107,78 @@ const LoggedMenu = () => {
           );
           console.log('Titulares:', titulares);
           setTeamPlayers(titulares);
+
+          // ✅ Intentar obtener puntajes de la última jornada
+          try {
+            const historialResponse = await apiClient.get(
+              `/equipos/${equipoId}/historial`
+            );
+            console.log('📊 Historial:', historialResponse.data);
+
+            // Obtener la última jornada con puntos
+            const historialData = Array.isArray(historialResponse.data)
+              ? historialResponse.data
+              : historialResponse.data?.data || [];
+
+            if (historialData.length > 0) {
+              // Ordenar por jornadaId descendente y tomar la primera
+              const ordenado = historialData.sort(
+                (a: { jornada?: { id: number } }, b: { jornada?: { id: number } }) =>
+                  (b.jornada?.id || 0) - (a.jornada?.id || 0)
+              );
+              const ultimaJornada = ordenado[0];
+              const jornadaId = ultimaJornada?.jornada?.id;
+
+              if (jornadaId) {
+                console.log('📅 Última jornada encontrada:', jornadaId);
+
+                // Obtener detalles de esa jornada para traer los puntajes
+                const detalleResponse = await apiClient.get(
+                  `/equipos/${equipoId}/jornadas/${jornadaId}`
+                );
+                const detalle = detalleResponse.data?.data || detalleResponse.data;
+
+                if (detalle?.jugadores) {
+                  console.log('🎯 Jugadores con puntajes:', detalle.jugadores);
+                  console.log('🎯 Jugadores actuales:', titulares.map((p: Player) => ({ name: p.name, apiId: p.apiId })));
+
+                  // Mapear puntajes a los jugadores actuales
+                  const jugadoresConPuntajes = titulares.map((player: Player) => {
+                    // Intentar buscar por diferentes campos
+                    const jugadorConPuntaje = detalle.jugadores.find(
+                      (j: { nombre?: string; name?: string; nombreCompleto?: string; id?: number; apiId?: number }) => {
+                        // Comparar por nombre
+                        const nombreMatch = j.nombre === player.name || j.name === player.name || j.nombreCompleto === player.name;
+                        // O comparar por ID si está disponible
+                        const idMatch = (j.id && j.id === player.id) || (j.apiId && j.apiId === player.apiId);
+                        
+                        const match = nombreMatch || idMatch;
+                        if (match) {
+                          console.log(`✅ Match encontrado para ${player.name}:`, j);
+                        }
+                        return match;
+                      }
+                    );
+                    
+                    if (!jugadorConPuntaje) {
+                      console.log(`⚠️ No se encontró puntaje para ${player.name}`);
+                    }
+                    
+                    return {
+                      ...player,
+                      puntaje: jugadorConPuntaje?.puntaje || 0,
+                    };
+                  });
+
+                  console.log('✅ Jugadores con puntajes mapeados:', jugadoresConPuntajes);
+                  setTeamPlayers(jugadoresConPuntajes);
+                }
+              }
+            }
+          } catch (historialError) {
+            console.warn('⚠️ No se pudieron obtener los puntajes:', historialError);
+            // Continuar sin puntajes
+          }
         }
       } catch (error) {
         console.error('Error al obtener jugadores:', error);
@@ -158,10 +235,10 @@ const LoggedMenu = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 h-full flex flex-col relative z-10 py-4">
+      <div className="container mx-auto px-4 h-[calc(100vh-4rem)] flex flex-col relative z-10 py-3">
         {/* Header compacto */}
-        <div className="text-center mb-4">
-          <h1 className="text-3xl font-bold text-white mb-1">
+        <div className="text-center mb-3 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-white mb-1">
             Bienvenido a TurboFantasy
           </h1>
           <p className="text-white/80 text-sm">
@@ -170,9 +247,9 @@ const LoggedMenu = () => {
         </div>
 
         {/* Contenido principal en dos columnas */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
           {/* Columna izquierda: Menú de opciones */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             {menuCards.map((card, index) => (
               <div
                 key={index}
@@ -183,7 +260,7 @@ const LoggedMenu = () => {
                 }}
                 className={`group ${
                   card.enabled ? 'cursor-pointer' : 'cursor-not-allowed'
-                }`}
+                } flex-shrink-0`}
                 style={{
                   animation: 'fadeIn 0.5s ease-out',
                   animationDelay: `${index * 0.05}s`,
@@ -191,7 +268,7 @@ const LoggedMenu = () => {
                 }}
               >
                 <div
-                  className={`backdrop-blur-lg rounded-2xl p-5 border-2 transition-all duration-300 ${
+                  className={`backdrop-blur-lg rounded-xl p-4 border-2 transition-all duration-300 ${
                     card.enabled
                       ? 'bg-white/25 border-white/40 hover:border-white/60 hover:scale-[1.02] hover:shadow-2xl hover:bg-white/30'
                       : 'bg-white/15 border-white/25 opacity-60'
@@ -206,13 +283,13 @@ const LoggedMenu = () => {
 
                     <div className="flex-1 min-w-0">
                       <h3
-                        className={`text-xl font-bold text-white drop-shadow-md mb-1 transition-colors ${
+                        className={`text-lg font-bold text-white drop-shadow-md transition-colors leading-tight ${
                           card.enabled ? 'group-hover:text-white' : ''
                         }`}
                       >
                         {card.title}
                       </h3>
-                      <p className="text-white/90 text-sm drop-shadow">
+                      <p className="text-white/90 text-sm drop-shadow leading-tight mt-1">
                         {card.description}
                       </p>
                     </div>
@@ -243,34 +320,42 @@ const LoggedMenu = () => {
           </div>
 
           {/* Columna derecha: Equipo y Puntos */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 overflow-hidden">
             {/* Widget de Puntos */}
             <WidgetPuntos />
 
             {/* Tarjeta de Mi Equipo con Estadísticas */}
-            <div className="bg-white/25 backdrop-blur-lg rounded-2xl p-5 border-2 border-white/40 flex-1 flex flex-col">
-              <h2 className="text-2xl font-bold text-white drop-shadow-lg mb-4 text-center">
+            <div className="team-summary-card rounded-xl p-3 border-2 border-white/40 flex-1 flex flex-col overflow-hidden">
+              <h2 className="text-base font-bold text-white drop-shadow-lg mb-2 text-center flex-shrink-0 border-b border-white/20 pb-2">
                 Mi Equipo
               </h2>
 
-              <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 flex flex-col justify-center items-center min-h-0 py-2">
                 {/* Sección del Equipo */}
-                <div className="flex-1 min-h-0 flex flex-col justify-center">
+                <div className="flex flex-col w-full max-w-sm justify-center items-center">
                   {teamPlayers.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="overflow-auto flex-shrink-0">
+                    <div className="space-y-1.5 flex flex-col items-center w-full">
+                      <div className="flex-shrink-0 transform scale-[0.85] origin-center w-full">
                         <FormacionEquipoCompacta
                           players={teamPlayers}
                           showSuplentes={false}
+                          mostrarPuntajes={teamPlayers.some((p) => (p.puntaje || 0) > 0)}
                         />
                       </div>
+                      {teamPlayers.some((p) => (p.puntaje || 0) > 0) && (
+                        <div className="text-center">
+                          <p className="text-white/80 text-[10px] bg-white/10 rounded py-0.5 px-2 inline-block">
+                            📊 Última jornada
+                          </p>
+                        </div>
+                      )}
 
-                      <div className="flex justify-center">
+                      <div className="flex justify-center pt-1">
                         <button
                           onClick={() => navigate('/UpdateTeam')}
-                          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-2.5 px-6 rounded-xl font-bold text-sm transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 border-2 border-white/30"
+                          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-1.5 px-4 rounded-lg font-bold text-[10px] transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 border-2 border-white/30"
                         >
-                          Ver Equipo Completo
+                          ⚙️ Ver Equipo Completo
                         </button>
                       </div>
                     </div>
@@ -290,47 +375,6 @@ const LoggedMenu = () => {
                       </button>
                     </div>
                   )}
-                </div>
-
-                {/* Sección de Estadísticas (más compacta) */}
-                <div className="flex-shrink-0 mt-4 pt-4 border-t-2 border-white/30">
-                  <div className="flex items-center justify-around gap-3 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-300 drop-shadow-md">
-                        ---
-                      </div>
-                      <div className="text-white text-xs font-medium drop-shadow">
-                        Puntos
-                      </div>
-                    </div>
-                    <div className="w-px h-10 bg-white/40"></div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-300 drop-shadow-md">
-                        ---
-                      </div>
-                      <div className="text-white text-xs font-medium drop-shadow">
-                        Ranking
-                      </div>
-                    </div>
-                    <div className="w-px h-10 bg-white/40"></div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-300 drop-shadow-md">
-                        ---
-                      </div>
-                      <div className="text-white text-xs font-medium drop-shadow">
-                        Jornada
-                      </div>
-                    </div>
-                    <div className="w-px h-10 bg-white/40"></div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-300 drop-shadow-md">
-                        {teamPlayers.length > 0 ? teamPlayers.length : '---'}
-                      </div>
-                      <div className="text-white text-xs font-medium drop-shadow">
-                        Jugadores
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   jornadasService,
   adminService,
-  estadisticasService,
   type Jornada,
   type ConfiguracionSistema,
 } from '../../../services/jornadasService';
 import EndpointNoDisponible from '../../common/EndpointNoDisponible';
 
 const GestionJornadasAdmin = () => {
+  const navigate = useNavigate();
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [config, setConfig] = useState<ConfiguracionSistema>({
     jornadaActiva: null,
@@ -262,65 +263,8 @@ const GestionJornadasAdmin = () => {
     }
   };
 
-  const handleProcesarJornada = async (jornadaId: number) => {
-    if (!confirm(`¿Estás seguro de procesar la jornada ${jornadaId}?`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await adminService.procesarJornada(jornadaId, true);
-      setSuccess(`Jornada ${jornadaId} procesada correctamente`);
-      await loadJornadas();
-    } catch (err) {
-      setError(`Error al procesar la jornada ${jornadaId}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRecalcularPuntajes = async (jornadaId: number) => {
-    if (
-      !confirm(
-        `¿Estás seguro de recalcular los puntajes de la jornada ${jornadaId}?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await adminService.recalcularPuntajes(jornadaId);
-      setSuccess(`Puntajes de jornada ${jornadaId} recalculados`);
-      await loadJornadas();
-    } catch (err) {
-      setError(`Error al recalcular puntajes de la jornada ${jornadaId}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleActualizarEstadisticas = async (jornadaId: number) => {
-    if (!confirm(`¿Actualizar estadísticas de la jornada ${jornadaId}?`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await estadisticasService.actualizarEstadisticas(jornadaId);
-      setSuccess(`Estadísticas actualizadas para jornada ${jornadaId}`);
-    } catch (err) {
-      setError(`Error al actualizar estadísticas de la jornada ${jornadaId}`);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-white mb-8">
           🏆 Gestión de Jornadas - Admin
@@ -563,36 +507,10 @@ const GestionJornadasAdmin = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    <div className="flex justify-center mt-4">
                       <button
-                        onClick={() => handleProcesarJornada(jornada.id)}
-                        disabled={loading}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                      >
-                        ⚡ Procesar
-                      </button>
-                      <button
-                        onClick={() => handleRecalcularPuntajes(jornada.id)}
-                        disabled={loading}
-                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                      >
-                        🔄 Recalcular
-                      </button>
-                      <button
-                        onClick={() => handleActualizarEstadisticas(jornada.id)}
-                        disabled={loading}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                      >
-                        📊 Actualizar Stats
-                      </button>
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `/admin/jornadas/${jornada.id}/detalle`,
-                            '_blank'
-                          )
-                        }
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
+                        onClick={() => navigate(`/admin/jornadas/${jornada.id}/detalle`)}
+                        className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
                       >
                         👁️ Ver Detalle
                       </button>

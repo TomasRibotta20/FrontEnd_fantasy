@@ -48,26 +48,26 @@ const WidgetPuntos = () => {
 
   return (
     <div
-      className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-6 shadow-lg border-2 border-white/20 cursor-pointer hover:scale-105 transition-transform"
+      className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg p-3 shadow-lg border-2 border-white/20 cursor-pointer hover:scale-[1.02] transition-transform flex-shrink-0"
       onClick={() => navigate('/mis-puntos/historial')}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-white font-bold text-lg">🏆 Tus Puntos</h3>
-        <span className="text-white/70 text-sm">Ver más →</span>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-white font-bold text-sm">🏆 Tus Puntos</h3>
+        <span className="text-white/70 text-[10px]">Ver más →</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2">
         <div className="text-center">
-          <p className="text-white/70 text-xs mb-1">Total</p>
-          <p className="text-yellow-300 text-2xl font-bold">{puntajeTotal}</p>
+          <p className="text-white/70 text-[10px] mb-0.5">Total</p>
+          <p className="text-yellow-300 text-lg font-bold leading-tight">{puntajeTotal.toFixed(1)}</p>
         </div>
         <div className="text-center">
-          <p className="text-white/70 text-xs mb-1">Jornadas</p>
-          <p className="text-blue-300 text-2xl font-bold">{jornadasJugadas}</p>
+          <p className="text-white/70 text-[10px] mb-0.5">Jornadas</p>
+          <p className="text-blue-300 text-lg font-bold leading-tight">{jornadasJugadas}</p>
         </div>
         <div className="text-center">
-          <p className="text-white/70 text-xs mb-1">Promedio</p>
-          <p className="text-green-300 text-2xl font-bold">{promedio}</p>
+          <p className="text-white/70 text-[10px] mb-0.5">Promedio</p>
+          <p className="text-green-300 text-lg font-bold leading-tight">{promedio.toFixed(1)}</p>
         </div>
       </div>
     </div>

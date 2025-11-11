@@ -7,7 +7,6 @@ import {
   type Jornada,
   type EstadisticaJugador,
 } from '../../../services/jornadasService';
-import axios from 'axios';
 
 interface Partido {
   id: number;
@@ -45,13 +44,20 @@ const DetalleJornada = () => {
   }, [id]);
 
   const loadJornadaData = async () => {
-    if (!id) return;
+    if (!id) {
+      console.error('❌ No hay ID de jornada');
+      return;
+    }
+
+    console.log('🔄 Iniciando carga de jornada:', id);
 
     try {
       setLoading(true);
 
       // Cargar jornada
+      console.log('📥 Cargando datos de la jornada...');
       const jornadaData = await jornadasService.getJornadaById(Number(id));
+      console.log('✅ Jornada cargada:', jornadaData);
       setJornada(jornadaData);
 
       // Cargar configuración para saber si esta jornada está activa
@@ -59,11 +65,18 @@ const DetalleJornada = () => {
         // Intentar primero con el servicio de admin
         const config = await adminService.getConfig();
         console.log('📊 Config obtenida:', config);
+        console.log('📊 Config jornadaActiva tipo:', typeof config.jornadaActiva);
+        console.log('📊 Config jornadaActiva valor:', config.jornadaActiva);
 
         // Verificar si esta jornada es la activa
-        const esActiva = config.jornadaActiva === Number(id);
+        // jornadaActiva puede ser un número o un objeto con id
+        const jornadaActivaId = typeof config.jornadaActiva === 'object' && config.jornadaActiva !== null
+          ? (config.jornadaActiva as { id: number }).id
+          : config.jornadaActiva;
+        
+        const esActiva = jornadaActivaId === Number(id);
         console.log(
-          `🎯 Jornada ${id} es activa: ${esActiva} (jornadaActiva: ${config.jornadaActiva})`
+          `🎯 Jornada ${id} es activa: ${esActiva} (jornadaActivaId extraído: ${jornadaActivaId})`
         );
 
         setEsJornadaActiva(esActiva);
@@ -113,11 +126,44 @@ const DetalleJornada = () => {
       }
 
       // Cargar puntajes
-      const puntajesData = await estadisticasService.getPuntajesJornada(
-        Number(id)
-      );
-      console.log('📊 Puntajes recibidos:', puntajesData);
-      setPuntajes(Array.isArray(puntajesData) ? puntajesData : []);
+      try {
+        const puntajesData = await estadisticasService.getPuntajesJornada(
+          Number(id)
+        );
+        
+        // Asegurarse de que sea un array
+        const puntajesArray = Array.isArray(puntajesData) ? puntajesData : [];
+        
+        console.log('📊 ========== RESUMEN DE PUNTAJES ==========');
+        console.log(`📊 Total de jugadores con estadísticas: ${puntajesArray.length}`);
+        
+        if (puntajesArray.length > 0) {
+          const totalPuntos = puntajesArray.reduce((sum, p) => sum + (p.puntaje_total || 0), 0);
+          const promedio = totalPuntos / puntajesArray.length;
+          const maxPuntos = Math.max(...puntajesArray.map(p => p.puntaje_total || 0));
+          const jugadoresConPuntos = puntajesArray.filter(p => (p.puntaje_total || 0) > 0).length;
+          
+          console.log(`📊 Jugadores con puntos > 0: ${jugadoresConPuntos}`);
+          console.log(`📊 Puntos totales: ${totalPuntos.toFixed(1)}`);
+          console.log(`📊 Promedio de puntos: ${promedio.toFixed(2)}`);
+          console.log(`📊 Puntaje máximo: ${maxPuntos.toFixed(1)}`);
+          console.log('📊 Top 5 jugadores:');
+          puntajesArray
+            .sort((a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0))
+            .slice(0, 5)
+            .forEach((p, i) => {
+              console.log(`  ${i + 1}. ${p.jugador?.name || 'Desconocido'} (ID ${p.jugador?.id || 'N/A'}): ${(p.puntaje_total || 0).toFixed(1)} pts`);
+            });
+        } else {
+          console.log('⚠️ No hay puntajes registrados para esta jornada');
+        }
+        console.log('📊 ==========================================');
+        
+        setPuntajes(puntajesArray);
+      } catch (puntajesError) {
+        console.warn('⚠️ Error al cargar puntajes:', puntajesError);
+        setPuntajes([]);
+      }
 
       // Cargar partidos de esta jornada
       try {
@@ -227,29 +273,55 @@ const DetalleJornada = () => {
     }
   };
 
-  if (loading && !jornada) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="animate-spin text-6xl mb-4">⚽</div>
           <p className="text-xl">Cargando jornada...</p>
+          <p className="text-sm text-gray-300 mt-2">ID: {id}</p>
         </div>
       </div>
     );
   }
 
-  if (error || !jornada) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-500 text-white p-6 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p>{error || 'No se pudo cargar la jornada'}</p>
+            <h2 className="text-2xl font-bold mb-2">❌ Error</h2>
+            <p className="mb-4">{error}</p>
+            <div className="bg-red-700 p-3 rounded text-sm mb-4">
+              <p className="font-mono">Jornada ID: {id}</p>
+              <p className="font-mono mt-1">
+                Verifica que el backend esté corriendo en http://localhost:3000
+              </p>
+            </div>
             <button
               onClick={() => navigate(-1)}
-              className="mt-4 px-4 py-2 bg-white text-red-500 rounded-lg font-semibold"
+              className="mt-4 px-4 py-2 bg-white text-red-500 rounded-lg font-semibold hover:bg-gray-100"
             >
-              Volver
+              ← Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!jornada) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-yellow-500 text-black p-6 rounded-lg">
+            <h2 className="text-2xl font-bold mb-2">⚠️ Jornada no encontrada</h2>
+            <p className="mb-4">No se pudo cargar la información de la jornada {id}</p>
+            <button
+              onClick={() => navigate(-1)}
+              className="mt-4 px-4 py-2 bg-black text-yellow-500 rounded-lg font-semibold hover:bg-gray-900"
+            >
+              ← Volver
             </button>
           </div>
         </div>
@@ -258,7 +330,7 @@ const DetalleJornada = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -318,15 +390,15 @@ const DetalleJornada = () => {
             <p className="text-gray-300 text-sm mb-2">Puntos</p>
             <p
               className={`text-2xl font-bold ${
-                jornada.puntosCalculados ? 'text-blue-400' : 'text-yellow-400'
+                puntajes.length > 0 ? 'text-blue-400' : 'text-yellow-400'
               }`}
             >
-              {jornada.puntosCalculados ? '✓ Calculados' : '⏳ Pendientes'}
+              {puntajes.length > 0 ? '✓ Calculados' : '⏳ Pendientes'}
             </p>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-            <p className="text-gray-300 text-sm mb-2">Jugadores</p>
+            <p className="text-gray-300 text-sm mb-2">Jugadores con Puntos</p>
             <p className="text-2xl font-bold text-white">{puntajes.length}</p>
           </div>
         </div>
@@ -478,11 +550,46 @@ const DetalleJornada = () => {
           )}
         </div>
 
+        {/* Estadísticas Resumidas */}
+        {puntajes && puntajes.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+              <p className="text-gray-300 text-sm mb-1">Total Jugadores</p>
+              <p className="text-2xl font-bold text-white">{puntajes.length}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+              <p className="text-gray-300 text-sm mb-1">Puntos Totales</p>
+              <p className="text-2xl font-bold text-yellow-400">
+                {puntajes.reduce((sum, p) => sum + (p.puntaje_total || 0), 0).toFixed(1)}
+              </p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+              <p className="text-gray-300 text-sm mb-1">Goles Totales</p>
+              <p className="text-2xl font-bold text-green-400">
+                {puntajes.reduce((sum, p) => sum + (p.goles || 0), 0)}
+              </p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+              <p className="text-gray-300 text-sm mb-1">Asistencias Totales</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {puntajes.reduce((sum, p) => sum + (p.asistencias || 0), 0)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Tabla de Puntajes */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            🏆 Puntajes de Jugadores
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">
+              🏆 Top 20 Mejores Puntajes
+            </h2>
+            {puntajes.length > 20 && (
+              <p className="text-gray-400 text-sm">
+                Mostrando 20 de {puntajes.length} jugadores
+              </p>
+            )}
+          </div>
 
           {puntajes.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
@@ -501,55 +608,103 @@ const DetalleJornada = () => {
                 <thead>
                   <tr className="border-b border-white/20">
                     <th className="text-left py-3 px-4">#</th>
-                    <th className="text-left py-3 px-4">Jugador ID</th>
+                    <th className="text-left py-3 px-4">Jugador</th>
+                    <th className="text-left py-3 px-4">Pos</th>
                     <th className="text-right py-3 px-4">Puntos</th>
+                    <th className="text-right py-3 px-4">Rating</th>
                     <th className="text-right py-3 px-4">Goles</th>
-                    <th className="text-right py-3 px-4">Asistencias</th>
-                    <th className="text-right py-3 px-4">Minutos</th>
+                    <th className="text-right py-3 px-4">Asist.</th>
+                    <th className="text-right py-3 px-4">Min</th>
                     <th className="text-right py-3 px-4">TA</th>
                     <th className="text-right py-3 px-4">TR</th>
                   </tr>
                 </thead>
                 <tbody>
                   {puntajes
-                    .sort((a, b) => b.puntos - a.puntos)
+                    .sort((a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0))
+                    .slice(0, 20) // Mostrar solo los 20 primeros
                     .map((puntaje, index) => (
                       <tr
-                        key={`${puntaje.jugadorId}-${puntaje.jornadaId}`}
-                        className="border-b border-white/10 hover:bg-white/5 transition-colors"
+                        key={`${puntaje.id}`}
+                        className={`border-b border-white/10 hover:bg-white/5 transition-colors ${
+                          index < 3 ? 'bg-yellow-500/10' : ''
+                        }`}
                       >
-                        <td className="py-3 px-4 font-bold">{index + 1}</td>
-                        <td className="py-3 px-4">{puntaje.jugadorId}</td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="px-3 py-1 bg-indigo-600 rounded-full font-bold">
-                            {puntaje.puntos}
+                        <td className="py-3 px-4">
+                          <span className={`font-bold ${
+                            index === 0 ? 'text-yellow-400 text-xl' :
+                            index === 1 ? 'text-gray-300 text-lg' :
+                            index === 2 ? 'text-orange-400' :
+                            'text-white'
+                          }`}>
+                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                           </span>
                         </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            {puntaje.jugador?.photo && (
+                              <img
+                                src={puntaje.jugador.photo}
+                                alt={puntaje.jugador.name}
+                                className="w-8 h-8 rounded-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <div>
+                              <p className="font-medium">{puntaje.jugador?.name || 'Desconocido'}</p>
+                              <p className="text-xs text-gray-400">ID: {puntaje.jugador?.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-300">{puntaje.posicion || '-'}</td>
                         <td className="py-3 px-4 text-right">
-                          {puntaje.goles || 0}
+                          <span className={`px-3 py-1 rounded-full font-bold ${
+                            (puntaje.puntaje_total || 0) >= 10 ? 'bg-green-600' :
+                            (puntaje.puntaje_total || 0) >= 7 ? 'bg-blue-600' :
+                            (puntaje.puntaje_total || 0) >= 5 ? 'bg-indigo-600' :
+                            'bg-gray-600'
+                          }`}>
+                            {(puntaje.puntaje_total || 0).toFixed(1)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-300">
+                          {puntaje.rating ? puntaje.rating.toFixed(1) : '-'}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {puntaje.asistencias || 0}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {puntaje.minutosJugados || 0}'
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {puntaje.tarjetasAmarillas ? (
-                            <span className="text-yellow-400">
-                              {puntaje.tarjetasAmarillas}
-                            </span>
+                          {puntaje.goles ? (
+                            <span className="text-green-400 font-bold">⚽ {puntaje.goles}</span>
                           ) : (
-                            '-'
+                            <span className="text-gray-500">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {puntaje.tarjetasRojas ? (
-                            <span className="text-red-400">
-                              {puntaje.tarjetasRojas}
+                          {puntaje.asistencias ? (
+                            <span className="text-blue-400 font-bold">🎯 {puntaje.asistencias}</span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-300">
+                          {puntaje.minutos || 0}'
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {puntaje.tarjetas_amarillas ? (
+                            <span className="text-yellow-400 font-bold">
+                              🟨 {puntaje.tarjetas_amarillas}
                             </span>
                           ) : (
-                            '-'
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {puntaje.tarjetas_rojas ? (
+                            <span className="text-red-400 font-bold">
+                              🟥 {puntaje.tarjetas_rojas}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
                           )}
                         </td>
                       </tr>

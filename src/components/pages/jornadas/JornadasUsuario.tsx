@@ -31,35 +31,49 @@ const JornadasUsuario = () => {
       const jornadasData = await jornadasService.getJornadas(
         selectedTemporada || undefined
       );
+      console.log('📅 Jornadas cargadas:', jornadasData);
       // Asegurarnos que sea un array
       setJornadas(Array.isArray(jornadasData) ? jornadasData : []);
 
       // Obtener mi equipo para tener el ID
       try {
         const miEquipo = await equiposService.getMiEquipoConPuntos();
+        console.log('👤 Mi equipo:', miEquipo);
 
         if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
           const id = (miEquipo as { id: number }).id;
           setEquipoId(id);
+          console.log('🆔 ID del equipo:', id);
 
           // Cargar historial
           try {
             const historialData = await equiposService.getHistorialEquipo(id);
-            console.log('📊 Historial recibido:', historialData);
-            console.log('📊 Jornadas en historial:', historialData?.jornadas);
+            console.log('📊 Historial recibido completo:', historialData);
+            console.log('📊 Número de jornadas en historial:', historialData?.jornadas?.length);
+            
+            if (historialData?.jornadas && Array.isArray(historialData.jornadas)) {
+              historialData.jornadas.forEach((j, idx) => {
+                console.log(`  📌 Jornada ${idx + 1}:`, {
+                  jornadaId: j.jornada?.id,
+                  puntajeTotal: j.puntajeTotal,
+                  nombre: j.jornada?.nombre
+                });
+              });
+            }
+            
             setHistorial(historialData);
           } catch (historialErr) {
-            console.warn('Historial no disponible:', historialErr);
+            console.warn('⚠️ Historial no disponible:', historialErr);
             setHistorial({ jornadas: [] });
           }
         }
       } catch (equipoErr) {
-        console.warn('Error al obtener equipo:', equipoErr);
+        console.warn('⚠️ Error al obtener equipo:', equipoErr);
       }
 
       setError(null);
     } catch (err) {
-      console.error(err);
+      console.error('❌ Error en loadData:', err);
       // Establecer arrays vacíos en caso de error
       setJornadas([]);
       setHistorial({ jornadas: [] });
@@ -90,13 +104,28 @@ const JornadasUsuario = () => {
   }
 
   const getPuntajeJornada = (jornadaId: number): number => {
-    if (!historial || !historial.jornadas || !Array.isArray(historial.jornadas))
+    if (!historial || !historial.jornadas || !Array.isArray(historial.jornadas)) {
+      console.log(`⚠️ No hay historial para jornada ${jornadaId}`);
       return 0;
+    }
+    
     // La estructura real es: jornadas[].jornada.id, no jornadaId
     const jornadaData = historial.jornadas.find(
-      (j) => j.jornada?.id === jornadaId
+      (j) => {
+        // Manejar tanto j.jornada.id como j.jornadaId (por si acaso el backend cambia)
+        const id = j.jornada?.id || (j as { jornadaId?: number }).jornadaId;
+        const match = id === jornadaId;
+        if (match) {
+          console.log(`✅ Match encontrado para jornada ${jornadaId}:`, j);
+        }
+        return match;
+      }
     );
-    return jornadaData?.puntajeTotal || 0;
+    
+    const puntaje = jornadaData?.puntajeTotal || 0;
+    console.log(`🎯 Puntaje final para jornada ${jornadaId}:`, puntaje);
+    
+    return puntaje;
   };
 
   const puntajeTotal =
@@ -105,7 +134,7 @@ const JornadasUsuario = () => {
       : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-white mb-8">
           📅 Mis Jornadas y Puntos
@@ -135,7 +164,7 @@ const JornadasUsuario = () => {
             <div className="bg-black/30 p-6 rounded-lg text-center">
               <p className="text-gray-300 text-sm mb-2">Puntos Totales</p>
               <p className="text-4xl font-bold text-yellow-400">
-                {puntajeTotal}
+                {puntajeTotal.toFixed(1)}
               </p>
             </div>
             <div className="bg-black/30 p-6 rounded-lg text-center">
@@ -148,7 +177,7 @@ const JornadasUsuario = () => {
               <p className="text-gray-300 text-sm mb-2">Promedio por Jornada</p>
               <p className="text-4xl font-bold text-green-400">
                 {historial && historial.jornadas.length > 0
-                  ? Math.round(puntajeTotal / historial.jornadas.length)
+                  ? (puntajeTotal / historial.jornadas.length).toFixed(1)
                   : 0}
               </p>
             </div>
@@ -193,10 +222,28 @@ const JornadasUsuario = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {jornadas
-                .sort((a, b) => (b.numero || b.id) - (a.numero || a.id)) // Ordenar por número descendente (más reciente primero)
+                .sort((a, b) => (a.numero || a.id) - (b.numero || b.id)) // Ordenar por número ascendente (de la 1 a la última)
                 .map((jornada) => {
                   const miPuntaje = getPuntajeJornada(jornada.id);
                   const participe = miPuntaje > 0;
+                  
+                  // Verificar si esta jornada tiene puntos calculados
+                  // Una jornada tiene puntos calculados si:
+                  // 1. Está en mi historial (participé), O
+                  // 2. Tiene el flag puntosCalculados en true (ya fue procesada por admin)
+                  const estaEnHistorial = historial?.jornadas?.some(
+                    (j) => j.jornada?.id === jornada.id
+                  ) || false;
+                  
+                  const hayPuntosCalculados = estaEnHistorial || jornada.puntosCalculados || false;
+                  
+                  console.log(`📋 Jornada ${jornada.id}:`, {
+                    miPuntaje,
+                    participe,
+                    estaEnHistorial,
+                    puntosCalculados: jornada.puntosCalculados,
+                    hayPuntosCalculados
+                  });
 
                   return (
                     <div
@@ -245,10 +292,10 @@ const JornadasUsuario = () => {
                             Tus puntos
                           </p>
                           <p className="text-3xl font-bold text-yellow-400">
-                            {miPuntaje}
+                            {miPuntaje.toFixed(1)}
                           </p>
                         </div>
-                      ) : jornada.puntosCalculados ? (
+                      ) : hayPuntosCalculados ? (
                         <div className="bg-gray-600/30 rounded-lg p-4 border border-gray-500/50">
                           <p className="text-gray-400 text-sm text-center">
                             No participaste
@@ -287,7 +334,7 @@ const JornadasUsuario = () => {
                           disabled
                           className="w-full mt-4 px-4 py-2 bg-gray-600 text-gray-400 rounded-lg font-semibold cursor-not-allowed"
                         >
-                          {jornada.puntosCalculados
+                          {hayPuntosCalculados
                             ? 'No participaste'
                             : 'Pendiente de procesar'}
                         </button>

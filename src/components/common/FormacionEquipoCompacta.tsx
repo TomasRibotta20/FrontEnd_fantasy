@@ -20,6 +20,7 @@ interface Player {
   jerseyNumber: number;
   position: PlayerPosition;
   esTitular?: boolean;
+  puntaje?: number; // ✅ Nuevo: puntaje del jugador
 }
 
 interface FormacionEquipoCompactaProps {
@@ -28,6 +29,7 @@ interface FormacionEquipoCompactaProps {
   onPlayerClick?: (player: Player) => void;
   onPlayerSecondaryClick?: (player: Player) => void; // Para intercambio con jugador externo
   selectedPlayerId?: number | null;
+  mostrarPuntajes?: boolean; // ✅ Nuevo: flag para mostrar/ocultar puntajes
 }
 
 // ✅ Funciones auxiliares fuera del componente
@@ -99,6 +101,13 @@ const getPositionDisplayName = (position: unknown): string => {
   return String(position);
 };
 
+// ✅ Función para obtener color según puntaje
+const getPuntajeColor = (puntaje: number): string => {
+  if (puntaje >= 7) return 'from-green-500 to-green-600';
+  if (puntaje >= 5) return 'from-yellow-500 to-yellow-600';
+  return 'from-red-500 to-red-600';
+};
+
 // ✅ Componente PlayerCard memoizado fuera del componente principal
 const PlayerCard = memo(
   ({
@@ -108,6 +117,7 @@ const PlayerCard = memo(
     hasOnClick,
     onPlayerClick,
     onPlayerSecondaryClick,
+    mostrarPuntaje,
   }: {
     player: Player;
     index: number;
@@ -115,6 +125,7 @@ const PlayerCard = memo(
     hasOnClick: boolean;
     onPlayerClick?: (player: Player) => void;
     onPlayerSecondaryClick?: (player: Player) => void;
+    mostrarPuntaje?: boolean;
   }) => {
     const playerName = getPlayerDisplayName(player);
     const shortName = getShortDisplayName(player);
@@ -146,6 +157,17 @@ const PlayerCard = memo(
                   'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
               }}
             />
+            {/* ✅ Burbuja de puntaje */}
+            {mostrarPuntaje && player.puntaje !== undefined && (
+              <div
+                className={`absolute -top-2 -right-2 bg-gradient-to-br ${getPuntajeColor(
+                  player.puntaje
+                )} text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-xl border-2 border-white`}
+                title={`Puntos: ${player.puntaje.toFixed(1)}`}
+              >
+                {player.puntaje.toFixed(1)}
+              </div>
+            )}
             {isSelected && (
               <div className="absolute -top-1 -right-1 bg-gradient-to-br from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white">
                 <svg
@@ -193,8 +215,10 @@ const PlayerCard = memo(
     return (
       prevProps.player.id === nextProps.player.id &&
       prevProps.player.apiId === nextProps.player.apiId &&
+      prevProps.player.puntaje === nextProps.player.puntaje &&
       prevProps.isSelected === nextProps.isSelected &&
-      prevProps.hasOnClick === nextProps.hasOnClick
+      prevProps.hasOnClick === nextProps.hasOnClick &&
+      prevProps.mostrarPuntaje === nextProps.mostrarPuntaje
     );
   }
 );
@@ -207,6 +231,7 @@ const FormacionEquipoCompacta = ({
   onPlayerClick,
   onPlayerSecondaryClick,
   selectedPlayerId,
+  mostrarPuntajes = false,
 }: FormacionEquipoCompactaProps) => {
   const normalizePosition = useCallback((position: unknown): string => {
     if (!position) return 'unknown';
@@ -314,6 +339,7 @@ const FormacionEquipoCompacta = ({
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  mostrarPuntaje={mostrarPuntajes}
                 />
               ))}
             </div>
@@ -339,6 +365,7 @@ const FormacionEquipoCompacta = ({
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  mostrarPuntaje={mostrarPuntajes}
                 />
               ))}
             </div>
@@ -364,6 +391,7 @@ const FormacionEquipoCompacta = ({
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  mostrarPuntaje={mostrarPuntajes}
                 />
               ))}
             </div>
@@ -388,6 +416,7 @@ const FormacionEquipoCompacta = ({
                 hasOnClick={!!onPlayerClick}
                 onPlayerClick={onPlayerClick}
                 onPlayerSecondaryClick={onPlayerSecondaryClick}
+                mostrarPuntaje={mostrarPuntajes}
               />
             </div>
           )}
@@ -452,6 +481,7 @@ const arePropsEqual = (
     prevProps.players === nextProps.players &&
     prevProps.selectedPlayerId === nextProps.selectedPlayerId &&
     prevProps.showSuplentes === nextProps.showSuplentes &&
+    prevProps.mostrarPuntajes === nextProps.mostrarPuntajes &&
     prevProps.onPlayerClick === nextProps.onPlayerClick &&
     prevProps.onPlayerSecondaryClick === nextProps.onPlayerSecondaryClick
   );

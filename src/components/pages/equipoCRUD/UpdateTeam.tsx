@@ -18,6 +18,7 @@ interface Player {
   jerseyNumber: number;
   position: unknown;
   esTitular?: boolean;
+  puntaje?: number;
 }
 
 // ✅ Funciones auxiliares fuera del componente (estables)
@@ -445,6 +446,8 @@ const UpdateTeam = () => {
         console.log('⚽ MI EQUIPO:', response.data);
 
         if (response.data && response.data.jugadores) {
+          const equipoId = response.data.id;
+
           const mappedPlayers = response.data.jugadores.map(
             (item: BackendPlayerResponse, index: number) => {
               const jugador = item.jugador;
@@ -512,6 +515,79 @@ const UpdateTeam = () => {
               p.position
             );
           });
+
+          // ✅ Intentar obtener puntajes de la última jornada
+          try {
+            const historialResponse = await apiClient.get(
+              `/equipos/${equipoId}/historial`
+            );
+            console.log('📊 [UpdateTeam] Historial:', historialResponse.data);
+
+            // Obtener la última jornada con puntos
+            const historialData = Array.isArray(historialResponse.data)
+              ? historialResponse.data
+              : historialResponse.data?.data || [];
+
+            if (historialData.length > 0) {
+              // Ordenar por jornadaId descendente y tomar la primera
+              const ordenado = historialData.sort(
+                (a: { jornada?: { id: number } }, b: { jornada?: { id: number } }) =>
+                  (b.jornada?.id || 0) - (a.jornada?.id || 0)
+              );
+              const ultimaJornada = ordenado[0];
+              const jornadaId = ultimaJornada?.jornada?.id;
+
+              if (jornadaId) {
+                console.log('📅 [UpdateTeam] Última jornada encontrada:', jornadaId);
+
+                // Obtener detalles de esa jornada para traer los puntajes
+                const detalleResponse = await apiClient.get(
+                  `/equipos/${equipoId}/jornadas/${jornadaId}`
+                );
+                const detalle = detalleResponse.data?.data || detalleResponse.data;
+
+                if (detalle?.jugadores) {
+                  console.log('🎯 [UpdateTeam] Jugadores con puntajes:', detalle.jugadores);
+                  console.log('🎯 [UpdateTeam] Jugadores actuales:', mappedPlayers.map((p: Player) => ({ name: p.name, id: p.id, apiId: p.apiId })));
+
+                  // Mapear puntajes a los jugadores actuales
+                  const jugadoresConPuntajes = mappedPlayers.map((player: Player) => {
+                    // Intentar buscar por diferentes campos
+                    const jugadorConPuntaje = detalle.jugadores.find(
+                      (j: { nombre?: string; name?: string; nombreCompleto?: string; id?: number; apiId?: number }) => {
+                        // Comparar por nombre
+                        const nombreMatch = j.nombre === player.name || j.name === player.name || j.nombreCompleto === player.name;
+                        // O comparar por ID si está disponible
+                        const idMatch = (j.id && j.id === player.id) || (j.apiId && j.apiId === player.apiId);
+                        
+                        const match = nombreMatch || idMatch;
+                        if (match) {
+                          console.log(`✅ [UpdateTeam] Match encontrado para ${player.name}:`, j);
+                        }
+                        return match;
+                      }
+                    );
+                    
+                    if (!jugadorConPuntaje) {
+                      console.log(`⚠️ [UpdateTeam] No se encontró puntaje para ${player.name}`);
+                    }
+                    
+                    return {
+                      ...player,
+                      puntaje: jugadorConPuntaje?.puntaje || 0,
+                    };
+                  });
+
+                  console.log('✅ [UpdateTeam] Jugadores con puntajes mapeados:', jugadoresConPuntajes);
+                  setTeamPlayers(jugadoresConPuntajes);
+                  return; // Salir temprano si se logró mapear puntajes
+                }
+              }
+            }
+          } catch (historialError) {
+            console.warn('⚠️ [UpdateTeam] No se pudieron obtener los puntajes:', historialError);
+            // Continuar sin puntajes
+          }
 
           setTeamPlayers(mappedPlayers);
         }
@@ -893,58 +969,164 @@ const UpdateTeam = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="relative flex px-4 h-screen items-center justify-center gap-6 pt-16">
+      <div className="relative flex px-4 h-screen items-center justify-center gap-3 pt-20 pb-3 overflow-hidden">
         {/* Rectángulo Izquierdo - Estadísticas */}
-        <div className="hidden lg:block team-summary-card w-full max-w-md p-6 rounded-2xl shadow-2xl">
-          <div className="border-b border-white/20 pb-4 mb-4">
-            <h2 className="text-2xl font-bold text-center text-white">
+        <div className="hidden lg:flex team-summary-card w-full max-w-[320px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
+          <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
+            <h2 className="text-base font-bold text-center text-white">
               Estadísticas del Equipo
             </h2>
           </div>
-          <div className="min-h-[500px] flex items-center justify-center">
-            <p className="text-white/60 text-center text-sm">
-              Las estadísticas de tu equipo aparecerán aquí
-            </p>
+          <div className="space-y-2 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-1">
+            {/* Calcular estadísticas */}
+            {(() => {
+              const jugadoresConPuntos = teamPlayers.filter(p => (p.puntaje || 0) > 0);
+              
+              if (jugadoresConPuntos.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-white/60 text-center text-xs">
+                      Las estadísticas aparecerán cuando haya puntos de jornadas
+                    </p>
+                  </div>
+                );
+              }
+
+              const puntajeTotal = jugadoresConPuntos.reduce((sum, p) => sum + (p.puntaje || 0), 0);
+              const promedio = puntajeTotal / jugadoresConPuntos.length;
+              const maxPuntaje = Math.max(...jugadoresConPuntos.map(p => p.puntaje || 0));
+              const minPuntaje = Math.min(...jugadoresConPuntos.map(p => p.puntaje || 0));
+
+              // Mejores jugadores
+              const mejoresJugadores = [...jugadoresConPuntos]
+                .sort((a, b) => (b.puntaje || 0) - (a.puntaje || 0))
+                .slice(0, 3);
+
+              return (
+                <>
+                  {/* Resumen de Puntos */}
+                  <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg p-4 border border-purple-400/30 flex-shrink-0">
+                    <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                      <span>📊</span> Resumen de Puntos
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/10 rounded-lg p-3">
+                        <p className="text-white/70 text-xs mb-1">Puntaje Total</p>
+                        <p className="text-2xl font-bold text-white">{puntajeTotal.toFixed(1)}</p>
+                      </div>
+                      <div className="bg-white/10 rounded-lg p-3">
+                        <p className="text-white/70 text-xs mb-1">Promedio</p>
+                        <p className="text-2xl font-bold text-white">{promedio.toFixed(1)}</p>
+                      </div>
+                      <div className="bg-white/10 rounded-lg p-3">
+                        <p className="text-white/70 text-xs mb-1">Máximo</p>
+                        <p className="text-2xl font-bold text-green-400">{maxPuntaje.toFixed(1)}</p>
+                      </div>
+                      <div className="bg-white/10 rounded-lg p-3">
+                        <p className="text-white/70 text-xs mb-1">Mínimo</p>
+                        <p className="text-2xl font-bold text-red-400">{minPuntaje.toFixed(1)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top 3 Jugadores */}
+                  <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-lg p-4 border border-yellow-400/30 flex-shrink-0">
+                    <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                      <span>🏆</span> Top 3 Mejores Jugadores
+                    </h3>
+                    <div className="space-y-2.5">
+                      {mejoresJugadores.map((player, index) => (
+                        <div key={player.id} className="flex items-center gap-3 bg-white/10 rounded-lg p-2.5">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-yellow-400 to-orange-400 text-white font-bold text-sm flex-shrink-0">
+                            {index + 1}
+                          </div>
+                          <img
+                            src={player.photo}
+                            alt={player.name}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-white/40 flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-semibold truncate">
+                              {getPlayerDisplayName(player)}
+                            </p>
+                            <p className="text-white/60 text-xs">
+                              {getPositionDisplayName(player.position)}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-lg font-bold text-white">{(player.puntaje || 0).toFixed(1)}</p>
+                            <p className="text-white/60 text-xs">pts</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Info adicional */}
+                  <div className="bg-white/10 rounded-lg p-3 text-center flex-shrink-0">
+                    <p className="text-white/70 text-xs">
+                      Jugadores con puntos: <span className="font-bold text-white">{jugadoresConPuntos.length}</span> / <span className="font-bold text-white">{teamPlayers.length}</span>
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
         {/* Tarjeta Central - Mi Equipo */}
-        <div className="team-summary-card w-full max-w-xs sm:max-w-sm lg:max-w-md p-4 lg:p-6 rounded-2xl shadow-2xl min-h-[600px] lg:min-h-[700px]">
-          <div className="border-b border-white/20 pb-3 mb-4">
-            <h2 className="text-lg sm:text-xl lg:text-3xl font-bold text-center text-white">
+        <div className="team-summary-card w-full max-w-xs sm:max-w-sm lg:max-w-md p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex flex-col">
+          <div className="border-b border-white/20 pb-2 mb-3 flex-shrink-0">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-center text-white">
               Mi Equipo
             </h2>
           </div>
 
           {/* Sección de controles de intercambio */}
           {teamPlayers.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-2 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-1">
               {/* Equipo titular */}
-              <FormacionEquipoCompacta
-                players={titulares}
-                showSuplentes={false}
-                onPlayerClick={(player) => {
-                  if (
-                    selectedPlayerForSwap &&
-                    selectedPlayerForSwap.id !== player.id
-                  ) {
-                    // Si hay otro jugador seleccionado, realizar intercambio
-                    handleSwap(player, selectedPlayerForSwap);
-                  } else {
-                    // Si no hay selección o es el mismo jugador, alternar selección
-                    handlePlayerSelect(player);
-                  }
-                }}
-                selectedPlayerId={selectedPlayerForSwap?.id}
-              />
+              <div className="flex-shrink-0">
+                <FormacionEquipoCompacta
+                  players={titulares}
+                  showSuplentes={false}
+                  mostrarPuntajes={titulares.some((p) => (p.puntaje || 0) > 0)}
+                  onPlayerClick={(player) => {
+                    if (
+                      selectedPlayerForSwap &&
+                      selectedPlayerForSwap.id !== player.id
+                    ) {
+                      // Si hay otro jugador seleccionado, realizar intercambio
+                      handleSwap(player, selectedPlayerForSwap);
+                    } else {
+                      // Si no hay selección o es el mismo jugador, alternar selección
+                      handlePlayerSelect(player);
+                    }
+                  }}
+                  selectedPlayerId={selectedPlayerForSwap?.id}
+                />
+              </div>
+              
+              {/* Indicador de puntajes */}
+              {titulares.some((p) => (p.puntaje || 0) > 0) && (
+                <div className="text-center flex-shrink-0">
+                  <p className="text-white/80 text-[10px] bg-white/10 rounded py-1 px-2 inline-block">
+                    📊 Puntajes de la última jornada
+                  </p>
+                </div>
+              )}
 
               {/* Suplentes */}
               {suplentes.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-white/20">
-                  <h3 className="text-sm sm:text-base font-bold text-white mb-3 text-center tracking-wide">
+                <div className="pt-2 border-t border-white/20 flex-shrink-0">
+                  <h3 className="text-xs font-bold text-white mb-2 text-center tracking-wide">
                     SUPLENTES
                   </h3>
-                  <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                  <div className="flex flex-wrap justify-center gap-1.5">
                     {suplentes.map((player, index) => {
                       // Verificar si este jugador puede intercambiarse con el seleccionado
                       const canSwap = selectedPlayerForSwap
@@ -1036,25 +1218,25 @@ const UpdateTeam = () => {
         </div>
 
         {/* Rectángulo Derecho - FILTROS FUNCIONALES */}
-        <div className="hidden lg:block team-summary-card w-full max-w-md p-6 rounded-2xl shadow-2xl">
-          <div className="border-b border-white/20 pb-4 mb-4">
-            <h2 className="text-2xl font-bold text-center text-white">
+        <div className="hidden lg:flex team-summary-card w-full max-w-[320px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
+          <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
+            <h2 className="text-base font-bold text-center text-white">
               Jugadores Disponibles
             </h2>
           </div>
 
           {/* Buscador por nombre */}
-          <form onSubmit={(e) => e.preventDefault()} className="mb-4">
+          <form onSubmit={(e) => e.preventDefault()} className="mb-2 flex-shrink-0">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Buscar por nombre..."
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
-                className="w-full p-3 pl-10 rounded-lg border border-white/30 text-white bg-white/10 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                className="w-full p-2 pl-8 rounded-lg border border-white/30 text-white text-xs bg-white/10 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               />
               <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/60"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1070,13 +1252,13 @@ const UpdateTeam = () => {
           </form>
 
           {/* Filtros */}
-          <div className="mb-4">
-            <div className="space-y-2">
+          <div className="mb-2 flex-shrink-0">
+            <div className="space-y-1.5">
               {/* Filtro por Posición */}
               <select
                 value={selectedPosition}
                 onChange={(e) => setSelectedPosition(e.target.value)}
-                className="w-full p-3 rounded-lg border border-white/30 bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
+                className="w-full p-2 rounded-lg border border-white/30 bg-white/10 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
               >
                 <option value="" className="bg-gray-800 text-white">
                   Todas las posiciones
@@ -1102,7 +1284,7 @@ const UpdateTeam = () => {
               <select
                 value={selectedCountry}
                 onChange={(e) => setSelectedCountry(e.target.value)}
-                className="w-full p-3 rounded-lg border border-white/30 bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
+                className="w-full p-2 rounded-lg border border-white/30 bg-white/10 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
               >
                 <option value="" className="bg-gray-800 text-white">
                   Todos los países
@@ -1122,7 +1304,7 @@ const UpdateTeam = () => {
               <select
                 value={selectedClub}
                 onChange={(e) => setSelectedClub(e.target.value)}
-                className="w-full p-3 rounded-lg border border-white/30 bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
+                className="w-full p-2 rounded-lg border border-white/30 bg-white/10 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 hover:bg-white/15 cursor-pointer"
               >
                 <option value="" className="bg-gray-800 text-white">
                   Todos los clubes
@@ -1151,7 +1333,7 @@ const UpdateTeam = () => {
                   setSelectedClub('');
                   setSelectedCountry('');
                 }}
-                className="mt-3 w-full p-2.5 rounded-lg bg-gradient-to-r from-red-500/20 to-pink-500/20 hover:from-red-500/30 hover:to-pink-500/30 text-white text-sm font-semibold transition-all duration-200 border border-red-400/30 hover:border-red-400/50"
+                className="mt-2 w-full p-1.5 rounded-lg bg-gradient-to-r from-red-500/20 to-pink-500/20 hover:from-red-500/30 hover:to-pink-500/30 text-white text-xs font-semibold transition-all duration-200 border border-red-400/30 hover:border-red-400/50"
               >
                 Limpiar filtros
               </button>
@@ -1159,11 +1341,11 @@ const UpdateTeam = () => {
           </div>
 
           {/* Lista de jugadores - ALTURA FIJA */}
-          <div className="h-[450px] overflow-y-auto border-t border-white/20 pt-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto border-t border-white/20 pt-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
-                <p className="text-white/60 text-sm">Cargando jugadores...</p>
+              <div className="flex flex-col items-center justify-center h-full gap-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400"></div>
+                <p className="text-white/60 text-xs">Cargando jugadores...</p>
               </div>
             ) : allPlayers.length > 0 ? (
               <>

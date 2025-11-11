@@ -28,15 +28,47 @@ export interface ConfiguracionSistema {
   modificacionesHabilitadas: boolean;
 }
 
+// Estructura real del backend para estadísticas de jornada
 export interface EstadisticaJugador {
-  jugadorId: number;
-  jornadaId: number;
-  puntos: number;
-  goles?: number;
-  asistencias?: number;
-  minutosJugados?: number;
-  tarjetasAmarillas?: number;
-  tarjetasRojas?: number;
+  id: number;
+  jugador: {
+    id: number;
+    apiId: number;
+    name: string;
+    firstname: string;
+    lastname: string;
+    age: number;
+    nationality: string;
+    height: string;
+    weight: string;
+    photo: string;
+    jerseyNumber: number | null;
+    club: number;
+    position: number;
+  };
+  partido: {
+    id: number;
+    id_api: number;
+    fecha: string;
+    estado: string;
+    estado_detalle: string;
+    estadio: string;
+    local: number;
+    visitante: number;
+    jornada: number;
+  };
+  minutos: number;
+  posicion: string;
+  rating: number;
+  capitan: boolean;
+  goles: number;
+  asistencias: number;
+  goles_concedidos: number;
+  atajadas: number;
+  tarjetas_amarillas: number;
+  tarjetas_rojas: number;
+  porterias_a_cero: boolean;
+  puntaje_total: number;
 }
 
 export interface PuntajeEquipo {
@@ -228,16 +260,28 @@ export const equiposService = {
   // Obtener historial de jornadas donde el equipo puntuó
   async getHistorialEquipo(equipoId: number): Promise<HistorialEquipo> {
     const response = await apiClient.get(`/equipos/${equipoId}/historial`);
-    // Manejar tanto { data: {...} } como respuesta directa
-    const rawData = response.data?.data || response.data;
+    console.log('🔍 [getHistorialEquipo] Respuesta completa:', response.data);
     
-    // Si no hay jornadas, retornar objeto válido con array vacío
-    if (!rawData || !rawData.jornadas || !Array.isArray(rawData.jornadas)) {
-      return { jornadas: [] };
+    // El backend devuelve { data: [...] } donde data es un ARRAY directo
+    const rawData = response.data?.data || response.data;
+    console.log('🔍 [getHistorialEquipo] Datos extraídos:', rawData);
+    console.log('🔍 [getHistorialEquipo] Es array?', Array.isArray(rawData));
+    
+    // Si rawData es un array directamente (la estructura correcta del backend)
+    if (Array.isArray(rawData)) {
+      console.log('✅ [getHistorialEquipo] Array de jornadas encontrado:', rawData.length);
+      return { jornadas: rawData };
     }
     
-    // La respuesta del backend ya tiene el formato correcto con jornada.id, puntajeTotal, etc.
-    return rawData as HistorialEquipo;
+    // Si tiene la propiedad jornadas (formato antiguo por si acaso)
+    if (rawData && Array.isArray(rawData.jornadas)) {
+      console.log('✅ [getHistorialEquipo] Jornadas en objeto:', rawData.jornadas.length);
+      return rawData as HistorialEquipo;
+    }
+    
+    // Si no hay datos válidos
+    console.warn('⚠️ [getHistorialEquipo] No hay jornadas o formato inválido');
+    return { jornadas: [] };
   },
 
   // Obtener puntuaciones de un equipo para una jornada
@@ -248,7 +292,10 @@ export const equiposService = {
     const response = await apiClient.get(
       `/equipos/${equipoId}/jornadas/${jornadaId}`
     );
-    return response.data?.data || response.data;
+    console.log('🔍 [getPuntajesEquipoJornada] Respuesta:', response.data);
+    const result = response.data?.data || response.data;
+    console.log('🔍 [getPuntajesEquipoJornada] Resultado final:', result);
+    return result;
   },
 
   // Obtener mi equipo con puntos
