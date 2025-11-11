@@ -1,28 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import apiClient from '../../../services/apiClient';
-import FormacionEquipo from '../../common/FormacionEquipo';
-
-interface Position {
-  description: string;
-}
-
-type PlayerPosition = Position[] | string | { description: string } | unknown;
-
-interface Player {
-  apiId: number;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  age: number;
-  nationality: string;
-  height?: number;
-  weight?: number;
-  photo: string;
-  jerseyNumber: number;
-  position: PlayerPosition;
-}
 
 // Interfaz para el formato que viene del backend
 interface BackendPlayerResponse {
@@ -50,27 +29,14 @@ interface BackendPlayerResponse {
   es_titular: boolean;
 }
 
-interface Team {
-  id: number;
-  nombre: string;
-  jugadores?: Player[];
-}
-
 export const CreateTeam = () => {
   const navigate = useNavigate();
   const [teamName, setTeamName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [createdTeam, setCreatedTeam] = useState<Team | null>(null);
-  const [showPlayersSection, setShowPlayersSection] = useState(false);
-  const [confetti, setConfetti] = useState<
-    Array<{ id: number; x: number; y: number; color: string; delay: number }>
-  >([]);
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'error';
   } | null>(null);
-  const [showForm, setShowForm] = useState(true);
 
   useEffect(() => {
     async function checkUserTeam() {
@@ -87,16 +53,22 @@ export const CreateTeam = () => {
           }, 50);
         }
       } catch (error) {
+        // Si hay un error, asumimos que el usuario no tiene equipo y puede crear uno
         console.log('El usuario no tiene equipo, puede crear uno nuevo');
 
+        // Solo mostramos error si es un problema de autenticación (401)
         if (axios.isAxiosError(error) && error.response) {
-          if (error.response.status !== 404) {
-            console.error('Error al verificar equipo:', error);
+          if (error.response.status === 401) {
             showNotification(
-              'Error al verificar tu equipo. Por favor, recarga la página.',
+              'No estás autenticado. Por favor inicia sesión.',
               'error'
             );
+            setTimeout(() => {
+              navigate('/login');
+            }, 2000);
           }
+          // Para cualquier otro error (404, 500, etc.) no mostramos nada
+          // ya que es normal que un usuario nuevo no tenga equipo
         }
       }
     }
@@ -112,39 +84,6 @@ export const CreateTeam = () => {
     }, 4000);
   };
 
-  // Función para generar confeti con duración extendida
-  const generateConfetti = () => {
-    const confettiColors = [
-      '#FFD93D',
-      '#6BCF7F',
-      '#4D96FF',
-      '#FF6B6B',
-      '#FF69B4',
-      '#9370DB',
-    ];
-
-    const newConfetti = Array.from({ length: 35 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      color: confettiColors[i % confettiColors.length],
-      delay: (i * 0.05) % 1.2,
-    }));
-    setConfetti(newConfetti);
-
-    setTimeout(() => {
-      setConfetti([]);
-    }, 5000);
-  };
-
-  const startPlayersAnimation = () => {
-    setShowPlayersSection(true);
-
-    setTimeout(() => {
-      generateConfetti();
-    }, 300);
-  };
-
   async function handleButtonClick(): Promise<void> {
     if (teamName.trim()) {
       setIsLoading(true);
@@ -158,8 +97,6 @@ export const CreateTeam = () => {
         });
 
         console.log('Equipo creado exitosamente:', response.data);
-
-        setCreatedTeam(response.data.data || response.data);
 
         // Guardar los jugadores generados
         if (response.data.jugadores || response.data.data?.jugadores) {
@@ -206,7 +143,6 @@ export const CreateTeam = () => {
           );
 
           console.log('Jugadores extraídos:', extractedPlayers);
-          setPlayers(extractedPlayers);
 
           // Mostrar notificación de éxito
           showNotification(
@@ -214,16 +150,10 @@ export const CreateTeam = () => {
             'success'
           );
 
-          // Ocultar el formulario con una transición más suave
+          // Redirigir directamente al LoggedMenu
           setTimeout(() => {
-            setShowForm(false);
-          }, 600);
-
-          // Iniciar animación de jugadores solo después de que desaparezca el formulario
-          setTimeout(() => {
-            console.log('Iniciando animación...');
-            startPlayersAnimation();
-          }, 900);
+            navigate('/LoggedMenu');
+          }, 1000);
         }
 
         // Limpiar el campo de entrada
@@ -283,30 +213,6 @@ export const CreateTeam = () => {
 
       <div className="absolute inset-0 bg-black opacity-30 z-10"></div>
 
-      {/* Confeti mejorado con mayor visibilidad */}
-      {confetti.length > 0 && (
-        <div className="fixed inset-0 pointer-events-none z-40">
-          {confetti.map((piece) => (
-            <div
-              key={piece.id}
-              className="absolute w-3 h-3 confetti-piece animate-pulse"
-              style={{
-                left: `${piece.x}%`,
-                top: `-12%`,
-                backgroundColor: piece.color,
-                animationDelay: `${piece.delay}s`,
-                borderRadius: Math.random() > 0.5 ? '50%' : '0%',
-                transform: `rotate(${Math.random() * 360}deg) scale(${
-                  0.8 + Math.random() * 0.6
-                })`,
-                boxShadow: `0 0 6px ${piece.color}40`,
-                opacity: 0.85,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
       {/* Notificación elegante */}
       {notification && (
         <div className="fixed top-4 right-4 z-[100]">
@@ -331,155 +237,75 @@ export const CreateTeam = () => {
       )}
 
       {/* Título simplificado y elegante */}
-      {showForm && (
-        <div className="relative z-50 mb-6">
-          <h1
-            className="text-5xl md:text-6xl font-bold text-white text-center"
-            style={{
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              textShadow:
-                '2px 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.3)',
-              letterSpacing: '0.02em',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-              opacity: showForm ? 1 : 0,
-              transform: showForm
-                ? 'translateY(0) scale(1)'
-                : 'translateY(-50px) scale(0.8)',
-            }}
-          >
-            Crea tu Equipo
-          </h1>
-        </div>
-      )}
-
-      {/* Campo de entrada atractivo - MÁS GRANDE */}
-      {showForm && (
-        <div
-          className="relative z-50 w-full max-w-2xl px-4"
-          style={{
-            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-            opacity: showForm ? 1 : 0,
-            transform: showForm
-              ? 'translateY(0) scale(1)'
-              : 'translateY(-30px) scale(0.9)',
-          }}
-        >
-          <div className="relative">
-            {/* Efectos decorativos del input - DETRÁS del input */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-3xl opacity-30 animate-ping pointer-events-none"></div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-green-500 to-cyan-500 rounded-3xl opacity-20 blur-xl pointer-events-none"></div>
-
-            <input
-              type="text"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              placeholder="Ingresa el nombre de tu equipo..."
-              className="relative z-10 w-full px-12 py-5 text-2xl font-bold text-center bg-gradient-to-r from-blue-50 to-green-50 border-4 border-transparent bg-clip-padding rounded-3xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300 transform hover:scale-105 focus:scale-105 attractive-input"
-              style={{
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                background:
-                  'linear-gradient(white, white) padding-box, linear-gradient(45deg, #06b6d4, #10b981, #3b82f6, #8b5cf6) border-box',
-                animation: 'inputGlow 3s infinite alternate ease-in-out',
-              }}
-              maxLength={50}
-            />
-          </div>
-
-          {/* Contador de caracteres - MÁS VISIBLE */}
-          <div className="text-center mt-3 text-white text-sm font-semibold drop-shadow-lg">
-            <span className="bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">
-              {teamName.length}/50 caracteres
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Botón crear equipo con animaciones completas */}
-      {showForm && (
-        <button
-          onClick={handleButtonClick}
-          disabled={!teamName.trim() || isLoading}
-          className="relative px-10 py-5 bg-gradient-to-r from-green-400 via-emerald-500 to-blue-500 text-white text-2xl font-extrabold rounded-full shadow-2xl transform hover:scale-110 hover:shadow-3xl active:scale-95 z-50 animate-pulse hover:animate-bounce vibrating-button color-shifting-button disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+      <div className="relative z-50 mb-6">
+        <h1
+          className="text-5xl md:text-6xl font-bold text-white text-center"
           style={{
             fontFamily: 'system-ui, -apple-system, sans-serif',
-            filter: 'brightness(1.1) saturate(1.2)',
-            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-            opacity: showForm ? 1 : 0,
-            transform: showForm
-              ? 'translateY(0) scale(1)'
-              : 'translateY(30px) scale(0.8)',
+            textShadow:
+              '2px 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.3)',
+            letterSpacing: '0.02em',
           }}
         >
-          <span className="relative z-10">
-            {isLoading
-              ? 'Creando...'
-              : teamName.trim()
-              ? `Crear "${teamName}"`
-              : 'Crear Equipo'}
-          </span>
+          Crea tu Equipo
+        </h1>
+      </div>
 
-          {/* Efecto de brillo */}
-          <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 rounded-full opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+      {/* Campo de entrada atractivo - MÁS GRANDE */}
+      <div className="relative z-50 w-full max-w-2xl px-4">
+        <div className="relative">
+          {/* Efectos decorativos del input - DETRÁS del input */}
+          <div className="absolute -inset-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-3xl opacity-30 animate-ping pointer-events-none"></div>
+          <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-green-500 to-cyan-500 rounded-3xl opacity-20 blur-xl pointer-events-none"></div>
 
-          {/* Anillo exterior animado */}
-          <div className="absolute -inset-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full opacity-30 animate-ping"></div>
-        </button>
-      )}
-
-      {/* Sección de equipo creado y jugadores */}
-      {createdTeam && showPlayersSection && (
-        <div
-          className="relative z-10 w-full max-w-4xl px-2"
-          style={{
-            animation:
-              'fadeInUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          }}
-        >
-          <div
-            className="bg-green-600/20 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border-2 border-white/30 transition-all duration-500"
+          <input
+            type="text"
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            placeholder="Ingresa el nombre de tu equipo..."
+            className="relative z-10 w-full px-12 py-5 text-2xl font-bold text-center bg-gradient-to-r from-blue-50 to-green-50 border-4 border-transparent bg-clip-padding rounded-3xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-cyan-400 focus:border-cyan-400 transition-all duration-300 transform hover:scale-105 focus:scale-105 attractive-input"
             style={{
-              backgroundImage: `linear-gradient(45deg, rgba(34, 197, 94, 0.1) 25%, transparent 25%, transparent 50%, rgba(34, 197, 94, 0.1) 50%, rgba(34, 197, 94, 0.1) 75%, transparent 75%, transparent)`,
-              backgroundSize: '40px 40px',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              background:
+                'linear-gradient(white, white) padding-box, linear-gradient(45deg, #06b6d4, #10b981, #3b82f6, #8b5cf6) border-box',
+              animation: 'inputGlow 3s infinite alternate ease-in-out',
             }}
-          >
-            <h2
-              className="text-3xl font-bold text-center text-white mb-3 drop-shadow-lg"
-              style={{
-                animation:
-                  'fadeInUp 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards',
-              }}
-            >
-              Equipo "{createdTeam.nombre}"
-            </h2>
-
-            {players.length > 0 && (
-              <FormacionEquipo
-                players={players}
-                compact={false}
-                showSuplentes={true}
-              />
-            )}
-          </div>
-
-          {/* Botón para volver al menú principal */}
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={() => navigate('/LoggedMenu')}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white text-lg font-bold rounded-full shadow-xl transform transition-all duration-300 hover:scale-110 hover:shadow-2xl active:scale-95 z-50"
-              style={{
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                animation:
-                  'fadeInUp 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards',
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <span>🏠</span>
-                <span>Volver al Menú Principal</span>
-              </span>
-            </button>
-          </div>
+            maxLength={50}
+          />
         </div>
-      )}
+
+        {/* Contador de caracteres - MÁS VISIBLE */}
+        <div className="text-center mt-3 text-white text-sm font-semibold drop-shadow-lg">
+          <span className="bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">
+            {teamName.length}/50 caracteres
+          </span>
+        </div>
+      </div>
+
+      {/* Botón crear equipo con animaciones completas */}
+      <button
+        onClick={handleButtonClick}
+        disabled={!teamName.trim() || isLoading}
+        className="relative px-10 py-5 bg-gradient-to-r from-green-400 via-emerald-500 to-blue-500 text-white text-2xl font-extrabold rounded-full shadow-2xl transform hover:scale-110 hover:shadow-3xl active:scale-95 z-50 animate-pulse hover:animate-bounce vibrating-button color-shifting-button disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+        style={{
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          filter: 'brightness(1.1) saturate(1.2)',
+        }}
+      >
+        <span className="relative z-10">
+          {isLoading
+            ? 'Creando...'
+            : teamName.trim()
+            ? `Crear "${teamName}"`
+            : 'Crear Equipo'}
+        </span>
+
+        {/* Efecto de brillo */}
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 rounded-full opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+
+        {/* Anillo exterior animado */}
+        <div className="absolute -inset-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full opacity-30 animate-ping"></div>
+      </button>
 
       <style
         dangerouslySetInnerHTML={{

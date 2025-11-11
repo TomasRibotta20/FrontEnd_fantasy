@@ -19,7 +19,7 @@ type NavigationItem = {
 
 const navigation: NavigationItem[] = [
   { name: 'Equipo', href: '/UpdateTeam', current: false },
-  { name: 'Jornada', href: '#', current: false },
+  { name: 'Jornada', href: '/jornadas', current: false },
   { name: 'Mercado', href: '#', current: false },
 ];
 
@@ -42,21 +42,23 @@ export default function NavBar() {
     >
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
-          <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
-            {/* Mobile menu button*/}
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-lg p-2 text-white hover:bg-white/20 hover:text-white focus:ring-2 focus:ring-white/50 focus:outline-hidden transition-all duration-200 border border-white/30">
-              <span className="absolute -inset-0.5" />
-              <span className="sr-only">Open main menu</span>
-              <Bars3Icon
-                aria-hidden="true"
-                className="block size-6 group-data-open:hidden drop-shadow-md"
-              />
-              <XMarkIcon
-                aria-hidden="true"
-                className="hidden size-6 group-data-open:block drop-shadow-md"
-              />
-            </DisclosureButton>
-          </div>
+          {/* Mobile menu button - Solo mostrar si NO es admin */}
+          {user?.role !== 'admin' && (
+            <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
+              <DisclosureButton className="group relative inline-flex items-center justify-center rounded-lg p-2 text-white hover:bg-white/20 hover:text-white focus:ring-2 focus:ring-white/50 focus:outline-hidden transition-all duration-200 border border-white/30">
+                <span className="absolute -inset-0.5" />
+                <span className="sr-only">Open main menu</span>
+                <Bars3Icon
+                  aria-hidden="true"
+                  className="block size-6 group-data-open:hidden drop-shadow-md"
+                />
+                <XMarkIcon
+                  aria-hidden="true"
+                  className="hidden size-6 group-data-open:block drop-shadow-md"
+                />
+              </DisclosureButton>
+            </div>
+          )}
           <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
             <div className="flex shrink-0 items-center">
               <button
@@ -74,25 +76,28 @@ export default function NavBar() {
                 />
               </button>
             </div>
-            <div className="hidden sm:ml-6 sm:block">
-              <div className="flex space-x-3 items-center h-16">
-                {navigation.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    aria-current={item.current ? 'page' : undefined}
-                    className={classNames(
-                      item.current
-                        ? 'bg-white/30 text-white shadow-xl border-white/50'
-                        : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                      'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2'
-                    )}
-                  >
-                    {item.name}
-                  </a>
-                ))}
+            {/* Solo mostrar navegación si NO es admin */}
+            {user?.role !== 'admin' && (
+              <div className="hidden sm:ml-6 sm:block">
+                <div className="flex space-x-3 items-center h-16">
+                  {navigation.map((item) => (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      aria-current={item.current ? 'page' : undefined}
+                      className={classNames(
+                        item.current
+                          ? 'bg-white/30 text-white shadow-xl border-white/50'
+                          : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                        'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2'
+                      )}
+                    >
+                      {item.name}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             {/* Mostrar botones de login/register si no está autenticado */}
@@ -179,26 +184,29 @@ export default function NavBar() {
         </div>
       </div>
 
-      <DisclosurePanel className="sm:hidden backdrop-blur-lg bg-white/20 border-t-2 border-white/30">
-        <div className="space-y-2 px-3 pt-3 pb-4">
-          {navigation.map((item) => (
-            <DisclosureButton
-              key={item.name}
-              as="a"
-              href={item.href}
-              aria-current={item.current ? 'page' : undefined}
-              className={classNames(
-                item.current
-                  ? 'bg-white/30 text-white shadow-xl border-white/50'
-                  : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                'block rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
-              )}
-            >
-              {item.name}
-            </DisclosureButton>
-          ))}
-        </div>
-      </DisclosurePanel>
+      {/* Solo mostrar panel móvil si NO es admin */}
+      {user?.role !== 'admin' && (
+        <DisclosurePanel className="sm:hidden backdrop-blur-lg bg-white/20 border-t-2 border-white/30">
+          <div className="space-y-2 px-3 pt-3 pb-4">
+            {navigation.map((item) => (
+              <DisclosureButton
+                key={item.name}
+                as="a"
+                href={item.href}
+                aria-current={item.current ? 'page' : undefined}
+                className={classNames(
+                  item.current
+                    ? 'bg-white/30 text-white shadow-xl border-white/50'
+                    : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                  'block rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
+                )}
+              >
+                {item.name}
+              </DisclosureButton>
+            ))}
+          </div>
+        </DisclosurePanel>
+      )}
     </Disclosure>
   );
 }

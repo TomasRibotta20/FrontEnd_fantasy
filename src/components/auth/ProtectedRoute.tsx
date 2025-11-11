@@ -1,19 +1,58 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import apiClient from '../../services/apiClient';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   redirectTo?: string;
+  requireTeam?: boolean; // Nueva prop para indicar si requiere equipo
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   redirectTo = '/login',
+  requireTeam = true, // Por defecto requiere equipo
 }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  const [hasTeam, setHasTeam] = useState<boolean | null>(null);
+  const [checkingTeam, setCheckingTeam] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    const checkUserTeam = async () => {
+      // Si estamos en la página de crear equipo, no verificamos
+      if (location.pathname === '/crear-equipo' || !requireTeam) {
+        setCheckingTeam(false);
+        setHasTeam(true);
+        return;
+      }
+
+      // Solo verificamos si el usuario está autenticado
+      if (isAuthenticated && !isLoading) {
+        try {
+          const response = await apiClient.get('equipos/mi-equipo');
+          if (response.data !== null) {
+            setHasTeam(true);
+          } else {
+            setHasTeam(false);
+          }
+        } catch {
+          // Si hay error (404, 500, etc.), asumimos que no tiene equipo
+          setHasTeam(false);
+        } finally {
+          setCheckingTeam(false);
+        }
+      } else {
+        setCheckingTeam(false);
+      }
+    };
+
+    checkUserTeam();
+  }, [isAuthenticated, isLoading, location.pathname, requireTeam]);
+
+  if (isLoading || checkingTeam) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
@@ -26,6 +65,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
+  }
+
+  // Si requiere equipo y no lo tiene, redirigir a crear equipo
+  if (
+    requireTeam &&
+    hasTeam === false &&
+    location.pathname !== '/crear-equipo'
+  ) {
+    return <Navigate to="/crear-equipo" replace />;
   }
 
   return <>{children}</>;

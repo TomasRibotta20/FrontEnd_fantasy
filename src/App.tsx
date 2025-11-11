@@ -9,6 +9,7 @@ import LoggedMenu from './components/pages/LoggedMenu';
 import CrudPositions from './components/pages/posicionesCRUD/CrudPositions';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import AdminRoute from './components/auth/AdminRoute';
 import { CreateTeam } from './components/pages/equipoCRUD/CreateTeam';
 import UpdateTeam from './components/pages/equipoCRUD/UpdateTeam';
 import AdminPage from './components/pages/admin/AdminPage';
@@ -16,6 +17,7 @@ import PlayersCRUD from './components/pages/playersCRUD/PlayersCRUD';
 import UsersCRUD from './components/pages/usersCRUD/UsersCRUD';
 import GestionJornadas from './components/pages/jornadas/GestionJornadas';
 import GestionJornadasAdmin from './components/pages/admin/GestionJornadasAdmin';
+import GestionEquiposAdmin from './components/pages/admin/GestionEquiposAdmin';
 import DetalleJornada from './components/pages/jornadas/DetalleJornada';
 import JornadasUsuario from './components/pages/jornadas/JornadasUsuario';
 import MiEquipoJornada from './components/pages/jornadas/MiEquipoJornada';
@@ -26,12 +28,15 @@ import { useAuth } from './hooks/useAuth';
 
 // Componente para redirigir usuarios autenticados
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? (
-    <Navigate to="/LoggedMenu" replace />
-  ) : (
-    <>{children}</>
-  );
+  const { isAuthenticated, user } = useAuth();
+
+  if (isAuthenticated && user) {
+    // Redirigir según el rol
+    const redirectPath = user.role === 'admin' ? '/admin' : '/LoggedMenu';
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function App() {
@@ -85,7 +90,15 @@ function App() {
           <Route
             path="/CreateTeam"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireTeam={false}>
+                <CreateTeam />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/crear-equipo"
+            element={
+              <ProtectedRoute requireTeam={false}>
                 <CreateTeam />
               </ProtectedRoute>
             }
@@ -109,61 +122,69 @@ function App() {
             }
           />
 
-          {/* Rutas de Administración */}
+          {/* Rutas de Administración - Solo accesibles para usuarios con rol admin */}
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminPage />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <UsersCRUD />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/players"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <PlayersCRUD />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/clubs"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <ClubReadUpdateDelete />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/positions"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <CrudPositions />
-              </ProtectedRoute>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/equipos"
+            element={
+              <AdminRoute>
+                <GestionEquiposAdmin />
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/jornadas"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <GestionJornadasAdmin />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/jornadas/:id/detalle"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <DetalleJornada />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
 

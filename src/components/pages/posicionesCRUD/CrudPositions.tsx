@@ -1,145 +1,127 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Button_1 } from '../../button';
-import CardDefault from '../../CardDefault';
-
-function PositionReadUpdateDelete() {
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [editingPosition, setEditingPosition] = useState<number | null>(null);
-  const [editData, setEditData] = useState({
-    descripcion: '',
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
+import { Notification } from '../../common/Notification';
 
 interface Position {
   id: number;
   description: string;
 }
 
+function CrudPositions() {
+  const navigate = useNavigate();
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [filteredPositions, setFilteredPositions] = useState<Position[]>([]);
+  const [editingPosition, setEditingPosition] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'warning' | 'info';
+    text: string;
+  } | null>(null);
+
+  const [editData, setEditData] = useState({
+    descripcion: '',
+  });
 
   useEffect(() => {
     getPositions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage(null);
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
+    const filtered = positions.filter((position) =>
+      position.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredPositions(filtered);
+  }, [searchTerm, positions]);
 
   const getPositions = async () => {
     setIsLoading(true);
     try {
       const response = await axios.get('http://localhost:3000/api/positions');
-      console.log('Datos obtenidos:', response.data);
-      setPositions(response.data.data.sort((a: Position, b: Position) => a.description.localeCompare(b.description)));
-      setMessage({
+      const sortedPositions = response.data.data.sort(
+        (a: Position, b: Position) => a.description.localeCompare(b.description)
+      );
+      setPositions(sortedPositions);
+      setFilteredPositions(sortedPositions);
+      setNotification({
         type: 'success',
-        text: 'Se han encontrado todas las posiciones',
+        text: 'Posiciones cargadas exitosamente',
       });
     } catch (error) {
       console.error('Error al obtener posiciones:', error);
-      setMessage({
+      setNotification({
         type: 'error',
-        text: 'Error al obtener posiciones. Inténtalo de nuevo.',
+        text: 'Error al obtener posiciones',
       });
     } finally {
       setIsLoading(false);
     }
   };
+
   const deletePosition = async (positionId: number) => {
-    setIsLoading(true);
-    try {
-      await axios.delete(`http://localhost:3000/api/positions/${positionId}`);
-      setPositions((prevPositions) => prevPositions.filter((position) => position.id !== positionId));
-      setMessage({
-        type: 'success',
-        text: 'Posición eliminada con éxito.',
-      });
-    } catch (error) {
-      console.error('Error al eliminar posición:', error);
-      setMessage({
-        type: 'error',
-        text: 'Error al eliminar posición. Inténtalo de nuevo.',
-      });
-    } finally {
-      setIsLoading(false);
+    if (window.confirm('¿Estás seguro de eliminar esta posición?')) {
+      setIsLoading(true);
+      try {
+        await axios.delete(`http://localhost:3000/api/positions/${positionId}`);
+        setPositions((prevPositions) =>
+          prevPositions.filter((position) => position.id !== positionId)
+        );
+        setNotification({
+          type: 'success',
+          text: 'Posición eliminada con éxito',
+        });
+      } catch (error) {
+        console.error('Error al eliminar posición:', error);
+        setNotification({
+          type: 'error',
+          text: 'Error al eliminar posición',
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleEdit = (positionId: number) => {
-    const position = positions.find((p) => p.id === positionId);
-    if (position) {
-      setEditingPosition(positionId);
-      setEditData({
-        descripcion: position.description || '',
-      });
-    }
+  const handleEdit = (position: Position) => {
+    setEditingPosition(position.id);
+    setEditData({
+      descripcion: position.description || '',
+    });
   };
 
-  const saveEdit = async (positionId: number) => {
-    setIsLoading(true);
+  const saveEdit = async () => {
+    if (!editingPosition) return;
 
+    setIsLoading(true);
     try {
       const updateData = {
         descripcion: editData.descripcion,
       };
 
       await axios.patch(
-        `http://localhost:3000/api/positions/${positionId}`,
+        `http://localhost:3000/api/positions/${editingPosition}`,
         updateData
       );
 
       setPositions((prevPositions) =>
         prevPositions.map((position) =>
-          position.id === positionId ? { ...position, ...updateData } : position
+          position.id === editingPosition
+            ? { ...position, description: updateData.descripcion }
+            : position
         )
       );
 
-      await axios.patch(
-        `http://localhost:3000/api/positions/${positionId}`,
-        updateData
-      );
-
-      setPositions((prevPositions) =>
-        prevPositions.map((position) =>
-          position.id === positionId ? { ...position, ...updateData } : position
-        )
-      );
-
-      await axios.patch(
-        `http://localhost:3000/api/positions/${positionId}`,
-        updateData
-      );
-
-      setPositions((prevPositions) =>
-        prevPositions.map((position) =>
-          position.id === positionId ? { ...position, ...updateData } : position
-        )
-      );
-      setMessage({
+      setNotification({
         type: 'success',
-        text: 'Posición editada con éxito.',
+        text: 'Posición actualizada exitosamente',
       });
-      setEditingPosition(null);
-      setEditData({
-        descripcion: '',
-      });
- 
+      cancelEdit();
     } catch (error) {
       console.error('Error al editar posición:', error);
-      setMessage({
+      setNotification({
         type: 'error',
-        text: 'Error al editar posición. Inténtalo de nuevo.',
+        text: 'Error al editar posición',
       });
     } finally {
       setIsLoading(false);
@@ -153,122 +135,200 @@ interface Position {
     });
   };
 
-
   return (
-    <div
-      style={{
-        backgroundImage: `url('/Background_LandingPage.png')`,
-        minHeight: '100vh',
-        backgroundSize: 'cover',
-        backgroundAttachment: 'fixed',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-      className="relative pb-20"
-    >
+    <div className="min-h-screen pt-20 pb-10">
+      <Notification
+        message={notification}
+        onClose={() => setNotification(null)}
+      />
+
       <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
         style={{
-          minHeight: '100%',
-          height: '100%',
+          backgroundImage: `url('/Background_LandingPage.png')`,
+          filter: 'blur(2px)',
         }}
-        className="absolute inset-0 bg-black opacity-30 z-0"
-      ></div>
-
-      <div className="fixed bottom-4 -mb-5 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center">
-        {message && (
-          <div
-            className={` z-10 mt-2 px-3 py-1 rounded text-sm text-center self-center box-border bg-yellow-200 ${
-              message.type === 'success' ? 'success' : 'error'
-            }`}
-            style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-          >
-            {message.text}
-          </div>
-        )}
-        <Button_1
-          onClick={getPositions}
-          disabled={isLoading}
-          size="lg"
-          className=" block mx-auto mt-4 mb-8 z-10"
-        >
-          {isLoading ? 'Cargando...' : 'Recargar Posiciones'}
-        </Button_1>
-      </div>
-
-      <div className="fixed top-16 left-0 right-0 flex justify-center box-border pb-4 bg-gradient-to-t from-green-400 to-blue-500 border-b-4 border-white z-40">
-        <h2
-          className="static max-lg:5z-50 center w-full text-center align-text-top mt-4 text-3xl font-semibold inner-shadow-lg box-shadow-lg text-white text-shadow-lg"
-          style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
-        >
-          Lista de Posiciones
-        </h2>
-      </div>
-
-      <div
-        className="relative z-10 flex flex-wrap justify-center items-start gap-4 p-4"
-        style={{ marginTop: '128px' }}
       >
-        {positions && positions.length > 0 ? (
-          positions.map((position: Position) => (
-            <div key={position.id} className="mb-4">
-              {editingPosition === position.id ? (
-                <div className="border-4 border-gray-600 p-4 w-80 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col inner-shadow-lg max-h-96 overflow-y-auto">
-                  <h3 className="text-xl font-medium text-black mb-3 text-center">
-                    Editar Posición
-                  </h3>
+        <div className="absolute inset-0 bg-black opacity-30"></div>
+      </div>
 
-                  <div className="space-y-3 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">
-                        Descripción de la Posición
-                      </label>
-                      <input
-                        type="text"
-                        value={editData.descripcion}
-                        onChange={(e) =>
-                          setEditData({ ...editData, descripcion: e.target.value })
-                        }
-                        className="w-full px-2 py-1 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Descripción de la posición"
-                      />
-                    </div>
-                  </div>
+      <div className="container mx-auto px-4 relative z-10">
+        {/* Botón volver */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <button
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-lg text-white px-4 py-2 rounded-lg font-bold transition-all border-2 border-white/30 hover:border-white/50 drop-shadow-md"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Volver
+          </button>
+        </div>
 
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => saveEdit(position.id)}
-                      disabled={isLoading}
-                      className="flex-1 px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
-                    >
-                      Guardar
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="flex-1 px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <CardDefault
-                  position={position}
-                  onEdit={() => handleEdit(position.id)}
-                  onDelete={() => deletePosition(position.id)}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
+            Gestión de Posiciones
+          </h1>
+          <p className="text-white text-lg drop-shadow">
+            Administra las posiciones de juego
+          </p>
+        </div>
+
+        {/* Controles superiores */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <div className="bg-white/15 backdrop-blur-lg rounded-xl p-5 border-2 border-white/30 shadow-xl">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex-1 w-full">
+                <input
+                  type="text"
+                  placeholder="Buscar posición..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-5 py-3 rounded-lg bg-white/20 border-2 border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 font-medium shadow-inner"
                 />
-              )}
+              </div>
+              <button
+                onClick={getPositions}
+                disabled={isLoading}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 px-8 rounded-lg font-bold hover:from-blue-600 hover:to-purple-600 transition-colors duration-300 shadow-xl border-2 border-white/30 disabled:opacity-50"
+              >
+                {isLoading ? 'Cargando...' : 'Recargar'}
+              </button>
             </div>
-          ))
-        ) : (
-          <div>
-            <p className="text-black text-xl w-full z-10 mt-1 -mb-5 px-3 py-1 rounded text-center self-center box-border bg-yellow-200">
-              No hay posiciones disponibles.
-            </p>
           </div>
-        )}
+        </div>
+
+        {/* Lista de posiciones */}
+        <div className="max-w-4xl mx-auto">
+          {isLoading && editingPosition === null ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-400 drop-shadow-lg"></div>
+            </div>
+          ) : filteredPositions.length === 0 ? (
+            <div className="flex flex-col justify-center items-center h-64 text-center">
+              <p className="text-white text-xl font-bold mb-2 drop-shadow-lg">
+                {searchTerm
+                  ? 'No se encontraron posiciones'
+                  : 'No hay posiciones disponibles'}
+              </p>
+              <p className="text-white/80 text-sm drop-shadow">
+                {searchTerm
+                  ? 'Intenta con otro término de búsqueda'
+                  : 'Carga las posiciones desde la API'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white/15 backdrop-blur-lg rounded-xl border-2 border-white/30 overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-white">
+                  <thead className="bg-white/20 border-b-2 border-white/30">
+                    <tr>
+                      <th className="p-5 text-left font-bold drop-shadow text-base">
+                        ID
+                      </th>
+                      <th className="p-5 text-left font-bold drop-shadow text-base">
+                        Descripción
+                      </th>
+                      <th className="p-5 text-center font-bold drop-shadow text-base">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPositions.map((position) => (
+                      <tr
+                        key={position.id}
+                        className="border-b border-white/20 hover:bg-white/10 transition-colors"
+                      >
+                        {editingPosition === position.id ? (
+                          <>
+                            <td className="p-5 font-bold drop-shadow">
+                              {position.id}
+                            </td>
+                            <td className="p-5">
+                              <input
+                                type="text"
+                                value={editData.descripcion}
+                                onChange={(e) =>
+                                  setEditData({
+                                    ...editData,
+                                    descripcion: e.target.value,
+                                  })
+                                }
+                                className="w-full px-4 py-2 rounded-lg bg-white/20 border-2 border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium"
+                                placeholder="Descripción de la posición"
+                              />
+                            </td>
+                            <td className="p-5">
+                              <div className="flex gap-2 justify-center">
+                                <button
+                                  onClick={saveEdit}
+                                  disabled={isLoading}
+                                  className="bg-green-500/80 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold transition-colors duration-300 shadow-lg border-2 border-green-400/50"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="bg-gray-500/80 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold transition-colors duration-300 shadow-lg border-2 border-gray-400/50"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-5">
+                              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white font-bold shadow-lg">
+                                {position.id}
+                              </span>
+                            </td>
+                            <td className="p-5">
+                              <span className="text-lg font-bold drop-shadow">
+                                {position.description}
+                              </span>
+                            </td>
+                            <td className="p-5">
+                              <div className="flex gap-2 justify-center">
+                                <button
+                                  onClick={() => handleEdit(position)}
+                                  className="bg-yellow-500/80 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold transition-colors duration-300 shadow-lg border-2 border-yellow-400/50"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => deletePosition(position.id)}
+                                  className="bg-red-500/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold transition-colors duration-300 shadow-lg border-2 border-red-400/50"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default PositionReadUpdateDelete;
+export default CrudPositions;

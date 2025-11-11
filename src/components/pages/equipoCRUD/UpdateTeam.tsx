@@ -19,6 +19,9 @@ interface Player {
   position: unknown;
   esTitular?: boolean;
   puntaje?: number;
+  club?: number; // ID del club
+  clubName?: string; // Nombre del club
+  clubLogo?: string; // Logo del club
 }
 
 // ✅ Funciones auxiliares fuera del componente (estables)
@@ -106,11 +109,13 @@ const AvailablePlayerItem = memo(
     canSwap,
     isInterchangeMode,
     onPlayerClick,
+    onInfoClick,
   }: {
     player: Player;
     canSwap: boolean;
     isInterchangeMode: boolean;
     onPlayerClick: (player: Player) => void;
+    onInfoClick: (player: Player) => void;
   }) => {
     const playerName = getPlayerDisplayName(player);
     const positionName = getPositionDisplayName(player.position);
@@ -122,47 +127,78 @@ const AvailablePlayerItem = memo(
             ? 'bg-gradient-to-r from-green-500/25 to-emerald-500/25 hover:from-green-500/40 hover:to-emerald-500/40 cursor-pointer border-2 border-green-400/60 shadow-lg transform hover:scale-[1.02] hover:shadow-green-500/20'
             : isInterchangeMode && !canSwap
             ? 'bg-white/5 opacity-40 cursor-not-allowed'
-            : 'bg-white/10 hover:bg-white/15 cursor-default border border-white/10'
+            : 'bg-white/10 hover:bg-white/15 border border-white/10'
         }`}
-        onClick={() => onPlayerClick(player)}
       >
-        <div className="relative">
-          <img
-            src={player.photo}
-            alt={playerName}
-            className="w-14 h-14 rounded-full object-cover border-2 border-white/40 shadow-lg"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src =
-                'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
-            }}
-          />
-          {isInterchangeMode && canSwap && (
-            <div className="absolute -top-1 -right-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
-              <svg
-                className="w-3 h-3 text-white"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
+        <div
+          className="flex items-center gap-3 flex-1 min-w-0"
+          onClick={() => isInterchangeMode && canSwap && onPlayerClick(player)}
+        >
+          <div className="relative">
+            <img
+              src={player.photo}
+              alt={playerName}
+              className="w-14 h-14 rounded-full object-cover border-2 border-white/40 shadow-lg"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src =
+                  'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
+              }}
+            />
+            {isInterchangeMode && canSwap && (
+              <div className="absolute -top-1 -right-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white truncate">
+              {playerName}
+            </p>
+            <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
+              <span className="truncate">{player.nationality}</span>
+              <span>•</span>
+              <span>{player.age} años</span>
+              <span>•</span>
+              <span className="truncate">{positionName}</span>
             </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-white truncate">{playerName}</p>
-          <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
-            <span className="truncate">{player.nationality}</span>
-            <span>•</span>
-            <span>{player.age} años</span>
-            <span>•</span>
-            <span className="truncate">{positionName}</span>
           </div>
         </div>
+
+        {/* Botón de información */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onInfoClick(player);
+          }}
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-500/20 hover:bg-blue-500/40 border border-blue-400/40 hover:border-blue-400/80 transition-all duration-200 group"
+          title="Ver información detallada"
+        >
+          <svg
+            className="w-4 h-4 text-blue-400 group-hover:text-blue-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </button>
+
         {isInterchangeMode && canSwap && (
           <div className="text-green-400 font-bold text-xs whitespace-nowrap bg-green-500/20 px-2 py-1 rounded-lg">
             Intercambiar
@@ -193,7 +229,9 @@ AvailablePlayerItem.displayName = 'AvailablePlayerItem';
 // ✅ Interfaz Club también fuera
 interface Club {
   id: number;
+  id_api: number;
   nombre: string;
+  logo: string;
 }
 
 // ✅ Interfaz BackendPlayerResponse también fuera
@@ -238,6 +276,11 @@ const UpdateTeam = () => {
   const [selectedPlayerForSwap, setSelectedPlayerForSwap] =
     useState<Player | null>(null);
 
+  // Estado para el modal de información del jugador
+  const [selectedPlayerInfo, setSelectedPlayerInfo] = useState<Player | null>(
+    null
+  );
+
   // Estado para notificaciones
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning' | 'info';
@@ -253,8 +296,26 @@ const UpdateTeam = () => {
         console.log('✅ CLUBES CARGADOS:', response.data);
         // La respuesta puede venir en response.data.data o response.data directamente
         if (response.data && response.data.data) {
+          console.log(
+            '📊 Clubes con logos:',
+            response.data.data.map((c: Club) => ({
+              id: c.id,
+              id_api: c.id_api,
+              nombre: c.nombre,
+              logo: c.logo,
+            }))
+          );
           setClubs(response.data.data);
         } else if (response.data && Array.isArray(response.data)) {
+          console.log(
+            '📊 Clubes con logos:',
+            response.data.map((c: Club) => ({
+              id: c.id,
+              id_api: c.id_api,
+              nombre: c.nombre,
+              logo: c.logo,
+            }))
+          );
           setClubs(response.data);
         }
       } catch (error) {
@@ -311,11 +372,13 @@ const UpdateTeam = () => {
                   'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=⚽',
                 jerseyNumber: jugador.jerseyNumber || 0,
                 position: jugador.position || '',
+                club: jugador.club || undefined,
               };
 
               // Debug: Log del primer jugador para verificar estructura
               if (index === 0) {
                 console.log('📋 Ejemplo de jugador mapeado:', mappedPlayer);
+                console.log('🏢 Club del jugador:', jugador.club);
               }
 
               return mappedPlayer;
@@ -495,6 +558,7 @@ const UpdateTeam = () => {
                 jerseyNumber: jugador.jerseyNumber || 0,
                 position: jugador.position || '',
                 esTitular: item.es_titular, // ✅ Flag de titular/suplente
+                club: jugador.club || undefined,
               };
             }
           );
@@ -531,61 +595,101 @@ const UpdateTeam = () => {
             if (historialData.length > 0) {
               // Ordenar por jornadaId descendente y tomar la primera
               const ordenado = historialData.sort(
-                (a: { jornada?: { id: number } }, b: { jornada?: { id: number } }) =>
-                  (b.jornada?.id || 0) - (a.jornada?.id || 0)
+                (
+                  a: { jornada?: { id: number } },
+                  b: { jornada?: { id: number } }
+                ) => (b.jornada?.id || 0) - (a.jornada?.id || 0)
               );
               const ultimaJornada = ordenado[0];
               const jornadaId = ultimaJornada?.jornada?.id;
 
               if (jornadaId) {
-                console.log('📅 [UpdateTeam] Última jornada encontrada:', jornadaId);
+                console.log(
+                  '📅 [UpdateTeam] Última jornada encontrada:',
+                  jornadaId
+                );
 
                 // Obtener detalles de esa jornada para traer los puntajes
                 const detalleResponse = await apiClient.get(
                   `/equipos/${equipoId}/jornadas/${jornadaId}`
                 );
-                const detalle = detalleResponse.data?.data || detalleResponse.data;
+                const detalle =
+                  detalleResponse.data?.data || detalleResponse.data;
 
                 if (detalle?.jugadores) {
-                  console.log('🎯 [UpdateTeam] Jugadores con puntajes:', detalle.jugadores);
-                  console.log('🎯 [UpdateTeam] Jugadores actuales:', mappedPlayers.map((p: Player) => ({ name: p.name, id: p.id, apiId: p.apiId })));
+                  console.log(
+                    '🎯 [UpdateTeam] Jugadores con puntajes:',
+                    detalle.jugadores
+                  );
+                  console.log(
+                    '🎯 [UpdateTeam] Jugadores actuales:',
+                    mappedPlayers.map((p: Player) => ({
+                      name: p.name,
+                      id: p.id,
+                      apiId: p.apiId,
+                    }))
+                  );
 
                   // Mapear puntajes a los jugadores actuales
-                  const jugadoresConPuntajes = mappedPlayers.map((player: Player) => {
-                    // Intentar buscar por diferentes campos
-                    const jugadorConPuntaje = detalle.jugadores.find(
-                      (j: { nombre?: string; name?: string; nombreCompleto?: string; id?: number; apiId?: number }) => {
-                        // Comparar por nombre
-                        const nombreMatch = j.nombre === player.name || j.name === player.name || j.nombreCompleto === player.name;
-                        // O comparar por ID si está disponible
-                        const idMatch = (j.id && j.id === player.id) || (j.apiId && j.apiId === player.apiId);
-                        
-                        const match = nombreMatch || idMatch;
-                        if (match) {
-                          console.log(`✅ [UpdateTeam] Match encontrado para ${player.name}:`, j);
-                        }
-                        return match;
-                      }
-                    );
-                    
-                    if (!jugadorConPuntaje) {
-                      console.log(`⚠️ [UpdateTeam] No se encontró puntaje para ${player.name}`);
-                    }
-                    
-                    return {
-                      ...player,
-                      puntaje: jugadorConPuntaje?.puntaje || 0,
-                    };
-                  });
+                  const jugadoresConPuntajes = mappedPlayers.map(
+                    (player: Player) => {
+                      // Intentar buscar por diferentes campos
+                      const jugadorConPuntaje = detalle.jugadores.find(
+                        (j: {
+                          nombre?: string;
+                          name?: string;
+                          nombreCompleto?: string;
+                          id?: number;
+                          apiId?: number;
+                        }) => {
+                          // Comparar por nombre
+                          const nombreMatch =
+                            j.nombre === player.name ||
+                            j.name === player.name ||
+                            j.nombreCompleto === player.name;
+                          // O comparar por ID si está disponible
+                          const idMatch =
+                            (j.id && j.id === player.id) ||
+                            (j.apiId && j.apiId === player.apiId);
 
-                  console.log('✅ [UpdateTeam] Jugadores con puntajes mapeados:', jugadoresConPuntajes);
+                          const match = nombreMatch || idMatch;
+                          if (match) {
+                            console.log(
+                              `✅ [UpdateTeam] Match encontrado para ${player.name}:`,
+                              j
+                            );
+                          }
+                          return match;
+                        }
+                      );
+
+                      if (!jugadorConPuntaje) {
+                        console.log(
+                          `⚠️ [UpdateTeam] No se encontró puntaje para ${player.name}`
+                        );
+                      }
+
+                      return {
+                        ...player,
+                        puntaje: jugadorConPuntaje?.puntaje || 0,
+                      };
+                    }
+                  );
+
+                  console.log(
+                    '✅ [UpdateTeam] Jugadores con puntajes mapeados:',
+                    jugadoresConPuntajes
+                  );
                   setTeamPlayers(jugadoresConPuntajes);
                   return; // Salir temprano si se logró mapear puntajes
                 }
               }
             }
           } catch (historialError) {
-            console.warn('⚠️ [UpdateTeam] No se pudieron obtener los puntajes:', historialError);
+            console.warn(
+              '⚠️ [UpdateTeam] No se pudieron obtener los puntajes:',
+              historialError
+            );
             // Continuar sin puntajes
           }
 
@@ -971,7 +1075,7 @@ const UpdateTeam = () => {
 
       <div className="relative flex px-4 h-screen items-center justify-center gap-3 pt-20 pb-3 overflow-hidden">
         {/* Rectángulo Izquierdo - Estadísticas */}
-        <div className="hidden lg:flex team-summary-card w-full max-w-[320px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
+        <div className="hidden lg:flex team-summary-card w-full max-w-[420px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
           <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
             <h2 className="text-base font-bold text-center text-white">
               Estadísticas del Equipo
@@ -980,8 +1084,10 @@ const UpdateTeam = () => {
           <div className="space-y-2 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-1">
             {/* Calcular estadísticas */}
             {(() => {
-              const jugadoresConPuntos = teamPlayers.filter(p => (p.puntaje || 0) > 0);
-              
+              const jugadoresConPuntos = teamPlayers.filter(
+                (p) => (p.puntaje || 0) > 0
+              );
+
               if (jugadoresConPuntos.length === 0) {
                 return (
                   <div className="flex items-center justify-center h-full">
@@ -992,10 +1098,17 @@ const UpdateTeam = () => {
                 );
               }
 
-              const puntajeTotal = jugadoresConPuntos.reduce((sum, p) => sum + (p.puntaje || 0), 0);
+              const puntajeTotal = jugadoresConPuntos.reduce(
+                (sum, p) => sum + (p.puntaje || 0),
+                0
+              );
               const promedio = puntajeTotal / jugadoresConPuntos.length;
-              const maxPuntaje = Math.max(...jugadoresConPuntos.map(p => p.puntaje || 0));
-              const minPuntaje = Math.min(...jugadoresConPuntos.map(p => p.puntaje || 0));
+              const maxPuntaje = Math.max(
+                ...jugadoresConPuntos.map((p) => p.puntaje || 0)
+              );
+              const minPuntaje = Math.min(
+                ...jugadoresConPuntos.map((p) => p.puntaje || 0)
+              );
 
               // Mejores jugadores
               const mejoresJugadores = [...jugadoresConPuntos]
@@ -1011,20 +1124,30 @@ const UpdateTeam = () => {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white/10 rounded-lg p-3">
-                        <p className="text-white/70 text-xs mb-1">Puntaje Total</p>
-                        <p className="text-2xl font-bold text-white">{puntajeTotal.toFixed(1)}</p>
+                        <p className="text-white/70 text-xs mb-1">
+                          Puntaje Total
+                        </p>
+                        <p className="text-2xl font-bold text-white">
+                          {puntajeTotal.toFixed(1)}
+                        </p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3">
                         <p className="text-white/70 text-xs mb-1">Promedio</p>
-                        <p className="text-2xl font-bold text-white">{promedio.toFixed(1)}</p>
+                        <p className="text-2xl font-bold text-white">
+                          {promedio.toFixed(1)}
+                        </p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3">
                         <p className="text-white/70 text-xs mb-1">Máximo</p>
-                        <p className="text-2xl font-bold text-green-400">{maxPuntaje.toFixed(1)}</p>
+                        <p className="text-2xl font-bold text-green-400">
+                          {maxPuntaje.toFixed(1)}
+                        </p>
                       </div>
                       <div className="bg-white/10 rounded-lg p-3">
                         <p className="text-white/70 text-xs mb-1">Mínimo</p>
-                        <p className="text-2xl font-bold text-red-400">{minPuntaje.toFixed(1)}</p>
+                        <p className="text-2xl font-bold text-red-400">
+                          {minPuntaje.toFixed(1)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1036,7 +1159,10 @@ const UpdateTeam = () => {
                     </h3>
                     <div className="space-y-2.5">
                       {mejoresJugadores.map((player, index) => (
-                        <div key={player.id} className="flex items-center gap-3 bg-white/10 rounded-lg p-2.5">
+                        <div
+                          key={player.id}
+                          className="flex items-center gap-3 bg-white/10 rounded-lg p-2.5"
+                        >
                           <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-yellow-400 to-orange-400 text-white font-bold text-sm flex-shrink-0">
                             {index + 1}
                           </div>
@@ -1046,7 +1172,8 @@ const UpdateTeam = () => {
                             className="w-10 h-10 rounded-full object-cover border-2 border-white/40 flex-shrink-0"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = 'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
+                              target.src =
+                                'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
                             }}
                           />
                           <div className="flex-1 min-w-0">
@@ -1058,7 +1185,9 @@ const UpdateTeam = () => {
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-lg font-bold text-white">{(player.puntaje || 0).toFixed(1)}</p>
+                            <p className="text-lg font-bold text-white">
+                              {(player.puntaje || 0).toFixed(1)}
+                            </p>
                             <p className="text-white/60 text-xs">pts</p>
                           </div>
                         </div>
@@ -1069,7 +1198,14 @@ const UpdateTeam = () => {
                   {/* Info adicional */}
                   <div className="bg-white/10 rounded-lg p-3 text-center flex-shrink-0">
                     <p className="text-white/70 text-xs">
-                      Jugadores con puntos: <span className="font-bold text-white">{jugadoresConPuntos.length}</span> / <span className="font-bold text-white">{teamPlayers.length}</span>
+                      Jugadores con puntos:{' '}
+                      <span className="font-bold text-white">
+                        {jugadoresConPuntos.length}
+                      </span>{' '}
+                      /{' '}
+                      <span className="font-bold text-white">
+                        {teamPlayers.length}
+                      </span>
                     </p>
                   </div>
                 </>
@@ -1079,7 +1215,7 @@ const UpdateTeam = () => {
         </div>
 
         {/* Tarjeta Central - Mi Equipo */}
-        <div className="team-summary-card w-full max-w-xs sm:max-w-sm lg:max-w-md p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex flex-col">
+        <div className="team-summary-card w-full max-w-xs sm:max-w-sm lg:max-w-xl p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex flex-col">
           <div className="border-b border-white/20 pb-2 mb-3 flex-shrink-0">
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-center text-white">
               Mi Equipo
@@ -1110,7 +1246,7 @@ const UpdateTeam = () => {
                   selectedPlayerId={selectedPlayerForSwap?.id}
                 />
               </div>
-              
+
               {/* Indicador de puntajes */}
               {titulares.some((p) => (p.puntaje || 0) > 0) && (
                 <div className="text-center flex-shrink-0">
@@ -1218,7 +1354,7 @@ const UpdateTeam = () => {
         </div>
 
         {/* Rectángulo Derecho - FILTROS FUNCIONALES */}
-        <div className="hidden lg:flex team-summary-card w-full max-w-[320px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
+        <div className="hidden lg:flex team-summary-card w-full max-w-[420px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
           <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
             <h2 className="text-base font-bold text-center text-white">
               Jugadores Disponibles
@@ -1226,7 +1362,10 @@ const UpdateTeam = () => {
           </div>
 
           {/* Buscador por nombre */}
-          <form onSubmit={(e) => e.preventDefault()} className="mb-2 flex-shrink-0">
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="mb-2 flex-shrink-0"
+          >
             <div className="relative">
               <input
                 type="text"
@@ -1373,6 +1512,7 @@ const UpdateTeam = () => {
                         canSwap={canSwap}
                         isInterchangeMode={isInterchangeMode}
                         onPlayerClick={handleAvailablePlayerClick}
+                        onInfoClick={(p) => setSelectedPlayerInfo(p)}
                       />
                     );
                   })}
@@ -1404,6 +1544,225 @@ const UpdateTeam = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Información del Jugador */}
+      {selectedPlayerInfo && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPlayerInfo(null)}
+        >
+          <div
+            className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 rounded-2xl shadow-2xl max-w-md w-full border-2 border-white/20 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del modal */}
+            <div className="relative bg-gradient-to-r from-blue-600/30 to-purple-600/30 p-6 border-b border-white/10">
+              <button
+                onClick={() => setSelectedPlayerInfo(null)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
+              >
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-4">
+                <img
+                  src={selectedPlayerInfo.photo}
+                  alt={getPlayerDisplayName(selectedPlayerInfo)}
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white/20 shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src =
+                      'https://via.placeholder.com/80x80/4F46E5/FFFFFF?text=?';
+                  }}
+                />
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-white mb-1">
+                    {getPlayerDisplayName(selectedPlayerInfo)}
+                  </h2>
+                  <p className="text-blue-300 font-semibold">
+                    {getPositionDisplayName(selectedPlayerInfo.position)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenido del modal */}
+            <div className="p-6 space-y-4">
+              {/* Información básica */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <p className="text-white/60 text-xs mb-1">Edad</p>
+                  <p className="text-white text-lg font-bold">
+                    {selectedPlayerInfo.age} años
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <p className="text-white/60 text-xs mb-1">Club</p>
+                  <div className="flex items-center justify-center h-12">
+                    {selectedPlayerInfo.club ? (
+                      (() => {
+                        console.log(
+                          '🔍 DEBUG - Club del jugador:',
+                          selectedPlayerInfo.club
+                        );
+                        console.log(
+                          '🔍 DEBUG - Tipo de club:',
+                          typeof selectedPlayerInfo.club
+                        );
+
+                        // Extraer el ID del club (puede ser un objeto o un número)
+                        let clubId: number | undefined;
+                        if (
+                          typeof selectedPlayerInfo.club === 'object' &&
+                          selectedPlayerInfo.club !== null
+                        ) {
+                          const clubObj = selectedPlayerInfo.club as {
+                            id?: number;
+                            id_api?: number;
+                          };
+                          clubId = clubObj.id_api || clubObj.id;
+                          console.log(
+                            '🔍 DEBUG - Club es objeto, ID extraído:',
+                            clubId
+                          );
+                        } else if (
+                          typeof selectedPlayerInfo.club === 'number'
+                        ) {
+                          clubId = selectedPlayerInfo.club;
+                          console.log('🔍 DEBUG - Club es número:', clubId);
+                        }
+
+                        if (!clubId) {
+                          return (
+                            <span className="text-white/50 text-xs">
+                              ID de club inválido
+                            </span>
+                          );
+                        }
+
+                        // Buscar el club por id_api
+                        const club = clubs.find((c) => c.id_api === clubId);
+                        console.log('🔍 DEBUG - Club encontrado:', club);
+
+                        if (club) {
+                          console.log('🔍 DEBUG - Logo del club:', club.logo);
+                          return (
+                            <img
+                              src={club.logo}
+                              alt={club.nombre}
+                              className="h-10 w-10 object-contain"
+                              onError={(e) => {
+                                console.error(
+                                  '❌ Error cargando logo:',
+                                  club.logo
+                                );
+                                const target = e.target as HTMLImageElement;
+                                target.src =
+                                  'https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=?';
+                              }}
+                              onLoad={() =>
+                                console.log('✅ Logo cargado correctamente')
+                              }
+                              title={club.nombre}
+                            />
+                          );
+                        } else {
+                          return (
+                            <span className="text-white/50 text-xs">
+                              Club no encontrado (ID: {clubId})
+                            </span>
+                          );
+                        }
+                      })()
+                    ) : (
+                      <span className="text-white/50 text-xs">
+                        Sin club asignado
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nacionalidad */}
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <p className="text-white/60 text-xs mb-1">Nacionalidad</p>
+                <p className="text-white text-base font-semibold">
+                  {selectedPlayerInfo.nationality}
+                </p>
+              </div>
+
+              {/* Físico */}
+              {(selectedPlayerInfo.height || selectedPlayerInfo.weight) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedPlayerInfo.height && (
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <p className="text-white/60 text-xs mb-1">Altura</p>
+                      <p className="text-white text-base font-bold">
+                        {selectedPlayerInfo.height} cm
+                      </p>
+                    </div>
+                  )}
+                  {selectedPlayerInfo.weight && (
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <p className="text-white/60 text-xs mb-1">Peso</p>
+                      <p className="text-white text-base font-bold">
+                        {selectedPlayerInfo.weight} kg
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Puntaje (si está disponible) */}
+              {selectedPlayerInfo.puntaje !== undefined && (
+                <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-400/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-300 text-xs mb-1">
+                        Puntaje Promedio
+                      </p>
+                      <p className="text-white text-3xl font-bold">
+                        {selectedPlayerInfo.puntaje.toFixed(1)}
+                      </p>
+                    </div>
+                    <div className="text-4xl">⭐</div>
+                  </div>
+                </div>
+              )}
+
+              {/* API ID */}
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <p className="text-white/60 text-xs mb-1">ID del Jugador</p>
+                <p className="text-white/80 text-sm font-mono">
+                  #{selectedPlayerInfo.apiId}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer con botón de cerrar */}
+            <div className="p-4 bg-white/5 border-t border-white/10">
+              <button
+                onClick={() => setSelectedPlayerInfo(null)}
+                className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -46,9 +46,13 @@ function Login() {
 
       setMessage({ type: 'success', text: 'Login exitoso! Redirigiendo...' });
 
-      // Redirigir al usuario logueado
+      // Redirigir según el rol del usuario
       setTimeout(() => {
-        navigate('/LoggedMenu');
+        if (userData.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/LoggedMenu');
+        }
       }, 1000);
     } catch (error) {
       console.error('Error al hacer login:', error);

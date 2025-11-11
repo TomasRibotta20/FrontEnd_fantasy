@@ -24,7 +24,7 @@ const GestionJornadasAdmin = () => {
 
   // Debug: Verificar cambios en config
   useEffect(() => {
-    console.log('📊 Config actualizada:', JSON.stringify(config));
+    console.log('[CONFIG] Actualizada:', JSON.stringify(config));
   }, [config]);
 
   useEffect(() => {
@@ -72,12 +72,12 @@ const GestionJornadasAdmin = () => {
 
   const loadConfig = async () => {
     try {
-      console.log('🔍 Cargando configuración del servidor...');
+      console.log('[CONFIG] Cargando configuración del servidor...');
       const data = await adminService.getConfig();
 
       // Verificar si recibimos datos válidos
       if (data && typeof data === 'object') {
-        console.log('📥 Configuración recibida del servidor');
+        console.log('[CONFIG] Configuración recibida del servidor');
 
         // Extraer jornadaActiva - puede venir como número o como objeto con id
         let jornadaActivaId: number | null = null;
@@ -107,14 +107,14 @@ const GestionJornadasAdmin = () => {
         };
 
         console.log(
-          '✅ Config actualizada: jornadaActiva=' +
+          '[CONFIG] Actualizada: jornadaActiva=' +
             newConfig.jornadaActiva +
             ', modificaciones=' +
             newConfig.modificacionesHabilitadas
         );
         setConfig(newConfig);
       } else {
-        console.warn('⚠️ Datos de configuración inválidos');
+        console.warn('[CONFIG] Datos de configuración inválidos');
       }
     } catch (err) {
       const statusCode = (err as { response?: { status: number } })?.response
@@ -122,16 +122,16 @@ const GestionJornadasAdmin = () => {
 
       if (statusCode === 404) {
         console.warn(
-          '⚠️ Endpoint /api/admin/config no existe - el backend debe implementarlo'
+          '[CONFIG] Endpoint /api/admin/config no existe - el backend debe implementarlo'
         );
       } else if (statusCode === 401 || statusCode === 403) {
-        console.warn('⚠️ Sin autorización para obtener configuración');
+        console.warn('[CONFIG] Sin autorización para obtener configuración');
       } else {
-        console.error('❌ Error al cargar configuración:', err);
+        console.error('[CONFIG] Error al cargar configuración:', err);
       }
 
       // Mantener valores por defecto si no podemos cargar del servidor
-      console.log('📌 Usando configuración por defecto');
+      console.log('[CONFIG] Usando configuración por defecto');
     }
   };
 
@@ -150,7 +150,7 @@ const GestionJornadasAdmin = () => {
       const jornadaIdNum = parseInt(jornadaIdInput);
 
       // Actualizar UI optimísticamente
-      console.log('🔄 Actualizando config con jornadaActiva: ' + jornadaIdNum);
+      console.log('[JORNADA] Actualizando config con jornadaActiva: ' + jornadaIdNum);
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: jornadaIdNum,
         modificacionesHabilitadas: config.modificacionesHabilitadas,
@@ -159,9 +159,9 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor para confirmar
       await adminService.setJornadaActiva(jornadaIdInput);
-      console.log('✅ Jornada activa establecida en el servidor');
+      console.log('[JORNADA] Jornada activa establecida en el servidor');
 
-      setSuccess(`✅ Jornada ${jornadaIdInput} establecida como activa`);
+      setSuccess(`Jornada ${jornadaIdInput} establecida como activa`);
       setJornadaIdInput('');
 
       // Recargar jornadas para ver el cambio del flag "activa"
@@ -170,8 +170,8 @@ const GestionJornadasAdmin = () => {
       // Auto-ocultar mensaje después de 5 segundos
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      console.error('❌ Error al establecer jornada activa:', err);
-      setError(`❌ Error al establecer jornada ${jornadaIdInput} como activa`);
+      console.error('[JORNADA] Error al establecer jornada activa:', err);
+      setError(`Error al establecer jornada ${jornadaIdInput} como activa`);
 
       // Revertir cambio local si falló en el servidor
       setConfig({
@@ -192,7 +192,7 @@ const GestionJornadasAdmin = () => {
       setSuccess(null);
 
       // Actualizar UI optimísticamente
-      console.log('🔒 Bloqueando modificaciones...');
+      console.log('[MODIFICACIONES] Bloqueando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
         modificacionesHabilitadas: false,
@@ -201,16 +201,16 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor
       await adminService.deshabilitarModificaciones();
-      console.log('✅ Modificaciones bloqueadas en el servidor');
+      console.log('[MODIFICACIONES] Modificaciones bloqueadas en el servidor');
 
       setSuccess(
-        '🔒 Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos'
+        'Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos'
       );
 
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      console.error('❌ Error al bloquear modificaciones:', err);
-      setError('❌ Error al bloquear modificaciones');
+      console.error('[MODIFICACIONES] Error al bloquear modificaciones:', err);
+      setError('Error al bloquear modificaciones');
 
       // Revertir cambio si falló
       setConfig({
@@ -231,7 +231,7 @@ const GestionJornadasAdmin = () => {
       setSuccess(null);
 
       // Actualizar UI optimísticamente
-      console.log('✅ Habilitando modificaciones...');
+      console.log('[MODIFICACIONES] Habilitando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
         modificacionesHabilitadas: true,
@@ -240,16 +240,16 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor
       await adminService.habilitarModificaciones();
-      console.log('✅ Modificaciones habilitadas en el servidor');
+      console.log('[MODIFICACIONES] Modificaciones habilitadas en el servidor');
 
       setSuccess(
-        '✅ Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos'
+        'Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos'
       );
 
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      console.error('❌ Error al habilitar modificaciones:', err);
-      setError('❌ Error al habilitar modificaciones');
+      console.error('[MODIFICACIONES] Error al habilitar modificaciones:', err);
+      setError('Error al habilitar modificaciones');
 
       // Revertir cambio si falló
       setConfig({
@@ -266,32 +266,55 @@ const GestionJornadasAdmin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Botón volver */}
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-lg text-white px-4 py-2 rounded-lg font-bold transition-all border-2 border-white/30 hover:border-white/50 drop-shadow-md"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Volver
+          </button>
+        </div>
+
         <h1 className="text-4xl font-bold text-white mb-8">
-          🏆 Gestión de Jornadas - Admin
+          Gestión de Jornadas - Admin
         </h1>
 
         {/* Guía Rápida */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-lg mb-6 border-2 border-white/30">
           <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
-            💡 Guía Rápida de Uso
+            Guía Rápida de Uso
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">1️⃣ Activar Jornada</p>
+              <p className="font-bold mb-1">1. Activar Jornada</p>
               <p className="text-xs">
                 Selecciona una jornada y haz click en "Activar". Los usuarios
                 podrán configurar sus equipos.
               </p>
             </div>
             <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">2️⃣ Gestionar Modificaciones</p>
+              <p className="font-bold mb-1">2. Gestionar Modificaciones</p>
               <p className="text-xs">
                 Usa "Habilitar/Deshabilitar Modificaciones" para controlar si
                 los usuarios pueden cambiar sus equipos.
               </p>
             </div>
             <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">3️⃣ Procesar Puntos</p>
+              <p className="font-bold mb-1">3. Procesar Puntos</p>
               <p className="text-xs">
                 Una vez finalizada la jornada, usa "Ver Detalle" → "Procesar
                 Jornada" para calcular puntos.
@@ -304,7 +327,6 @@ const GestionJornadasAdmin = () => {
         {error && (
           <div className="bg-red-600 text-white p-6 rounded-lg mb-6 flex items-center justify-between shadow-2xl border-2 border-red-400 animate-pulse">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">❌</span>
               <span className="text-lg font-bold">{error}</span>
             </div>
             <button
@@ -319,7 +341,6 @@ const GestionJornadasAdmin = () => {
         {success && (
           <div className="bg-green-600 text-white p-6 rounded-lg mb-6 flex items-center justify-between shadow-2xl border-2 border-green-400 animate-pulse">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">✅</span>
               <span className="text-lg font-bold">{success}</span>
             </div>
             <button
@@ -334,7 +355,7 @@ const GestionJornadasAdmin = () => {
         {/* Configuración Actual */}
         <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 mb-8 border-2 border-white/30 shadow-2xl">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            📋 Configuración Actual del Sistema
+            Configuración Actual del Sistema
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border-2 border-white/30">
@@ -345,7 +366,6 @@ const GestionJornadasAdmin = () => {
                 <p className="text-white text-4xl font-bold">
                   {config.jornadaActiva || 'Ninguna'}
                 </p>
-                {config.jornadaActiva && <span className="text-2xl">🎯</span>}
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border-2 border-white/30">
@@ -361,8 +381,8 @@ const GestionJornadasAdmin = () => {
                   }`}
                 >
                   {config.modificacionesHabilitadas
-                    ? '🟢 Habilitadas'
-                    : '🔴 Bloqueadas'}
+                    ? 'Habilitadas'
+                    : 'Bloqueadas'}
                 </p>
               </div>
             </div>
@@ -372,7 +392,7 @@ const GestionJornadasAdmin = () => {
         {/* Controles de Administración */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
           <h2 className="text-2xl font-bold text-white mb-4">
-            ⚙️ Controles de Sistema
+            Controles de Sistema
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,7 +414,7 @@ const GestionJornadasAdmin = () => {
                   disabled={loading}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all flex items-center gap-2"
                 >
-                  {loading ? '⏳ Activando...' : '🎯 Activar'}
+                  {loading ? 'Activando...' : 'Activar'}
                 </button>
               </div>
             </div>
@@ -410,14 +430,14 @@ const GestionJornadasAdmin = () => {
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? '⏳' : '✓'} Habilitar
+                  {loading ? 'Cargando...' : 'Habilitar'}
                 </button>
                 <button
                   onClick={handleDeshabilitarModificaciones}
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? '⏳' : '🔒'} Bloquear
+                  {loading ? 'Cargando...' : 'Bloquear'}
                 </button>
               </div>
             </div>
@@ -439,7 +459,7 @@ const GestionJornadasAdmin = () => {
               disabled={loading}
               className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold disabled:opacity-50"
             >
-              🔄 Recargar
+              Recargar
             </button>
           </div>
         </div>
@@ -447,12 +467,12 @@ const GestionJornadasAdmin = () => {
         {/* Lista de Jornadas */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <h2 className="text-2xl font-bold text-white mb-6">
-            📅 Jornadas Disponibles
+            Jornadas Disponibles
           </h2>
 
           {loading && jornadas.length === 0 ? (
             <div className="text-center text-white py-12">
-              <div className="animate-spin text-6xl mb-4">⚽</div>
+              <div className="animate-spin text-6xl mb-4">⚪</div>
               <p>Cargando jornadas...</p>
             </div>
           ) : jornadas.length === 0 ? (
@@ -485,7 +505,7 @@ const GestionJornadasAdmin = () => {
                         )}
                         {jornada.puntosCalculados && (
                           <span className="px-3 py-1 bg-blue-500 text-white text-sm font-bold rounded-full">
-                            ✓ PROCESADA
+                            PROCESADA
                           </span>
                         )}
                       </div>
@@ -509,10 +529,12 @@ const GestionJornadasAdmin = () => {
 
                     <div className="flex justify-center mt-4">
                       <button
-                        onClick={() => navigate(`/admin/jornadas/${jornada.id}/detalle`)}
+                        onClick={() =>
+                          navigate(`/admin/jornadas/${jornada.id}/detalle`)
+                        }
                         className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
                       >
-                        👁️ Ver Detalle
+                        Ver Detalle
                       </button>
                     </div>
                   </div>

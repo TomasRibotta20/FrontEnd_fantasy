@@ -44,7 +44,7 @@ const AdminPage = () => {
       title: 'Gestión de Equipos',
       description: 'Administrar equipos de usuarios',
       icon: '🛡️',
-      route: '/UpdateTeam',
+      route: '/admin/equipos',
       color: 'from-indigo-500 to-blue-500',
     },
     {
@@ -69,16 +69,18 @@ const AdminPage = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
+        {/* Header mejorado */}
+        <div className="text-center mb-10">
+          <h1 className="text-5xl font-bold text-white mb-3 drop-shadow-lg">
             Panel de Administración
           </h1>
-          <p className="text-white/80 text-lg">
+          <p className="text-white text-lg drop-shadow">
             Gestiona todos los aspectos de tu aplicación Fantasy Football
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        {/* Cards de administración */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-10">
           {adminCards.map((card, index) => (
             <div
               key={index}
@@ -90,23 +92,25 @@ const AdminPage = () => {
                 animationFillMode: 'backwards',
               }}
             >
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-white/40 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full">
+              <div className="bg-white/15 backdrop-blur-lg rounded-2xl p-7 border-2 border-white/30 hover:border-white/60 transition-all duration-300 hover:shadow-2xl h-full hover:bg-white/20">
                 <div
-                  className={`bg-gradient-to-br ${card.color} rounded-xl p-4 mb-4 inline-block`}
+                  className={`bg-gradient-to-br ${card.color} rounded-xl p-4 mb-5 inline-block shadow-lg`}
                 >
-                  <span className="text-4xl">{card.icon}</span>
+                  <span className="text-5xl drop-shadow-lg">{card.icon}</span>
                 </div>
 
-                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-md leading-tight">
                   {card.title}
                 </h3>
 
-                <p className="text-white/70 mb-4">{card.description}</p>
+                <p className="text-white/90 text-base mb-5 leading-relaxed drop-shadow">
+                  {card.description}
+                </p>
 
-                <div className="flex items-center text-blue-400 font-semibold group-hover:text-blue-300 transition-colors">
-                  <span>Acceder</span>
+                <div className="flex items-center text-blue-300 font-bold group-hover:text-blue-200 transition-colors">
+                  <span className="drop-shadow">Acceder</span>
                   <svg
-                    className="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform"
+                    className="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform drop-shadow"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -114,7 +118,7 @@ const AdminPage = () => {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       d="M9 5l7 7-7 7"
                     />
                   </svg>
@@ -122,39 +126,6 @@ const AdminPage = () => {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Estadísticas rápidas */}
-        <div className="mt-12 max-w-7xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-            <h2 className="text-3xl font-bold text-white mb-6 text-center">
-              Estadísticas del Sistema
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-400 mb-2">---</div>
-                <div className="text-white/70">Total Usuarios</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-green-400 mb-2">
-                  ---
-                </div>
-                <div className="text-white/70">Jugadores Registrados</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-400 mb-2">
-                  ---
-                </div>
-                <div className="text-white/70">Clubes Activos</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-orange-400 mb-2">
-                  ---
-                </div>
-                <div className="text-white/70">Equipos Creados</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
