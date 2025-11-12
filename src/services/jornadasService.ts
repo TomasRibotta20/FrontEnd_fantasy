@@ -147,6 +147,27 @@ export const jornadasService = {
 // ============================================
 
 export const adminService = {
+  // Obtener jornada activa con todos sus detalles
+  async getJornadaActiva(): Promise<{ jornada: Jornada | null; modificacionesHabilitadas: boolean }> {
+    try {
+      const response = await apiClient.get('/config/jornada-activa');
+      console.log('[getJornadaActiva] Respuesta completa:', response.data);
+      
+      const data = response.data?.data || response.data;
+      
+      return {
+        jornada: data.jornada || null,
+        modificacionesHabilitadas: data.modificacionesHabilitadas || false
+      };
+    } catch (error) {
+      console.error('[getJornadaActiva] Error al obtener jornada activa:', error);
+      return {
+        jornada: null,
+        modificacionesHabilitadas: false
+      };
+    }
+  },
+
   // Ver configuración actual (combinando ambos endpoints)
   async getConfig(): Promise<ConfiguracionSistema> {
     try {
@@ -289,13 +310,38 @@ export const equiposService = {
     equipoId: number,
     jornadaId: number
   ): Promise<PuntajeEquipo> {
-    const response = await apiClient.get(
-      `/equipos/${equipoId}/jornadas/${jornadaId}`
-    );
-    console.log('🔍 [getPuntajesEquipoJornada] Respuesta:', response.data);
-    const result = response.data?.data || response.data;
-    console.log('🔍 [getPuntajesEquipoJornada] Resultado final:', result);
-    return result;
+    try {
+      // Intento 1: Usar apiClient con /api prefix
+      const response = await apiClient.get(
+        `/equipos/${equipoId}/jornadas/${jornadaId}`
+      );
+      console.log('[getPuntajesEquipoJornada] Respuesta con apiClient:', response.data);
+      const result = response.data?.data || response.data;
+      console.log('[getPuntajesEquipoJornada] Resultado final:', result);
+      return result;
+    } catch (error) {
+      console.warn(`[getPuntajesEquipoJornada] Error con /api prefix, intentando sin prefix:`, error);
+      
+      // Intento 2: Fallback sin /api prefix usando axios directo
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/equipos/${equipoId}/jornadas/${jornadaId}`,
+          { withCredentials: true }
+        );
+        console.log('[getPuntajesEquipoJornada] Respuesta sin /api:', response.data);
+        const result = response.data?.data || response.data;
+        return result;
+      } catch {
+        console.warn(`[getPuntajesEquipoJornada] Endpoint no disponible para equipo ${equipoId}, jornada ${jornadaId}`);
+        // Retornar estructura vacía
+        return {
+          equipoId,
+          jornadaId,
+          puntajeTotal: 0,
+          jugadores: []
+        };
+      }
+    }
   },
 
   // Obtener mi equipo con puntos

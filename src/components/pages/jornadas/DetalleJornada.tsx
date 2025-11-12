@@ -49,6 +49,37 @@ const DetalleJornada = () => {
     visitanteId: 0,
   });
 
+  // Estado para modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Función helper para mostrar confirmación
+  const showConfirmation = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setConfirmAction({ title, message, onConfirm });
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = () => {
+    if (confirmAction) {
+      confirmAction.onConfirm();
+    }
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+  };
+
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+  };
+
   useEffect(() => {
     if (id) {
       loadJornadaData();
@@ -161,23 +192,27 @@ const DetalleJornada = () => {
     }
   };
 
-  const handleDeletePartido = async (partidoId: number) => {
-    if (!confirm('¿Estás seguro de eliminar este partido?')) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      await partidosService.deletePartido(partidoId);
-      setSuccess('Partido eliminado correctamente');
-      await loadJornadaData();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error('[PARTIDO] Error al eliminar:', err);
-      setError('Error al eliminar el partido');
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeletePartido = (partidoId: number) => {
+    showConfirmation(
+      'Eliminar Partido',
+      '¿Estás seguro de eliminar este partido? Esta acción no se puede deshacer.',
+      async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          await partidosService.deletePartido(partidoId);
+          setSuccess('Partido eliminado correctamente');
+          await loadJornadaData();
+          setTimeout(() => setSuccess(null), 3000);
+        } catch (err) {
+          console.error('[PARTIDO] Error al eliminar:', err);
+          setError('Error al eliminar el partido');
+          setTimeout(() => setError(null), 3000);
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const loadJornadaData = async () => {
@@ -202,15 +237,23 @@ const DetalleJornada = () => {
         // Intentar primero con el servicio de admin
         const config = await adminService.getConfig();
         console.log('[CONFIG] Config obtenida:', config);
-        console.log('[CONFIG] Config jornadaActiva tipo:', typeof config.jornadaActiva);
-        console.log('[CONFIG] Config jornadaActiva valor:', config.jornadaActiva);
+        console.log(
+          '[CONFIG] Config jornadaActiva tipo:',
+          typeof config.jornadaActiva
+        );
+        console.log(
+          '[CONFIG] Config jornadaActiva valor:',
+          config.jornadaActiva
+        );
 
         // Verificar si esta jornada es la activa
         // jornadaActiva puede ser un número o un objeto con id
-        const jornadaActivaId = typeof config.jornadaActiva === 'object' && config.jornadaActiva !== null
-          ? (config.jornadaActiva as { id: number }).id
-          : config.jornadaActiva;
-        
+        const jornadaActivaId =
+          typeof config.jornadaActiva === 'object' &&
+          config.jornadaActiva !== null
+            ? (config.jornadaActiva as { id: number }).id
+            : config.jornadaActiva;
+
         const esActiva = jornadaActivaId === Number(id);
         console.log(
           `[CONFIG] Jornada ${id} es activa: ${esActiva} (jornadaActivaId extraído: ${jornadaActivaId})`
@@ -267,20 +310,31 @@ const DetalleJornada = () => {
         const puntajesData = await estadisticasService.getPuntajesJornada(
           Number(id)
         );
-        
+
         // Asegurarse de que sea un array
         const puntajesArray = Array.isArray(puntajesData) ? puntajesData : [];
-        
+
         console.log('[PUNTAJES] ========== RESUMEN DE PUNTAJES ==========');
-        console.log(`[PUNTAJES] Total de jugadores con estadísticas: ${puntajesArray.length}`);
-        
+        console.log(
+          `[PUNTAJES] Total de jugadores con estadísticas: ${puntajesArray.length}`
+        );
+
         if (puntajesArray.length > 0) {
-          const totalPuntos = puntajesArray.reduce((sum, p) => sum + (p.puntaje_total || 0), 0);
+          const totalPuntos = puntajesArray.reduce(
+            (sum, p) => sum + (p.puntaje_total || 0),
+            0
+          );
           const promedio = totalPuntos / puntajesArray.length;
-          const maxPuntos = Math.max(...puntajesArray.map(p => p.puntaje_total || 0));
-          const jugadoresConPuntos = puntajesArray.filter(p => (p.puntaje_total || 0) > 0).length;
-          
-          console.log(`[PUNTAJES] Jugadores con puntos > 0: ${jugadoresConPuntos}`);
+          const maxPuntos = Math.max(
+            ...puntajesArray.map((p) => p.puntaje_total || 0)
+          );
+          const jugadoresConPuntos = puntajesArray.filter(
+            (p) => (p.puntaje_total || 0) > 0
+          ).length;
+
+          console.log(
+            `[PUNTAJES] Jugadores con puntos > 0: ${jugadoresConPuntos}`
+          );
           console.log(`[PUNTAJES] Puntos totales: ${totalPuntos.toFixed(1)}`);
           console.log(`[PUNTAJES] Promedio de puntos: ${promedio.toFixed(2)}`);
           console.log(`[PUNTAJES] Puntaje máximo: ${maxPuntos.toFixed(1)}`);
@@ -289,13 +343,19 @@ const DetalleJornada = () => {
             .sort((a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0))
             .slice(0, 5)
             .forEach((p, i) => {
-              console.log(`  ${i + 1}. ${p.jugador?.name || 'Desconocido'} (ID ${p.jugador?.id || 'N/A'}): ${(p.puntaje_total || 0).toFixed(1)} pts`);
+              console.log(
+                `  ${i + 1}. ${p.jugador?.name || 'Desconocido'} (ID ${
+                  p.jugador?.id || 'N/A'
+                }): ${(p.puntaje_total || 0).toFixed(1)} pts`
+              );
             });
         } else {
-          console.log('[PUNTAJES] No hay puntajes registrados para esta jornada');
+          console.log(
+            '[PUNTAJES] No hay puntajes registrados para esta jornada'
+          );
         }
         console.log('[PUNTAJES] ==========================================');
-        
+
         setPuntajes(puntajesArray);
       } catch (puntajesError) {
         console.warn('[PUNTAJES] Error al cargar puntajes:', puntajesError);
@@ -309,17 +369,25 @@ const DetalleJornada = () => {
           jornadaId: Number(id),
         });
         const partidosArray = Array.isArray(partidosData) ? partidosData : [];
-        console.log(`[PARTIDOS] Total partidos cargados: ${partidosArray.length}`);
-        
+        console.log(
+          `[PARTIDOS] Total partidos cargados: ${partidosArray.length}`
+        );
+
         if (partidosArray.length > 0) {
           console.log('[PARTIDOS] Lista de partidos:');
           partidosArray.forEach((p, i) => {
-            console.log(`  ${i + 1}. ${p.local?.nombre || `Club ${p.localId}`} vs ${p.visitante?.nombre || `Club ${p.visitanteId}`} - ${p.estado} (${new Date(p.fecha).toLocaleDateString()})`);
+            console.log(
+              `  ${i + 1}. ${p.local?.nombre || `Club ${p.localId}`} vs ${
+                p.visitante?.nombre || `Club ${p.visitanteId}`
+              } - ${p.estado} (${new Date(p.fecha).toLocaleDateString()})`
+            );
           });
         } else {
-          console.log('[PARTIDOS] No hay partidos registrados en el backend para esta jornada');
+          console.log(
+            '[PARTIDOS] No hay partidos registrados en el backend para esta jornada'
+          );
         }
-        
+
         setPartidos(partidosArray);
       } catch (partidosError) {
         console.error('[PARTIDOS] Error al cargar partidos:', partidosError);
@@ -336,85 +404,87 @@ const DetalleJornada = () => {
     }
   };
 
-  const handleProcesarJornada = async () => {
-    if (
-      !id ||
-      !confirm(
-        '¿Estás seguro de procesar esta jornada? Esto calculará los puntos de todos los jugadores.'
-      )
-    )
-      return;
+  const handleProcesarJornada = () => {
+    if (!id) return;
 
-    try {
-      setProcesando(true);
-      setError(null);
-      const response = await fetch(
-        `http://localhost:3000/api/admin/jornadas/${id}/procesar`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ activarJornada: true }),
+    showConfirmation(
+      'Procesar Jornada',
+      '¿Estás seguro de procesar esta jornada? Esto calculará los puntos de todos los jugadores.',
+      async () => {
+        try {
+          setProcesando(true);
+          setError(null);
+          const response = await fetch(
+            `http://localhost:3000/api/admin/jornadas/${id}/procesar`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ activarJornada: true }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setSuccess(`${data.message || 'Jornada procesada correctamente'}`);
+            await loadJornadaData(); // Recargar datos
+            setTimeout(() => setSuccess(null), 5000);
+          } else {
+            setError(`${data.message || 'Error al procesar jornada'}`);
+            setTimeout(() => setError(null), 5000);
+          }
+        } catch (err) {
+          console.error('Error al procesar jornada:', err);
+          setError('Error al procesar jornada');
+          setTimeout(() => setError(null), 5000);
+        } finally {
+          setProcesando(false);
         }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(`${data.message || 'Jornada procesada correctamente'}`);
-        await loadJornadaData(); // Recargar datos
-        setTimeout(() => setSuccess(null), 5000);
-      } else {
-        setError(`${data.message || 'Error al procesar jornada'}`);
-        setTimeout(() => setError(null), 5000);
       }
-    } catch (err) {
-      console.error('Error al procesar jornada:', err);
-      setError('Error al procesar jornada');
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setProcesando(false);
-    }
+    );
   };
 
-  const handleRecalcularPuntajes = async () => {
-    if (
-      !id ||
-      !confirm('¿Estás seguro de recalcular los puntajes de esta jornada?')
-    )
-      return;
+  const handleRecalcularPuntajes = () => {
+    if (!id) return;
 
-    try {
-      setProcesando(true);
-      setError(null);
-      const response = await fetch(
-        `http://localhost:3000/api/admin/jornadas/${id}/recalcular`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+    showConfirmation(
+      'Recalcular Puntajes',
+      '¿Estás seguro de recalcular los puntajes de esta jornada? Esto sobrescribirá los puntajes actuales.',
+      async () => {
+        try {
+          setProcesando(true);
+          setError(null);
+          const response = await fetch(
+            `http://localhost:3000/api/admin/jornadas/${id}/recalcular`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+            }
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            setSuccess(
+              `${data.message || 'Puntajes recalculados correctamente'}`
+            );
+            await loadJornadaData(); // Recargar datos
+            setTimeout(() => setSuccess(null), 5000);
+          } else {
+            setError(`${data.message || 'Error al recalcular puntajes'}`);
+            setTimeout(() => setError(null), 5000);
+          }
+        } catch (err) {
+          console.error('Error al recalcular puntajes:', err);
+          setError('Error al recalcular puntajes');
+          setTimeout(() => setError(null), 5000);
+        } finally {
+          setProcesando(false);
         }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(
-          `${data.message || 'Puntajes recalculados correctamente'}`
-        );
-        await loadJornadaData(); // Recargar datos
-        setTimeout(() => setSuccess(null), 5000);
-      } else {
-        setError(`${data.message || 'Error al recalcular puntajes'}`);
-        setTimeout(() => setError(null), 5000);
       }
-    } catch (err) {
-      console.error('Error al recalcular puntajes:', err);
-      setError('Error al recalcular puntajes');
-      setTimeout(() => setError(null), 5000);
-    } finally {
-      setProcesando(false);
-    }
+    );
   };
 
   if (loading) {
@@ -460,7 +530,9 @@ const DetalleJornada = () => {
         <div className="max-w-4xl mx-auto">
           <div className="bg-yellow-500 text-black p-6 rounded-lg">
             <h2 className="text-2xl font-bold mb-2">Jornada no encontrada</h2>
-            <p className="mb-4">No se pudo cargar la información de la jornada {id}</p>
+            <p className="mb-4">
+              No se pudo cargar la información de la jornada {id}
+            </p>
             <button
               onClick={() => navigate(-1)}
               className="mt-4 px-4 py-2 bg-black text-yellow-500 rounded-lg font-semibold hover:bg-gray-900"
@@ -633,7 +705,8 @@ const DetalleJornada = () => {
                 Partidos de la Jornada
               </h2>
               <p className="text-gray-400 text-sm mt-1">
-                Los partidos se cargan automáticamente desde la API externa. Puedes agregar partidos adicionales manualmente.
+                Los partidos se cargan automáticamente desde la API externa.
+                Puedes agregar partidos adicionales manualmente.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -654,7 +727,7 @@ const DetalleJornada = () => {
               </button>
             </div>
           </div>
-          
+
           {/* Información de carga */}
           <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-3">
@@ -664,7 +737,7 @@ const DetalleJornada = () => {
                   Total de partidos: {partidos.length}
                 </p>
                 <p className="text-blue-300 text-sm">
-                  {partidos.length === 0 
+                  {partidos.length === 0
                     ? 'No hay partidos cargados desde la API. Puedes crear partidos manualmente usando el botón "Agregar Partido".'
                     : 'Estos partidos se usan para calcular los puntos de los jugadores. Puedes editar su estado o agregar partidos adicionales.'}
                 </p>
@@ -674,7 +747,9 @@ const DetalleJornada = () => {
 
           {partidos.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
-              <p className="mb-4">No hay partidos registrados para esta jornada</p>
+              <p className="mb-4">
+                No hay partidos registrados para esta jornada
+              </p>
               <button
                 onClick={handleOpenCreatePartido}
                 className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-all"
@@ -714,7 +789,8 @@ const DetalleJornada = () => {
                             ? 'bg-red-600 text-white animate-pulse'
                             : partido.estado === 'PST'
                             ? 'bg-yellow-600 text-white'
-                            : partido.estado === 'CANC' || partido.estado === 'ABD'
+                            : partido.estado === 'CANC' ||
+                              partido.estado === 'ABD'
                             ? 'bg-red-800 text-white'
                             : 'bg-gray-600 text-white'
                         }`}
@@ -785,7 +861,9 @@ const DetalleJornada = () => {
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
               <p className="text-gray-300 text-sm mb-1">Puntos Totales</p>
               <p className="text-2xl font-bold text-yellow-400">
-                {puntajes.reduce((sum, p) => sum + (p.puntaje_total || 0), 0).toFixed(1)}
+                {puntajes
+                  .reduce((sum, p) => sum + (p.puntaje_total || 0), 0)
+                  .toFixed(1)}
               </p>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
@@ -846,7 +924,9 @@ const DetalleJornada = () => {
                 </thead>
                 <tbody>
                   {puntajes
-                    .sort((a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0))
+                    .sort(
+                      (a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0)
+                    )
                     .slice(0, 20) // Mostrar solo los 20 primeros
                     .map((puntaje, index) => (
                       <tr
@@ -856,13 +936,24 @@ const DetalleJornada = () => {
                         }`}
                       >
                         <td className="py-3 px-4">
-                          <span className={`font-bold ${
-                            index === 0 ? 'text-yellow-400 text-xl' :
-                            index === 1 ? 'text-gray-300 text-lg' :
-                            index === 2 ? 'text-orange-400' :
-                            'text-white'
-                          }`}>
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                          <span
+                            className={`font-bold ${
+                              index === 0
+                                ? 'text-yellow-400 text-xl'
+                                : index === 1
+                                ? 'text-gray-300 text-lg'
+                                : index === 2
+                                ? 'text-orange-400'
+                                : 'text-white'
+                            }`}
+                          >
+                            {index === 0
+                              ? '🥇'
+                              : index === 1
+                              ? '🥈'
+                              : index === 2
+                              ? '🥉'
+                              : index + 1}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -873,24 +964,36 @@ const DetalleJornada = () => {
                                 alt={puntaje.jugador.name}
                                 className="w-8 h-8 rounded-full object-cover"
                                 onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).style.display =
+                                    'none';
                                 }}
                               />
                             )}
                             <div>
-                              <p className="font-medium">{puntaje.jugador?.name || 'Desconocido'}</p>
-                              <p className="text-xs text-gray-400">ID: {puntaje.jugador?.id}</p>
+                              <p className="font-medium">
+                                {puntaje.jugador?.name || 'Desconocido'}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                ID: {puntaje.jugador?.id}
+                              </p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-gray-300">{puntaje.posicion || '-'}</td>
+                        <td className="py-3 px-4 text-gray-300">
+                          {puntaje.posicion || '-'}
+                        </td>
                         <td className="py-3 px-4 text-right">
-                          <span className={`px-3 py-1 rounded-full font-bold ${
-                            (puntaje.puntaje_total || 0) >= 10 ? 'bg-green-600' :
-                            (puntaje.puntaje_total || 0) >= 7 ? 'bg-blue-600' :
-                            (puntaje.puntaje_total || 0) >= 5 ? 'bg-indigo-600' :
-                            'bg-gray-600'
-                          }`}>
+                          <span
+                            className={`px-3 py-1 rounded-full font-bold ${
+                              (puntaje.puntaje_total || 0) >= 10
+                                ? 'bg-green-600'
+                                : (puntaje.puntaje_total || 0) >= 7
+                                ? 'bg-blue-600'
+                                : (puntaje.puntaje_total || 0) >= 5
+                                ? 'bg-indigo-600'
+                                : 'bg-gray-600'
+                            }`}
+                          >
                             {(puntaje.puntaje_total || 0).toFixed(1)}
                           </span>
                         </td>
@@ -899,14 +1002,18 @@ const DetalleJornada = () => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           {puntaje.goles ? (
-                            <span className="text-green-400 font-bold">⚽ {puntaje.goles}</span>
+                            <span className="text-green-400 font-bold">
+                              ⚽ {puntaje.goles}
+                            </span>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">
                           {puntaje.asistencias ? (
-                            <span className="text-blue-400 font-bold">🎯 {puntaje.asistencias}</span>
+                            <span className="text-blue-400 font-bold">
+                              🎯 {puntaje.asistencias}
+                            </span>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
@@ -947,11 +1054,14 @@ const DetalleJornada = () => {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-white">
-                    {editingPartido ? 'Editar Partido' : 'Agregar Partido Manual'}
+                    {editingPartido
+                      ? 'Editar Partido'
+                      : 'Agregar Partido Manual'}
                   </h2>
                   {!editingPartido && (
                     <p className="text-gray-400 text-sm mt-1">
-                      Los partidos de la API se cargan automáticamente. Usa este formulario para agregar partidos adicionales.
+                      Los partidos de la API se cargan automáticamente. Usa este
+                      formulario para agregar partidos adicionales.
                     </p>
                   )}
                 </div>
@@ -969,14 +1079,19 @@ const DetalleJornada = () => {
                     {/* Información importante */}
                     <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
                       <p className="text-yellow-200 text-sm">
-                        <strong>Nota:</strong> Si el partido ya existe en la API externa, será cargado automáticamente. Este formulario es para agregar partidos que NO están en la API.
+                        <strong>Nota:</strong> Si el partido ya existe en la API
+                        externa, será cargado automáticamente. Este formulario
+                        es para agregar partidos que NO están en la API.
                       </p>
                     </div>
 
                     {/* Campos para crear partido */}
                     <div>
                       <label className="block text-white mb-2 font-semibold">
-                        ID API * <span className="text-gray-400 text-sm font-normal">(ID del partido en la API externa)</span>
+                        ID API *{' '}
+                        <span className="text-gray-400 text-sm font-normal">
+                          (ID del partido en la API externa)
+                        </span>
                       </label>
                       <input
                         type="number"
@@ -1078,7 +1193,8 @@ const DetalleJornada = () => {
                 ) : (
                   <div className="bg-blue-500/20 p-4 rounded-lg mb-4">
                     <p className="text-white text-sm">
-                      Solo puedes editar el estado del partido. Para modificar otros datos, elimina y crea uno nuevo.
+                      Solo puedes editar el estado del partido. Para modificar
+                      otros datos, elimina y crea uno nuevo.
                     </p>
                   </div>
                 )}
@@ -1135,11 +1251,41 @@ const DetalleJornada = () => {
                   disabled={loading}
                   className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all"
                 >
-                  {loading ? 'Guardando...' : editingPartido ? 'Actualizar' : 'Crear'}
+                  {loading
+                    ? 'Guardando...'
+                    : editingPartido
+                    ? 'Actualizar'
+                    : 'Crear'}
                 </button>
                 <button
                   onClick={handleClosePartidoModal}
                   className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Confirmación */}
+        {showConfirmModal && confirmAction && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 max-w-md w-full border-2 border-white/20 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                {confirmAction.title}
+              </h2>
+              <p className="text-gray-300 mb-6">{confirmAction.message}</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleConfirm}
+                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={handleCancelConfirm}
+                  className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
                 >
                   Cancelar
                 </button>

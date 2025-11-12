@@ -150,7 +150,9 @@ const GestionJornadasAdmin = () => {
       const jornadaIdNum = parseInt(jornadaIdInput);
 
       // Actualizar UI optimísticamente
-      console.log('[JORNADA] Actualizando config con jornadaActiva: ' + jornadaIdNum);
+      console.log(
+        '[JORNADA] Actualizando config con jornadaActiva: ' + jornadaIdNum
+      );
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: jornadaIdNum,
         modificacionesHabilitadas: config.modificacionesHabilitadas,
