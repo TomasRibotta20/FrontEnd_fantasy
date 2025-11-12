@@ -767,18 +767,21 @@ const UpdateTeam = () => {
           })
         );
 
-        console.log('✅ Intercambio titular-suplente exitoso');
+        console.log('[INTERCAMBIO] Intercambio titular-suplente exitoso');
         setNotification({
           type: 'success',
           text: 'Intercambio realizado exitosamente',
         });
       } catch (error: unknown) {
-        console.error('❌ Error al intercambiar titular-suplente:', error);
+        console.error(
+          '[INTERCAMBIO] Error al intercambiar titular-suplente:',
+          error
+        );
         const axiosError = error as {
           response?: { data?: { message?: string }; status?: number };
           message?: string;
         };
-        console.error('❌ Detalles del error:', {
+        console.error('[INTERCAMBIO] Detalles del error:', {
           message: axiosError.message,
           response: axiosError.response?.data,
           status: axiosError.response?.status,
@@ -788,17 +791,21 @@ const UpdateTeam = () => {
           axiosError.response?.data?.message ||
           axiosError.message ||
           'Error desconocido';
-        alert(`Error al realizar el intercambio:\n${errorMsg}`);
+
+        setNotification({
+          type: 'error',
+          text: `Error al realizar el intercambio: ${errorMsg}`,
+        });
       }
     },
     []
   );
 
-  // ✅ Función para intercambiar jugador del equipo con uno externo (memoizada)
+  // Función para intercambiar jugador del equipo con uno externo (memoizada)
   const swapTeamPlayer = useCallback(
     async (jugadorSaleId: number, jugadorEntraId: number) => {
       try {
-        console.log('🔄 Intercambiando jugador del equipo:', {
+        console.log('[INTERCAMBIO] Intercambiando jugador del equipo:', {
           jugadorSaleId,
           jugadorEntraId,
         });

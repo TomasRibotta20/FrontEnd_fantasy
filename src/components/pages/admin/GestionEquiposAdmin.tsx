@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
 import FormacionEquipoCompacta from '../../common/FormacionEquipoCompacta';
+import {
+  equiposService,
+  adminService,
+} from '../../../services/jornadasService';
 
 interface Jugador {
   id: number;
@@ -67,16 +71,29 @@ const GestionEquiposAdmin = () => {
       setLoading(true);
       const response = await apiClient.get<Equipo[]>('/equipos/todos');
 
-      // Obtener la jornada actual (asumiendo que hay un endpoint para esto, sino usar una jornada fija)
-      let jornadaActualId = 2; // Por defecto jornada 2, puedes cambiarlo
+      // Obtener la jornada activa desde el endpoint correcto
+      let jornadaActualId: number | null = null;
       try {
-        // Intentar obtener la jornada actual
-        const jornadaResponse = await apiClient.get('/jornadas/actual');
-        if (jornadaResponse.data && jornadaResponse.data.id) {
-          jornadaActualId = jornadaResponse.data.id;
+        console.log('[JORNADA-ACTIVA] Obteniendo jornada activa...');
+        const jornadaActivaData = await adminService.getJornadaActiva();
+
+        if (jornadaActivaData.jornada && jornadaActivaData.jornada.id) {
+          jornadaActualId = jornadaActivaData.jornada.id;
+          console.log(
+            `[JORNADA-ACTIVA] Jornada activa encontrada:`,
+            jornadaActivaData.jornada
+          );
+          console.log(
+            `[JORNADA-ACTIVA] ID: ${jornadaActualId}, Nombre: ${jornadaActivaData.jornada.nombre}`
+          );
+        } else {
+          console.warn('[JORNADA-ACTIVA] No hay jornada activa configurada');
         }
-      } catch {
-        console.log('No se pudo obtener jornada actual, usando jornada 2');
+      } catch (error) {
+        console.error(
+          '[JORNADA-ACTIVA] Error al obtener jornada activa:',
+          error
+        );
       }
 
       // Procesar equipos para calcular estadísticas y obtener puntos
@@ -88,17 +105,29 @@ const GestionEquiposAdmin = () => {
           (j) => !j.es_titular
         ).length;
 
-        // Obtener puntaje del equipo para la jornada actual
+        // Obtener puntaje del equipo para la jornada actual (solo si hay jornada activa)
         let puntajeTotal = 0;
-        try {
-          const puntajeResponse = await apiClient.get(
-            `/equipos/${equipo.id}/jornadas/${jornadaActualId}`
-          );
-          puntajeTotal = puntajeResponse.data.data?.puntajeTotal || 0;
-        } catch (error) {
-          console.error(
-            `Error al cargar puntaje del equipo ${equipo.id}:`,
-            error
+        if (jornadaActualId !== null) {
+          try {
+            console.log(
+              `[PUNTAJES] Cargando puntaje para equipo ${equipo.id}, jornada ${jornadaActualId}`
+            );
+            const puntajeData = await equiposService.getPuntajesEquipoJornada(
+              equipo.id,
+              jornadaActualId
+            );
+            puntajeTotal = puntajeData?.puntajeTotal || 0;
+            console.log(`[PUNTAJES] Equipo ${equipo.id}: ${puntajeTotal} pts`);
+          } catch (error) {
+            console.warn(
+              `[PUNTAJES] No se pudo cargar puntaje del equipo ${equipo.id}:`,
+              error
+            );
+            // Silenciar el error, el puntaje queda en 0
+          }
+        } else {
+          console.log(
+            `[PUNTAJES] Sin jornada activa, equipo ${equipo.id} tendrá 0 pts`
           );
         }
 

@@ -256,7 +256,7 @@ const LoggedMenu = () => {
   ];
 
   return (
-    <div className="h-screen overflow-hidden pt-16">
+    <div className="h-screen overflow-hidden pt-20">
       {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
@@ -274,9 +274,6 @@ const LoggedMenu = () => {
           <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
             Bienvenido a TurboFantasy
           </h1>
-          <p className="text-white text-sm drop-shadow">
-            Gestiona tu equipo y compite con otros usuarios
-          </p>
         </div>
 
         {/* Contenido principal en dos columnas */}
@@ -362,32 +359,23 @@ const LoggedMenu = () => {
             </div>
 
             {/* Tarjeta de Mi Equipo con Estadísticas */}
-            <div className="backdrop-blur-lg rounded-xl p-5 border-2 border-white/40 flex-1 flex flex-col overflow-hidden bg-white/5">
+            <div className="backdrop-blur-lg rounded-xl p-2 border-2 border-white/40 h-[645px] flex flex-col overflow-hidden bg-white/5">
               <h2 className="text-xl font-bold text-white drop-shadow-lg mb-3 text-center flex-shrink-0 border-b-2 border-white/30 pb-3">
                 Mi Equipo
               </h2>
 
-              <div className="flex-1 flex flex-col justify-center items-center min-h-0">
+              <div className="flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto">
                 {/* Sección del Equipo */}
                 <div className="flex flex-col w-full justify-center items-center">
                   {teamPlayers.length > 0 ? (
-                    <div className="space-y-2 flex flex-col items-center w-full">
-                      <div className="flex-shrink-0 w-full max-w-md">
-                        <FormacionEquipoCompacta
-                          players={teamPlayers}
-                          showSuplentes={false}
-                          mostrarPuntajes={teamPlayers.some(
-                            (p) => (p.puntaje || 0) > 0
-                          )}
-                        />
-                      </div>
-                      {teamPlayers.some((p) => (p.puntaje || 0) > 0) && (
-                        <div className="text-center">
-                          <p className="text-white/80 text-xs bg-white/10 rounded py-1 px-3 inline-block">
-                            📊 Última jornada
-                          </p>
-                        </div>
-                      )}
+                    <div className="flex-shrink-0 w-full max-w-md">
+                      <FormacionEquipoCompacta
+                        players={teamPlayers}
+                        showSuplentes={false}
+                        mostrarPuntajes={teamPlayers.some(
+                          (p) => (p.puntaje || 0) > 0
+                        )}
+                      />
                     </div>
                   ) : (
                     <div className="text-center py-8">
