@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
 
 interface Club {
@@ -58,7 +58,7 @@ function ClubReadUpdateDelete() {
   const getClubs = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('http://localhost:3000/api/clubs');
+      const response = await apiClient.get('/api/clubs');
       const sortedClubs = response.data.data.sort((a: Club, b: Club) =>
         a.nombre.localeCompare(b.nombre)
       );
@@ -83,14 +83,13 @@ function ClubReadUpdateDelete() {
     if (window.confirm('¿Estás seguro de eliminar este club?')) {
       setIsLoading(true);
       try {
-        await axios.delete(`http://localhost:3000/api/clubs/${clubId}`);
+        await apiClient.delete(`/api/clubs/${clubId}`);
         setClubs((prevClubs) => prevClubs.filter((club) => club.id !== clubId));
         setNotification({
           type: 'success',
           text: 'Club eliminado con éxito',
         });
-      } catch (error) {
-        console.error('Error al eliminar club:', error);
+      } catch {
         setNotification({
           type: 'error',
           text: 'Error al eliminar club',
@@ -137,10 +136,7 @@ function ClubReadUpdateDelete() {
         estadio_imagen: editData.estadio_imagen,
       };
 
-      await axios.patch(
-        `http://localhost:3000/api/clubs/${editingClub}`,
-        updateData
-      );
+      await apiClient.patch(`/api/clubs/${editingClub}`, updateData);
 
       setClubs((prevClubs) =>
         prevClubs.map((club) =>
@@ -425,7 +421,7 @@ function ClubReadUpdateDelete() {
                           className="w-16 h-16 object-contain rounded-lg bg-white/10 p-2 shadow-lg"
                           onError={(e) => {
                             e.currentTarget.src =
-                              'https://via.placeholder.com/64x64/3B82F6/FFFFFF?text=⚽';
+                              'https://via.placeholder.com/64x64/3B82F6/FFFFFF?text=?';
                           }}
                         />
                         <div className="flex-1 min-w-0">

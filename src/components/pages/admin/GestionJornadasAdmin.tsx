@@ -22,11 +22,6 @@ const GestionJornadasAdmin = () => {
   const [jornadaIdInput, setJornadaIdInput] = useState<string>('');
   const [endpointNoDisponible, setEndpointNoDisponible] = useState(false);
 
-  // Debug: Verificar cambios en config
-  useEffect(() => {
-    console.log('[CONFIG] Actualizada:', JSON.stringify(config));
-  }, [config]);
-
   useEffect(() => {
     loadJornadas();
     loadConfig();
@@ -43,7 +38,6 @@ const GestionJornadasAdmin = () => {
       setJornadas(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
-      console.error(err);
       // Establecer array vacío en caso de error
       setJornadas([]);
       // Si es un error 404 o 403, mostrar componente de endpoint no disponible
@@ -72,13 +66,10 @@ const GestionJornadasAdmin = () => {
 
   const loadConfig = async () => {
     try {
-      console.log('[CONFIG] Cargando configuración del servidor...');
       const data = await adminService.getConfig();
 
       // Verificar si recibimos datos válidos
       if (data && typeof data === 'object') {
-        console.log('[CONFIG] Configuración recibida del servidor');
-
         // Extraer jornadaActiva - puede venir como número o como objeto con id
         let jornadaActivaId: number | null = null;
         if (data.jornadaActiva !== undefined && data.jornadaActiva !== null) {
@@ -106,32 +97,10 @@ const GestionJornadasAdmin = () => {
               : false,
         };
 
-        console.log(
-          '[CONFIG] Actualizada: jornadaActiva=' +
-            newConfig.jornadaActiva +
-            ', modificaciones=' +
-            newConfig.modificacionesHabilitadas
-        );
         setConfig(newConfig);
-      } else {
-        console.warn('[CONFIG] Datos de configuración inválidos');
       }
-    } catch (err) {
-      const statusCode = (err as { response?: { status: number } })?.response
-        ?.status;
-
-      if (statusCode === 404) {
-        console.warn(
-          '[CONFIG] Endpoint /api/admin/config no existe - el backend debe implementarlo'
-        );
-      } else if (statusCode === 401 || statusCode === 403) {
-        console.warn('[CONFIG] Sin autorización para obtener configuración');
-      } else {
-        console.error('[CONFIG] Error al cargar configuración:', err);
-      }
-
+    } catch {
       // Mantener valores por defecto si no podemos cargar del servidor
-      console.log('[CONFIG] Usando configuración por defecto');
     }
   };
 
@@ -150,9 +119,6 @@ const GestionJornadasAdmin = () => {
       const jornadaIdNum = parseInt(jornadaIdInput);
 
       // Actualizar UI optimísticamente
-      console.log(
-        '[JORNADA] Actualizando config con jornadaActiva: ' + jornadaIdNum
-      );
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: jornadaIdNum,
         modificacionesHabilitadas: config.modificacionesHabilitadas,
@@ -161,7 +127,6 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor para confirmar
       await adminService.setJornadaActiva(jornadaIdInput);
-      console.log('[JORNADA] Jornada activa establecida en el servidor');
 
       setSuccess(`Jornada ${jornadaIdInput} establecida como activa`);
       setJornadaIdInput('');
@@ -171,8 +136,7 @@ const GestionJornadasAdmin = () => {
 
       // Auto-ocultar mensaje después de 5 segundos
       setTimeout(() => setSuccess(null), 5000);
-    } catch (err) {
-      console.error('[JORNADA] Error al establecer jornada activa:', err);
+    } catch {
       setError(`Error al establecer jornada ${jornadaIdInput} como activa`);
 
       // Revertir cambio local si falló en el servidor
@@ -194,7 +158,6 @@ const GestionJornadasAdmin = () => {
       setSuccess(null);
 
       // Actualizar UI optimísticamente
-      console.log('[MODIFICACIONES] Bloqueando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
         modificacionesHabilitadas: false,
@@ -203,15 +166,13 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor
       await adminService.deshabilitarModificaciones();
-      console.log('[MODIFICACIONES] Modificaciones bloqueadas en el servidor');
 
       setSuccess(
         'Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos'
       );
 
       setTimeout(() => setSuccess(null), 5000);
-    } catch (err) {
-      console.error('[MODIFICACIONES] Error al bloquear modificaciones:', err);
+    } catch {
       setError('Error al bloquear modificaciones');
 
       // Revertir cambio si falló
@@ -233,7 +194,6 @@ const GestionJornadasAdmin = () => {
       setSuccess(null);
 
       // Actualizar UI optimísticamente
-      console.log('[MODIFICACIONES] Habilitando modificaciones...');
       const newConfig: ConfiguracionSistema = {
         jornadaActiva: config.jornadaActiva,
         modificacionesHabilitadas: true,
@@ -242,15 +202,13 @@ const GestionJornadasAdmin = () => {
 
       // ESPERAR la respuesta del servidor
       await adminService.habilitarModificaciones();
-      console.log('[MODIFICACIONES] Modificaciones habilitadas en el servidor');
 
       setSuccess(
         'Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos'
       );
 
       setTimeout(() => setSuccess(null), 5000);
-    } catch (err) {
-      console.error('[MODIFICACIONES] Error al habilitar modificaciones:', err);
+    } catch {
       setError('Error al habilitar modificaciones');
 
       // Revertir cambio si falló
@@ -294,36 +252,6 @@ const GestionJornadasAdmin = () => {
         <h1 className="text-4xl font-bold text-white mb-8">
           Gestión de Jornadas - Admin
         </h1>
-
-        {/* Guía Rápida */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-lg mb-6 border-2 border-white/30">
-          <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
-            Guía Rápida de Uso
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">1. Activar Jornada</p>
-              <p className="text-xs">
-                Selecciona una jornada y haz click en "Activar". Los usuarios
-                podrán configurar sus equipos.
-              </p>
-            </div>
-            <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">2. Gestionar Modificaciones</p>
-              <p className="text-xs">
-                Usa "Habilitar/Deshabilitar Modificaciones" para controlar si
-                los usuarios pueden cambiar sus equipos.
-              </p>
-            </div>
-            <div className="bg-white/10 p-3 rounded-lg">
-              <p className="font-bold mb-1">3. Procesar Puntos</p>
-              <p className="text-xs">
-                Una vez finalizada la jornada, usa "Ver Detalle" → "Procesar
-                Jornada" para calcular puntos.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Notificaciones */}
         {error && (
@@ -494,12 +422,25 @@ const GestionJornadasAdmin = () => {
                         : 'border-white/20'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-4">
                         <h3 className="text-2xl font-bold text-white">
                           {jornada.nombre ||
                             `Jornada ${jornada.numero || jornada.id}`}
                         </h3>
+                        {jornada.temporada && (
+                          <p className="text-gray-300">
+                            <span className="text-gray-400">Temporada:</span>{' '}
+                            {String(jornada.temporada)}
+                          </p>
+                        )}
+                        {jornada.etapa && (
+                          <p className="text-gray-300">
+                            <span className="text-gray-400">Etapa:</span>{' '}
+                            {String(jornada.etapa)}
+                          </p>
+                        )}
+                        <p className="text-gray-400">ID: {jornada.id}</p>
                         {jornada.activa && (
                           <span className="px-3 py-1 bg-green-500 text-white text-sm font-bold rounded-full">
                             ACTIVA
@@ -511,30 +452,12 @@ const GestionJornadasAdmin = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-400">ID: {jornada.id}</p>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {jornada.temporada && (
-                        <p className="text-gray-300">
-                          <span className="text-gray-400">Temporada:</span>{' '}
-                          {String(jornada.temporada)}
-                        </p>
-                      )}
-                      {jornada.etapa && (
-                        <p className="text-gray-300">
-                          <span className="text-gray-400">Etapa:</span>{' '}
-                          {String(jornada.etapa)}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex justify-center mt-4">
                       <button
                         onClick={() =>
                           navigate(`/admin/jornadas/${jornada.id}/detalle`)
                         }
-                        className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
+                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors whitespace-nowrap"
                       >
                         Ver Detalle
                       </button>

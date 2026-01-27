@@ -34,11 +34,11 @@ const MiEquipoJornada = () => {
       );
       setJornada(jornadaData);
 
-      // Obtener mi equipo
-      const miEquipo = await equiposService.getMiEquipoConPuntos();
+      // Obtener equipoId desde localStorage
+      const equipoIdStr = localStorage.getItem('miEquipoId');
 
-      if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
-        const equipoId = (miEquipo as { id: number }).id;
+      if (equipoIdStr) {
+        const equipoId = Number(equipoIdStr);
 
         // Cargar puntajes del equipo para esta jornada
         const puntajesData = await equiposService.getPuntajesEquipoJornada(
@@ -49,9 +49,8 @@ const MiEquipoJornada = () => {
       }
 
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Error al cargar datos de la jornada');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -61,7 +60,7 @@ const MiEquipoJornada = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">⚽</div>
+          <div className="animate-spin text-6xl mb-4">●</div>
           <p className="text-xl">Cargando información...</p>
         </div>
       </div>
@@ -100,7 +99,7 @@ const MiEquipoJornada = () => {
               ← Volver a Jornadas
             </button>
             <h1 className="text-4xl font-bold text-white">
-              🏆 Mi Equipo -{' '}
+              Mi Equipo -{' '}
               {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
             </h1>
             <div className="mt-2 space-y-1">
@@ -117,7 +116,7 @@ const MiEquipoJornada = () => {
             disabled={loading}
             className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold disabled:opacity-50"
           >
-            🔄 Recargar
+            Recargar
           </button>
         </div>
 
@@ -131,7 +130,7 @@ const MiEquipoJornada = () => {
             <div className="flex items-center justify-center gap-4">
               {jornada.activa && (
                 <span className="px-4 py-2 bg-green-500 text-white font-bold rounded-full">
-                  🟢 Jornada Activa
+                  Jornada Activa
                 </span>
               )}
               {jornada.puntosCalculados && (
@@ -146,14 +145,14 @@ const MiEquipoJornada = () => {
         {/* Lista de Jugadores y sus Puntos */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <h2 className="text-2xl font-bold text-white mb-6">
-            ⚽ Puntos por Jugador
+            Puntos por Jugador
           </h2>
 
           {!puntajes || puntajes.jugadores.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
               {jornada.puntosCalculados
                 ? 'No hay puntos registrados para tu equipo en esta jornada'
-                : '⏳ Los puntos aún no han sido calculados para esta jornada'}
+                : 'Los puntos aún no han sido calculados para esta jornada'}
             </div>
           ) : (
             <div className="space-y-3">
@@ -216,7 +215,7 @@ const MiEquipoJornada = () => {
         {(jornada.fechaInicio || jornada.fechaFin) && (
           <div className="mt-8 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <h3 className="text-xl font-bold text-white mb-4">
-              📅 Información de la Jornada
+              Información de la Jornada
             </h3>
             <div className="grid grid-cols-2 gap-4">
               {jornada.fechaInicio && (

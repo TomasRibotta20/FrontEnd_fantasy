@@ -47,8 +47,7 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
     if (onSubmit) {
       onSubmit(formValues);
     } else {
-      console.log('Form submitted:', formValues);
-    }
+          }
 
     resetForm();
   };
@@ -99,3 +98,4 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
     </div>
   );
 };
+

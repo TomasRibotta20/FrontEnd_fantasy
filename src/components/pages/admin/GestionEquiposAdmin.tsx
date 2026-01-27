@@ -69,31 +69,18 @@ const GestionEquiposAdmin = () => {
   const fetchEquipos = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get<Equipo[]>('/equipos/todos');
+      const response = await apiClient.get<Equipo[]>('/api/equipos/todos');
 
       // Obtener la jornada activa desde el endpoint correcto
       let jornadaActualId: number | null = null;
       try {
-        console.log('[JORNADA-ACTIVA] Obteniendo jornada activa...');
         const jornadaActivaData = await adminService.getJornadaActiva();
 
         if (jornadaActivaData.jornada && jornadaActivaData.jornada.id) {
           jornadaActualId = jornadaActivaData.jornada.id;
-          console.log(
-            `[JORNADA-ACTIVA] Jornada activa encontrada:`,
-            jornadaActivaData.jornada
-          );
-          console.log(
-            `[JORNADA-ACTIVA] ID: ${jornadaActualId}, Nombre: ${jornadaActivaData.jornada.nombre}`
-          );
-        } else {
-          console.warn('[JORNADA-ACTIVA] No hay jornada activa configurada');
         }
-      } catch (error) {
-        console.error(
-          '[JORNADA-ACTIVA] Error al obtener jornada activa:',
-          error
-        );
+      } catch {
+        // Sin jornada activa
       }
 
       // Procesar equipos para calcular estadísticas y obtener puntos
@@ -109,26 +96,14 @@ const GestionEquiposAdmin = () => {
         let puntajeTotal = 0;
         if (jornadaActualId !== null) {
           try {
-            console.log(
-              `[PUNTAJES] Cargando puntaje para equipo ${equipo.id}, jornada ${jornadaActualId}`
-            );
             const puntajeData = await equiposService.getPuntajesEquipoJornada(
               equipo.id,
               jornadaActualId
             );
             puntajeTotal = puntajeData?.puntajeTotal || 0;
-            console.log(`[PUNTAJES] Equipo ${equipo.id}: ${puntajeTotal} pts`);
-          } catch (error) {
-            console.warn(
-              `[PUNTAJES] No se pudo cargar puntaje del equipo ${equipo.id}:`,
-              error
-            );
+          } catch {
             // Silenciar el error, el puntaje queda en 0
           }
-        } else {
-          console.log(
-            `[PUNTAJES] Sin jornada activa, equipo ${equipo.id} tendrá 0 pts`
-          );
         }
 
         return {
@@ -142,8 +117,7 @@ const GestionEquiposAdmin = () => {
 
       const equiposConDatos = await Promise.all(equiposConDatosPromises);
       setEquipos(equiposConDatos);
-    } catch (error) {
-      console.error('Error al cargar equipos:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cargar los equipos',
@@ -163,7 +137,7 @@ const GestionEquiposAdmin = () => {
       // Obtener los datos completos de cada jugador
       const jugadoresPromises = equipo.jugadores.map(async (j) => {
         try {
-          const response = await apiClient.get(`/players/${j.jugador}`);
+          const response = await apiClient.get(`/api/players/${j.jugador}`);
           const playerData = response.data.data || response.data;
 
           // Obtener datos de la posición
@@ -171,14 +145,10 @@ const GestionEquiposAdmin = () => {
           if (typeof playerData.position === 'number') {
             try {
               const posResponse = await apiClient.get(
-                `/positions/${playerData.position}`
+                `/api/positions/${playerData.position}`
               );
               positionData = posResponse.data.data || posResponse.data;
-            } catch (error) {
-              console.error(
-                `Error al cargar posición ${playerData.position}:`,
-                error
-              );
+            } catch {
               positionData = { id: playerData.position, description: 'N/A' };
             }
           }
@@ -201,8 +171,7 @@ const GestionEquiposAdmin = () => {
             position: positionData,
             esTitular: j.es_titular,
           };
-        } catch (error) {
-          console.error(`Error al cargar jugador ${j.jugador}:`, error);
+        } catch {
           return null;
         }
       });
@@ -211,14 +180,11 @@ const GestionEquiposAdmin = () => {
         Boolean
       ) as PlayerData[];
 
-      console.log('Jugadores completos cargados:', jugadoresCompletos);
-
       // Actualizar el equipo con los datos completos
       setEquipos((prev) =>
         prev.map((e) => (e.id === equipoId ? { ...e, jugadoresCompletos } : e))
       );
-    } catch (error) {
-      console.error('Error al cargar jugadores:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cargar los detalles de los jugadores',
@@ -355,7 +321,7 @@ const GestionEquiposAdmin = () => {
                     <div className="flex items-center justify-between p-4">
                       <div className="flex-1 flex items-center gap-4">
                         <div className="bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg p-2.5 shadow-lg">
-                          <span className="text-2xl drop-shadow">🛡️</span>
+                          <span className="text-2xl drop-shadow">E</span>
                         </div>
                         <div className="flex-1">
                           <div className="text-white font-bold text-lg drop-shadow">

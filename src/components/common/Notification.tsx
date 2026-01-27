@@ -52,7 +52,7 @@ export const Notification: React.FC<NotificationProps> = ({
       case 'error':
         return '✕';
       case 'warning':
-        return '⚠';
+        return '!';
       case 'info':
         return 'ℹ';
       default:

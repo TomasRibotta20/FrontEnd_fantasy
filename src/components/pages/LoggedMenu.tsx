@@ -1,8 +1,15 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import FormacionEquipoCompacta from '../common/FormacionEquipoCompacta';
 import WidgetPuntos from '../common/WidgetPuntos';
 import apiClient from '../../services/apiClient';
+import { obtenerDetalleTorneo } from '../../services/torneosService';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../hooks/useSessionData';
+import { mapBackendPlayerToFrontend } from '../../utils/playerMapper';
+import type { Player, BackendPlayerResponse } from '../../types/player.types';
 
 interface MenuCard {
   title: string;
@@ -13,107 +20,101 @@ interface MenuCard {
   enabled: boolean;
 }
 
-interface Player {
-  id?: number;
-  apiId: number;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  age: number;
-  nationality: string;
-  height?: number;
-  weight?: number;
-  photo: string;
-  jerseyNumber: number;
-  position: unknown;
-  esTitular?: boolean;
-  puntaje?: number;
-}
-
-// Interfaz para el formato que viene del backend
-interface BackendPlayerResponse {
-  id: number;
-  equipo: {
-    id: number;
-    nombre: string;
-    usuario: unknown;
-  };
-  jugador: {
-    id: number;
-    apiId: number;
-    name: string;
-    firstname?: string;
-    lastname?: string;
-    age: number;
-    nationality: string;
-    height?: string;
-    weight?: string;
-    photo: string;
-    jerseyNumber: number | null;
-    position: number | string;
-    club: number;
-  };
-  es_titular: boolean;
-}
-
 const LoggedMenu = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
+  const [equipoIdDelTorneo, setEquipoIdDelTorneo] = useState<number | null>(
+    null
+  );
+
+  // ✅ Usar los hooks en lugar de localStorage
+  const [torneoGuardadoId, setTorneoGuardadoId] = useTorneoSeleccionado();
+  const [, setMiEquipoId] = useMiEquipoId();
 
   useEffect(() => {
     const fetchTeamPlayers = async () => {
       try {
-        const response = await apiClient.get('/equipos/mi-equipo');
-        console.log('Respuesta completa del equipo:', response.data);
+        let torneoId = torneoGuardadoId || searchParams.get('torneoId');
+        let equipoId: number | null = null;
 
-        if (response.data && response.data.jugadores) {
-          console.log('Jugadores recibidos:', response.data.jugadores);
+        // Si no hay torneoId guardado ni en URL, obtener el primer torneo activo
+        if (!torneoId) {
+          try {
+            const torneosResponse = await apiClient.post(
+              '/api/torneos/mis-torneos',
+              {}
+            );
+            const torneos = torneosResponse.data?.data || torneosResponse.data;
 
-          const equipoId = response.data.id;
+            // Buscar el primer torneo activo
+            const torneoActivo = torneos.find(
+              (t: { estado: string }) => t.estado === 'ACTIVO'
+            );
 
-          // Mapear los jugadores desde la estructura del backend
-          const mappedPlayers = response.data.jugadores.map(
-            (item: BackendPlayerResponse, index: number) => {
-              console.log(`Jugador ${index}:`, item);
+            if (torneoActivo) {
+              const torneoIdStr = torneoActivo.torneo_id.toString();
+              torneoId = torneoIdStr;
+              // ✅ Guardar en sessionStorage
+              setTorneoGuardadoId(torneoIdStr);
 
-              // Los datos del jugador están en item.jugador
-              const jugador = item.jugador;
-
-              return {
-                id: jugador.id,
-                apiId: jugador.apiId || index,
-                name: jugador.name || '',
-                firstName: jugador.firstname || '',
-                lastName: jugador.lastname || '',
-                age: jugador.age || 0,
-                nationality: jugador.nationality || '',
-                height: jugador.height ? parseInt(jugador.height) : undefined,
-                weight: jugador.weight ? parseInt(jugador.weight) : undefined,
-                photo:
-                  jugador.photo ||
-                  'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=⚽',
-                jerseyNumber: jugador.jerseyNumber || 0,
-                position: jugador.position || '',
-                esTitular: item.es_titular, // ✅ Agregar el flag de titular
-              };
+              if (torneoActivo.mi_equipo?.id) {
+                equipoId = torneoActivo.mi_equipo.id;
+                setEquipoIdDelTorneo(equipoId);
+              }
             }
-          );
+          } catch (err) {
+            console.error('Error al obtener torneos:', err);
+          }
+        } else {
+          // Si hay torneoId, obtener el equipoId del torneo
+          const torneoResponse = await obtenerDetalleTorneo(parseInt(torneoId));
+          equipoId = torneoResponse.data.mi_equipo_id;
 
-          console.log('Jugadores mapeados:', mappedPlayers);
+          if (!equipoId) {
+            // Si no tiene equipo en este torneo, redirigir al detalle del torneo
+            navigate(`/torneos/${torneoId}`);
+            return;
+          }
+
+          // Guardar el equipoId del torneo en el estado
+          setEquipoIdDelTorneo(equipoId);
+        }
+
+        // Si no hay equipoId, no podemos cargar nada
+        if (!equipoId) {
+          setTeamPlayers([]);
+          return;
+        }
+
+        // Construir la URL del endpoint con el equipoId
+        const endpoint = `/api/equipos/detalle-equipo/${equipoId}`;
+
+        const response = await apiClient.get(endpoint);
+
+        // El backend puede devolver { data: { id, nombre, jugadores } } o directamente { id, nombre, jugadores }
+        const equipoData = response.data?.data || response.data;
+
+        if (equipoData && equipoData.jugadores) {
+          const equipoId = equipoData.id;
+
+          // ✅ Usar función centralizada del playerMapper
+          const mappedPlayers = equipoData.jugadores.map(
+            (item: BackendPlayerResponse, index: number) =>
+              mapBackendPlayerToFrontend(item, index)
+          );
 
           // ✅ Filtrar solo los titulares para mostrar en la formación
           const titulares = mappedPlayers.filter(
             (p: Player) => p.esTitular === true
           );
-          console.log('Titulares:', titulares);
           setTeamPlayers(titulares);
 
           // ✅ Intentar obtener puntajes de la última jornada
           try {
             const historialResponse = await apiClient.get(
-              `/equipos/${equipoId}/historial`
+              `/api/equipos/${equipoId}/historial`
             );
-            console.log('📊 Historial:', historialResponse.data);
 
             // Obtener la última jornada con puntos
             const historialData = Array.isArray(historialResponse.data)
@@ -131,94 +132,119 @@ const LoggedMenu = () => {
               const ultimaJornada = ordenado[0];
               const jornadaId = ultimaJornada?.jornada?.id;
 
-              if (jornadaId) {
-                console.log('📅 Última jornada encontrada:', jornadaId);
+              // Verificar si el historial ya trae los jugadores con puntajes
+              const jugadoresHistorial = ultimaJornada?.jugadores;
 
-                // Obtener detalles de esa jornada para traer los puntajes
-                const detalleResponse = await apiClient.get(
-                  `/equipos/${equipoId}/jornadas/${jornadaId}`
-                );
-                const detalle =
-                  detalleResponse.data?.data || detalleResponse.data;
-
-                if (detalle?.jugadores) {
-                  console.log('🎯 Jugadores con puntajes:', detalle.jugadores);
-                  console.log(
-                    '🎯 Jugadores actuales:',
-                    titulares.map((p: Player) => ({
-                      name: p.name,
-                      apiId: p.apiId,
-                    }))
-                  );
-
-                  // Mapear puntajes a los jugadores actuales
-                  const jugadoresConPuntajes = titulares.map(
-                    (player: Player) => {
-                      // Intentar buscar por diferentes campos
-                      const jugadorConPuntaje = detalle.jugadores.find(
-                        (j: {
-                          nombre?: string;
-                          name?: string;
-                          nombreCompleto?: string;
-                          id?: number;
-                          apiId?: number;
-                        }) => {
-                          // Comparar por nombre
-                          const nombreMatch =
-                            j.nombre === player.name ||
-                            j.name === player.name ||
-                            j.nombreCompleto === player.name;
-                          // O comparar por ID si está disponible
-                          const idMatch =
-                            (j.id && j.id === player.id) ||
-                            (j.apiId && j.apiId === player.apiId);
-
-                          const match = nombreMatch || idMatch;
-                          if (match) {
-                            console.log(
-                              `✅ Match encontrado para ${player.name}:`,
-                              j
-                            );
-                          }
-                          return match;
-                        }
-                      );
-
-                      if (!jugadorConPuntaje) {
-                        console.log(
-                          `⚠️ No se encontró puntaje para ${player.name}`
-                        );
-                      }
-
-                      return {
-                        ...player,
-                        puntaje: jugadorConPuntaje?.puntaje || 0,
-                      };
+              if (
+                jugadoresHistorial &&
+                Array.isArray(jugadoresHistorial) &&
+                jugadoresHistorial.length > 0
+              ) {
+                // Usar los puntajes directamente del historial
+                const jugadoresConPuntajes = titulares.map((player: Player) => {
+                  const jugadorConPuntaje = jugadoresHistorial.find(
+                    (j: {
+                      nombre?: string;
+                      name?: string;
+                      jugadorId?: number;
+                      id?: number;
+                      puntaje?: number;
+                      puntos?: number;
+                    }) => {
+                      const nombreMatch =
+                        j.nombre === player.name || j.name === player.name;
+                      const idMatch =
+                        (j.jugadorId && j.jugadorId === player.id) ||
+                        (j.id && j.id === player.id);
+                      return nombreMatch || idMatch;
                     }
                   );
 
-                  console.log(
-                    '✅ Jugadores con puntajes mapeados:',
-                    jugadoresConPuntajes
+                  const puntajeReal =
+                    jugadorConPuntaje?.puntaje ?? jugadorConPuntaje?.puntos;
+                  return {
+                    ...player,
+                    // Incluir puntaje siempre que sea un número (incluyendo 0 y negativos)
+                    ...(typeof puntajeReal === 'number'
+                      ? { puntaje: puntajeReal }
+                      : {}),
+                  };
+                });
+
+                setTeamPlayers(jugadoresConPuntajes);
+              } else if (jornadaId) {
+                // Fallback: Intentar obtener detalles de esa jornada
+                try {
+                  const detalleResponse = await apiClient.get(
+                    `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
                   );
-                  setTeamPlayers(jugadoresConPuntajes);
+                  const detalle =
+                    detalleResponse.data?.data || detalleResponse.data;
+
+                  // Backend devuelve titulares[] y suplentes[] separados, o jugadores[]
+                  const jugadoresDetalle = detalle?.jugadores || [
+                    ...(detalle?.titulares || []),
+                    ...(detalle?.suplentes || []),
+                  ];
+
+                  if (jugadoresDetalle.length > 0) {
+                    // Mapear puntajes a los jugadores actuales
+                    const jugadoresConPuntajes = titulares.map(
+                      (player: Player) => {
+                        const jugadorConPuntaje = jugadoresDetalle.find(
+                          (j: {
+                            nombre?: string;
+                            name?: string;
+                            nombreCompleto?: string;
+                            id?: number;
+                            apiId?: number;
+                          }) => {
+                            const nombreMatch =
+                              j.nombre === player.name ||
+                              j.name === player.name ||
+                              j.nombreCompleto === player.name;
+                            const idMatch =
+                              (j.id && j.id === player.id) ||
+                              (j.apiId && j.apiId === player.apiId);
+                            return nombreMatch || idMatch;
+                          }
+                        );
+
+                        const puntajeReal = jugadorConPuntaje?.puntaje;
+                        return {
+                          ...player,
+                          // Incluir puntaje siempre que sea un número (incluyendo 0 y negativos)
+                          ...(typeof puntajeReal === 'number'
+                            ? { puntaje: puntajeReal }
+                            : {}),
+                        };
+                      }
+                    );
+
+                    setTeamPlayers(jugadoresConPuntajes);
+                  }
+                } catch {
+                  // El endpoint de detalle falló, continuar sin puntajes individuales
                 }
               }
             }
-          } catch (historialError) {
-            console.warn(
-              '⚠️ No se pudieron obtener los puntajes:',
-              historialError
-            );
+          } catch {
             // Continuar sin puntajes
           }
         }
-      } catch (error) {
-        console.error('Error al obtener jugadores:', error);
+      } catch {
+        // Si el usuario no tiene equipo (404), redirigir a torneos para que se una a uno
+        navigate('/torneos');
       }
     };
     fetchTeamPlayers();
-  }, []);
+  }, [
+    navigate,
+    searchParams,
+    torneoGuardadoId,
+    setTorneoGuardadoId,
+    setMiEquipoId,
+  ]);
 
   const menuCards: MenuCard[] = [
     {
@@ -238,12 +264,28 @@ const LoggedMenu = () => {
       enabled: true,
     },
     {
+      title: 'Leaderboard',
+      description: 'Ver clasificación del torneo',
+      icon: '🏅',
+      route: '/leaderboard',
+      color: 'from-yellow-500 to-amber-500',
+      enabled: !!torneoGuardadoId,
+    },
+    {
+      title: 'Torneos',
+      description: 'Gestionar tus torneos',
+      icon: '🎯',
+      route: '/torneos',
+      color: 'from-indigo-500 to-purple-500',
+      enabled: true,
+    },
+    {
       title: 'Mercado',
       description: 'Explorar jugadores disponibles',
       icon: '🛒',
       route: '/mercado',
       color: 'from-purple-500 to-pink-500',
-      enabled: false,
+      enabled: !!torneoGuardadoId,
     },
     {
       title: 'Mi Perfil',
@@ -268,16 +310,19 @@ const LoggedMenu = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 h-[calc(100vh-4rem)] flex flex-col relative z-10 py-3">
+      <div className="container mx-auto px-4 h-[calc(100vh-5rem)] flex flex-col relative z-10 py-4">
         {/* Header mejorado */}
-        <div className="text-center mb-4 flex-shrink-0">
+        <div className="text-center mb-3 flex-shrink-0">
           <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
             Bienvenido a TurboFantasy
           </h1>
         </div>
 
         {/* Contenido principal en dos columnas */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
+        <div
+          className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden"
+          style={{ maxHeight: 'calc(100vh - 10rem)' }}
+        >
           {/* Columna izquierda: Menú de opciones */}
           <div className="flex flex-col gap-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             {menuCards.map((card, index) => (
@@ -285,7 +330,28 @@ const LoggedMenu = () => {
                 key={index}
                 onClick={() => {
                   if (card.enabled) {
-                    navigate(card.route);
+                    // Si estamos en modo torneo, agregar torneoId a las rutas
+                    const torneoId = searchParams.get('torneoId');
+                    let route = card.route;
+
+                    if (torneoId) {
+                      if (
+                        card.route === '/leaderboard' ||
+                        card.route === '/mercado'
+                      ) {
+                        route = `${card.route}/${torneoId}`;
+                      } else if (
+                        card.route === '/jornadas' &&
+                        equipoIdDelTorneo
+                      ) {
+                        // Para jornadas, pasar tanto torneoId como equipoId
+                        route = `${card.route}?torneoId=${torneoId}&equipoId=${equipoIdDelTorneo}`;
+                      } else if (equipoIdDelTorneo) {
+                        route = `${card.route}?equipoId=${equipoIdDelTorneo}`;
+                      }
+                    }
+
+                    navigate(route);
                   }
                 }}
                 className={`group ${
@@ -352,36 +418,36 @@ const LoggedMenu = () => {
           </div>
 
           {/* Columna derecha: Equipo y Puntos */}
-          <div className="flex flex-col gap-3 overflow-hidden">
+          <div className="flex flex-col gap-2 overflow-visible pr-2">
             {/* Widget de Puntos */}
-            <div className="backdrop-blur-lg rounded-xl border-2 border-white/40 flex-shrink-0">
-              <WidgetPuntos />
+            <div className="backdrop-blur-lg rounded-lg border-2 border-white/40 flex-shrink-0 bg-white/5 p-1.5">
+              <WidgetPuntos
+                equipoId={equipoIdDelTorneo}
+                torneoId={torneoGuardadoId}
+              />
             </div>
 
             {/* Tarjeta de Mi Equipo con Estadísticas */}
-            <div className="backdrop-blur-lg rounded-xl p-2 border-2 border-white/40 h-[645px] flex flex-col overflow-hidden bg-white/5">
-              <h2 className="text-xl font-bold text-white drop-shadow-lg mb-3 text-center flex-shrink-0 border-b-2 border-white/30 pb-3">
+            <div className="backdrop-blur-lg rounded-lg p-2 border-2 border-white/40 flex-shrink-0 bg-white/5 overflow-visible pb-6">
+              <h2 className="text-base font-bold text-white drop-shadow-lg mb-1.5 text-center border-b border-white/30 pb-1.5">
                 Mi Equipo
               </h2>
 
-              <div className="flex-1 flex flex-col justify-center items-center min-h-0 overflow-y-auto">
+              <div className="flex flex-col justify-center items-center">
                 {/* Sección del Equipo */}
-                <div className="flex flex-col w-full justify-center items-center">
+                <div className="flex flex-col w-full items-center">
                   {teamPlayers.length > 0 ? (
-                    <div className="flex-shrink-0 w-full max-w-md">
+                    <div className="w-full flex justify-center scale-90 origin-top mb-[-10%]">
                       <FormacionEquipoCompacta
                         players={teamPlayers}
                         showSuplentes={false}
                         mostrarPuntajes={teamPlayers.some(
-                          (p) => (p.puntaje || 0) > 0
+                          (p) => p.puntaje !== undefined
                         )}
                       />
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="mb-4">
-                        <span className="text-5xl">⚽</span>
-                      </div>
                       <p className="text-white text-base mb-4 font-semibold drop-shadow">
                         Aún no tienes un equipo creado
                       </p>
@@ -399,24 +465,6 @@ const LoggedMenu = () => {
           </div>
         </div>
       </div>
-
-      {/* Estilos */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: translateY(10px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `,
-        }}
-      />
     </div>
   );
 };

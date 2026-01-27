@@ -1,10 +1,10 @@
 import { useMemo, memo, useCallback } from 'react';
-
-interface Position {
-  description: string;
-}
-
-type PlayerPosition = Position[] | string | { description: string } | unknown;
+import {
+  getPositionDisplayName,
+  getPlayerDisplayName,
+  getShortDisplayName,
+} from '../../utils/playerMapper';
+import type { PlayerPosition } from '../../types/player.types';
 
 interface Player {
   id?: number;
@@ -21,6 +21,8 @@ interface Player {
   position: PlayerPosition;
   esTitular?: boolean;
   puntaje?: number; // ✅ Nuevo: puntaje del jugador
+  precio?: number; // ✅ Precio actual del jugador
+  valor_clausula?: number; // ✅ Cláusula de rescisión (si está blindado)
 }
 
 interface FormacionEquipoCompactaProps {
@@ -30,83 +32,8 @@ interface FormacionEquipoCompactaProps {
   onPlayerSecondaryClick?: (player: Player) => void; // Para intercambio con jugador externo
   selectedPlayerId?: number | null;
   mostrarPuntajes?: boolean; // ✅ Nuevo: flag para mostrar/ocultar puntajes
+  mostrarPrecios?: boolean; // ✅ Flag para mostrar/ocultar precios
 }
-
-// ✅ Funciones auxiliares fuera del componente
-const getPlayerDisplayName = (player: Player): string => {
-  if (player.name && player.name.trim() && player.name !== 'undefined') {
-    return player.name;
-  }
-
-  const firstName =
-    player.firstName &&
-    player.firstName.trim() &&
-    player.firstName !== 'undefined'
-      ? player.firstName
-      : '';
-  const lastName =
-    player.lastName && player.lastName.trim() && player.lastName !== 'undefined'
-      ? player.lastName
-      : '';
-
-  if (firstName && lastName) {
-    return `${firstName} ${lastName}`;
-  }
-
-  if (firstName) {
-    return firstName;
-  }
-
-  if (lastName) {
-    return lastName;
-  }
-
-  return `Jugador #${
-    player.jerseyNumber || Math.floor(Math.random() * 99) + 1
-  }`;
-};
-
-const getShortDisplayName = (player: Player): string => {
-  const fullName = getPlayerDisplayName(player);
-  const parts = fullName.split(' ');
-
-  if (parts.length >= 2) {
-    return `${parts[0].charAt(0)}. ${parts[parts.length - 1]}`;
-  }
-
-  return fullName;
-};
-
-const getPositionDisplayName = (position: unknown): string => {
-  if (!position) return 'N/A';
-
-  if (typeof position === 'object' && position !== null) {
-    const posObj = position as { id?: number; description?: string };
-    const posDesc = posObj.description || '';
-
-    const positionMap: { [key: string]: string } = {
-      Goalkeeper: 'Portero',
-      Defender: 'Defensor',
-      Midfielder: 'Mediocampista',
-      Attacker: 'Delantero',
-    };
-
-    if (posDesc && positionMap[posDesc]) {
-      return positionMap[posDesc];
-    }
-
-    return posDesc || 'N/A';
-  }
-
-  return String(position);
-};
-
-// ✅ Función para obtener color según puntaje
-const getPuntajeColor = (puntaje: number): string => {
-  if (puntaje >= 7) return 'from-green-500 to-green-600';
-  if (puntaje >= 5) return 'from-yellow-500 to-yellow-600';
-  return 'from-red-500 to-red-600';
-};
 
 // ✅ Componente PlayerCard memoizado fuera del componente principal
 const PlayerCard = memo(
@@ -116,8 +43,9 @@ const PlayerCard = memo(
     isSelected,
     hasOnClick,
     onPlayerClick,
-    onPlayerSecondaryClick,
+    onPlayerSecondaryClick: _onPlayerSecondaryClick,
     mostrarPuntaje,
+    mostrarPrecio,
   }: {
     player: Player;
     index: number;
@@ -126,6 +54,7 @@ const PlayerCard = memo(
     onPlayerClick?: (player: Player) => void;
     onPlayerSecondaryClick?: (player: Player) => void;
     mostrarPuntaje?: boolean;
+    mostrarPrecio?: boolean;
   }) => {
     const playerName = getPlayerDisplayName(player);
     const shortName = getShortDisplayName(player);
@@ -145,28 +74,45 @@ const PlayerCard = memo(
           onClick={() => onPlayerClick?.(player)}
         >
           {/* Imagen del jugador */}
-          <div className="relative mb-1.5">
+          <div className="relative mb-2">
             <img
               src={player.photo}
               alt={playerName}
               loading="lazy"
-              className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-lg bg-white"
+              className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-lg bg-white"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src =
                   'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
               }}
             />
-            {/* ✅ Burbuja de puntaje */}
-            {mostrarPuntaje && player.puntaje !== undefined && (
-              <div
-                className={`absolute -top-2 -right-2 bg-gradient-to-br ${getPuntajeColor(
-                  player.puntaje
-                )} text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-xl border-2 border-white`}
-                title={`Puntos: ${player.puntaje.toFixed(1)}`}
+            {/* ✅ Escudo dorado si tiene cláusula blindada */}
+            {!!player.valor_clausula && player.precio !== undefined && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Disparar evento personalizado para mostrar info del blindaje
+                  const precioBase = player.precio ?? 0;
+                  const clausulaTotal = player.valor_clausula ?? 0;
+                  window.dispatchEvent(
+                    new CustomEvent('mostrarInfoBlindaje', {
+                      detail: {
+                        jugador: playerName,
+                        precioBase: precioBase,
+                        incremento: clausulaTotal - precioBase,
+                        clausulaTotal: clausulaTotal,
+                        foto: player.photo,
+                      },
+                    })
+                  );
+                }}
+                className="absolute -top-2 -left-2 cursor-pointer hover:scale-110 transition-transform z-20"
+                title="Ver detalles del blindaje"
               >
-                {player.puntaje.toFixed(1)}
-              </div>
+                <div className="bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-lg font-bold rounded-full w-7 h-7 flex items-center justify-center shadow-xl border-2 border-white">
+                  B
+                </div>
+              </button>
             )}
             {isSelected && (
               <div className="absolute -top-1 -right-1 bg-gradient-to-br from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white">
@@ -183,30 +129,50 @@ const PlayerCard = memo(
                 </svg>
               </div>
             )}
+            {/* Burbuja de puntaje encima del jugador */}
+            {mostrarPuntaje && player.puntaje !== undefined && (
+              <div
+                className={`absolute -top-1 ${
+                  isSelected ? '-right-8' : '-right-1'
+                } text-white text-[10px] font-bold rounded-full min-w-[24px] h-6 px-1 flex items-center justify-center shadow-lg border-2 border-white z-10 ${
+                  player.puntaje > 0
+                    ? 'bg-gradient-to-br from-green-400 to-green-600'
+                    : player.puntaje < 0
+                    ? 'bg-gradient-to-br from-red-400 to-red-600'
+                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                }`}
+                title={`Puntaje: ${player.puntaje}`}
+              >
+                {player.puntaje > 0 ? '+' : ''}
+                {player.puntaje}
+              </div>
+            )}
           </div>
 
           {/* Nombre del jugador */}
-          <div className="text-center bg-white/95 rounded-md px-2 py-1 shadow-md min-w-[60px]">
-            <p className="text-[10px] font-bold text-gray-800 leading-tight whitespace-nowrap">
+          <div className="text-center bg-white/95 rounded-md px-3 py-1.5 shadow-md min-w-[75px]">
+            <p className="text-xs font-bold text-gray-800 leading-tight whitespace-nowrap">
               {shortName}
             </p>
-            <p className="text-[8px] text-gray-600 mt-0.5">{positionName}</p>
+            <p className="text-[9px] text-gray-600 mt-0.5">{positionName}</p>
+            {mostrarPrecio &&
+              (player.precio !== undefined ||
+                player.valor_clausula !== undefined) && (
+                <p
+                  className={`text-[10px] font-bold mt-0.5 px-1 rounded ${
+                    player.valor_clausula
+                      ? 'text-orange-700 bg-orange-50'
+                      : 'text-green-700 bg-green-50'
+                  }`}
+                >
+                  $
+                  {(player.valor_clausula || player.precio || 0).toLocaleString(
+                    'es-AR'
+                  )}
+                </p>
+              )}
           </div>
         </div>
-
-        {/* Botón para intercambio con jugador externo */}
-        {onPlayerSecondaryClick && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlayerSecondaryClick(player);
-            }}
-            className="mt-1.5 text-[10px] px-2 py-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-md transition-all shadow-sm hover:shadow-md transform hover:scale-105"
-            title="Intercambiar con jugador nuevo"
-          >
-            ➕
-          </button>
-        )}
       </div>
     );
   },
@@ -216,9 +182,11 @@ const PlayerCard = memo(
       prevProps.player.id === nextProps.player.id &&
       prevProps.player.apiId === nextProps.player.apiId &&
       prevProps.player.puntaje === nextProps.player.puntaje &&
+      prevProps.player.precio === nextProps.player.precio &&
       prevProps.isSelected === nextProps.isSelected &&
       prevProps.hasOnClick === nextProps.hasOnClick &&
-      prevProps.mostrarPuntaje === nextProps.mostrarPuntaje
+      prevProps.mostrarPuntaje === nextProps.mostrarPuntaje &&
+      prevProps.mostrarPrecio === nextProps.mostrarPrecio
     );
   }
 );
@@ -232,58 +200,93 @@ const FormacionEquipoCompacta = ({
   onPlayerSecondaryClick,
   selectedPlayerId,
   mostrarPuntajes = false,
+  mostrarPrecios = false,
 }: FormacionEquipoCompactaProps) => {
   const normalizePosition = useCallback((position: unknown): string => {
     if (!position) return 'unknown';
 
     if (typeof position === 'object' && position !== null) {
-      const posObj = position as { id?: number; description?: string };
-      const posDesc = posObj.description?.toLowerCase() || '';
+      const posObj = position as {
+        id?: number;
+        description?: string;
+        descripcion?: string;
+      };
+      // Buscar descripción en español o inglés
+      const posDesc = (
+        posObj.descripcion ||
+        posObj.description ||
+        ''
+      ).toLowerCase();
       const posId = String(posObj.id || '');
 
-      // Mapeo de IDs y descripciones a categorías
-      const positionMap: { [key: string]: string } = {
+      // Mapeo de descripciones en español
+      if (posDesc.includes('portero') || posDesc.includes('goalkeeper'))
+        return 'portero';
+      if (posDesc.includes('defens') || posDesc.includes('defender'))
+        return 'defensor';
+      if (posDesc.includes('mediocampista') || posDesc.includes('midfielder'))
+        return 'mediocampista';
+      if (posDesc.includes('delantero') || posDesc.includes('attack'))
+        return 'delantero';
+
+      // Mapeo de IDs a categorías (1=Portero, 2=Defensor, 3=Mediocampista, 4=Delantero)
+      const positionMapById: { [key: string]: string } = {
         '1': 'portero',
         '2': 'defensor',
         '3': 'mediocampista',
         '4': 'delantero',
-        goalkeeper: 'portero',
-        defender: 'defensor',
-        midfielder: 'mediocampista',
-        attacker: 'delantero',
       };
 
-      if (positionMap[posDesc]) return positionMap[posDesc];
-      if (positionMap[posId]) return positionMap[posId];
+      if (positionMapById[posId]) return positionMapById[posId];
     }
 
     const posStr = String(position).toLowerCase();
-    const positionMap: { [key: string]: string } = {
-      '1': 'portero',
-      '2': 'defensor',
-      '3': 'mediocampista',
-      '4': 'delantero',
-      goalkeeper: 'portero',
-      defender: 'defensor',
-      midfielder: 'mediocampista',
-      attacker: 'delantero',
-    };
 
-    return positionMap[posStr] || 'unknown';
+    // Mapeo de strings directos
+    if (
+      posStr === '1' ||
+      posStr.includes('portero') ||
+      posStr.includes('goalkeeper')
+    )
+      return 'portero';
+    if (
+      posStr === '2' ||
+      posStr.includes('defens') ||
+      posStr.includes('defender')
+    )
+      return 'defensor';
+    if (
+      posStr === '3' ||
+      posStr.includes('mediocampista') ||
+      posStr.includes('midfielder')
+    )
+      return 'mediocampista';
+    if (
+      posStr === '4' ||
+      posStr.includes('delantero') ||
+      posStr.includes('attack')
+    )
+      return 'delantero';
+
+    return 'unknown';
   }, []);
 
   const formation = useMemo(() => {
-    // Clasificar jugadores por posición
-    const delanteros = players.filter(
+    // Separar titulares y suplentes
+    const titulares = players.filter((p) => p.esTitular === true);
+    const suplentes = players.filter((p) => p.esTitular === false);
+
+    // Clasificar jugadores titulares por posición
+    const delanteros = titulares.filter(
       (p) => normalizePosition(p.position) === 'delantero'
     );
-    const mediocampistas = players.filter(
+    const mediocampistas = titulares.filter(
       (p) => normalizePosition(p.position) === 'mediocampista'
     );
-    const defensores = players.filter(
+    const defensores = titulares.filter(
       (p) => normalizePosition(p.position) === 'defensor'
     );
-    const porteros = players.filter(
+    const porteros = titulares.filter(
       (p) => normalizePosition(p.position) === 'portero'
     );
 
@@ -292,7 +295,7 @@ const FormacionEquipoCompacta = ({
       mediocampistas,
       defensores,
       portero: porteros.slice(0, 1), // Solo un portero
-      suplentes: players.slice(11), // Los suplentes siguen siendo los últimos
+      suplentes, // Todos los que NO son titulares
     };
   }, [players, normalizePosition]);
 
@@ -301,17 +304,17 @@ const FormacionEquipoCompacta = ({
   }
 
   // Espaciado optimizado para pantallas pequeñas - MÁS GRANDE
-  const topMargin = 15;
-  const lineSpacing = 140; // Espaciado aumentado entre líneas para hacer el campo más largo
-  const bottomPadding = 15;
-  const totalHeight = topMargin + lineSpacing * 3 + bottomPadding + 100; // 100px para el espacio del jugador más grande
+  const topMargin = 20;
+  const lineSpacing = 160; // Espaciado aumentado entre líneas para hacer el campo más largo
+  const bottomPadding = 160; // Padding para incluir la tarjeta completa del portero + borde redondeado
+  const totalHeight = topMargin + lineSpacing * 3 + bottomPadding; // Altura total del campo
 
   return (
     <>
       <div className="relative w-full mx-auto">
         {/* Campo de fútbol visual - versión compacta */}
         <div
-          className="relative bg-green-500/30 rounded-lg p-3 w-full border-2 border-white/50"
+          className="relative bg-green-500/30 rounded-xl p-6 w-full border-2 border-white/50"
           style={{
             height: `${totalHeight}px`,
             backgroundImage: `
@@ -324,7 +327,7 @@ const FormacionEquipoCompacta = ({
           {/* Delanteros */}
           {formation.delanteros.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-4 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-8 z-10"
               style={{ top: `${topMargin}px` }}
             >
               {formation.delanteros.map((player, index) => (
@@ -340,6 +343,7 @@ const FormacionEquipoCompacta = ({
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
                   mostrarPuntaje={mostrarPuntajes}
+                  mostrarPrecio={mostrarPrecios}
                 />
               ))}
             </div>
@@ -348,7 +352,7 @@ const FormacionEquipoCompacta = ({
           {/* Mediocampistas */}
           {formation.mediocampistas.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-4 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-8 z-10"
               style={{
                 top: `${topMargin + lineSpacing * 1}px`,
               }}
@@ -366,6 +370,7 @@ const FormacionEquipoCompacta = ({
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
                   mostrarPuntaje={mostrarPuntajes}
+                  mostrarPrecio={mostrarPrecios}
                 />
               ))}
             </div>
@@ -374,7 +379,7 @@ const FormacionEquipoCompacta = ({
           {/* Defensores */}
           {formation.defensores.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-3 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-6 z-10"
               style={{
                 top: `${topMargin + lineSpacing * 2}px`,
               }}
@@ -392,6 +397,7 @@ const FormacionEquipoCompacta = ({
                   onPlayerClick={onPlayerClick}
                   onPlayerSecondaryClick={onPlayerSecondaryClick}
                   mostrarPuntaje={mostrarPuntajes}
+                  mostrarPrecio={mostrarPrecios}
                 />
               ))}
             </div>
@@ -417,6 +423,7 @@ const FormacionEquipoCompacta = ({
                 onPlayerClick={onPlayerClick}
                 onPlayerSecondaryClick={onPlayerSecondaryClick}
                 mostrarPuntaje={mostrarPuntajes}
+                mostrarPrecio={mostrarPrecios}
               />
             </div>
           )}
@@ -425,48 +432,27 @@ const FormacionEquipoCompacta = ({
         {/* Jugadores suplentes - SOLO si showSuplentes es true */}
         {showSuplentes && formation.suplentes.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-xs font-semibold text-white mb-2 text-center drop-shadow-md">
-              Suplentes
+            <h4 className="text-sm font-semibold text-white mb-2 text-center drop-shadow-md">
+              Suplentes ({formation.suplentes.length})
             </h4>
             <div className="flex flex-wrap justify-center gap-2">
               {formation.suplentes.map((player, index) => (
-                <div
+                <PlayerCard
                   key={`suplente-${player.apiId}`}
-                  className="bg-white/90 backdrop-blur-sm rounded-md px-2.5 py-1.5 shadow-md"
-                  style={{
-                    animation: 'fadeIn 0.4s ease-out',
-                    animationDelay: `${(index + 11) * 0.05}s`,
-                    animationFillMode: 'backwards',
-                  }}
-                >
-                  <div className="text-center">
-                    <p className="font-bold text-[10px] text-gray-800">
-                      {getShortDisplayName(player)}
-                    </p>
-                  </div>
-                </div>
+                  player={player}
+                  index={index + 11}
+                  isSelected={selectedPlayerId === player.apiId}
+                  hasOnClick={!!onPlayerClick}
+                  onPlayerClick={onPlayerClick}
+                  onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  mostrarPuntaje={mostrarPuntajes}
+                  mostrarPrecio={mostrarPrecios}
+                />
               ))}
             </div>
           </div>
         )}
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: translateY(-10px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `,
-        }}
-      />
     </>
   );
 };

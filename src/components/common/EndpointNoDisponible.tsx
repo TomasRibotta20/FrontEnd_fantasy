@@ -53,9 +53,7 @@ const EndpointNoDisponible = ({
 
         {/* Información adicional */}
         <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10">
-          <h3 className="text-white font-bold mb-3">
-            📝 Endpoints necesarios:
-          </h3>
+          <h3 className="text-white font-bold mb-3">Endpoints necesarios:</h3>
           <div className="space-y-2 text-sm text-gray-300">
             <div className="bg-black/30 p-2 rounded font-mono">
               GET /jornadas

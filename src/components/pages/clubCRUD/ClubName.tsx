@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { CustoFormHookForm } from '../../forms/CustoFormHookForm';
 import type { FormFieldConfig } from '../../forms/CustoFormHookForm';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
-// Removed invalid import of Crypto from 'crypto-js'
 
 function Club() {
   const navigate = useNavigate();
@@ -13,7 +12,6 @@ function Club() {
     text: string;
   } | null>(null);
   // Configuración del formulario de registro
-
 
   const registrationFields: FormFieldConfig[] = [
     {
@@ -30,23 +28,17 @@ function Club() {
   ) => {
     setIsLoading(true);
     setMessage(null);
-    console.log('Datos de registro:', formValues);
-      const clubValues = {
-        nombre: formValues.nombre,
-        id_api: crypto.randomUUID(),
-      };
+    const clubValues = {
+      nombre: formValues.nombre,
+      id_api: crypto.randomUUID(),
+    };
     try {
-      const response = await axios.post(
-        'http://localhost:3000/api/clubs',
-        clubValues
-      );
-      console.log('Registro exitoso:', response.data);
+      await apiClient.post('/api/clubs', clubValues);
       setMessage({ type: 'success', text: 'Club registrado exitosamente!' });
       setTimeout(() => {
         navigate('/ClubReadUpdateDelete');
       }, 1000); // Redirigir después de 1 segundo
-    } catch (error) {
-      console.error('Error al registrar el club:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al registrar el club. Inténtalo de nuevo.',

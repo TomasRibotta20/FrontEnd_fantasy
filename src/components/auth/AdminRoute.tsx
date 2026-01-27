@@ -24,7 +24,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   }
 
   // Si no es admin, redirigir al LoggedMenu
-  if (user.role !== 'admin') {
+  if (user.role !== 'admin' && user.rol !== 'admin') {
     return <Navigate to="/LoggedMenu" replace />;
   }
 

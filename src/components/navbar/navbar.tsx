@@ -9,18 +9,33 @@ import {
 } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import apiClient from '../../services/apiClient';
+import SelectorTorneos from './SelectorTorneos';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../hooks/useSessionData';
 
 type NavigationItem = {
   name: string;
   href: string;
   current: boolean;
+  requiresTorneo?: boolean;
 };
 
-const navigation: NavigationItem[] = [
-  { name: 'Equipo', href: '/UpdateTeam', current: false },
-  { name: 'Jornada', href: '/jornadas', current: false },
-  { name: 'Mercado', href: '#', current: false },
+const navigationBase: NavigationItem[] = [
+  { name: 'Torneos', href: '/torneos', current: false, requiresTorneo: false },
+  { name: 'Equipo', href: '/UpdateTeam', current: false, requiresTorneo: true },
+  { name: 'Jornada', href: '/jornadas', current: false, requiresTorneo: false },
+  { name: 'Mercado', href: '/mercado', current: false, requiresTorneo: true },
+  {
+    name: 'Mis Ofertas',
+    href: '/mis-ofertas',
+    current: false,
+    requiresTorneo: false,
+  },
 ];
 
 function classNames(...classes: (string | undefined | null | false)[]) {
@@ -30,6 +45,67 @@ function classNames(...classes: (string | undefined | null | false)[]) {
 export default function NavBar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [torneoIdState] = useState<string | null>(null);
+  const [equipoIdState, setEquipoIdState] = useState<string | null>(null);
+
+  // ✅ Usar el hook en lugar de localStorage directamente
+  const [torneoGuardadoId] = useTorneoSeleccionado();
+  const [miEquipoId, setMiEquipoId] = useMiEquipoId();
+
+  const searchParams = new URLSearchParams(location.search);
+  const torneoId =
+    torneoGuardadoId || searchParams.get('torneoId') || torneoIdState;
+  const equipoId = equipoIdState || searchParams.get('equipoId') || miEquipoId;
+
+  // Obtener el equipoId del torneo seleccionado
+  useEffect(() => {
+    const fetchEquipoDelTorneo = async () => {
+      if (!torneoId || !isAuthenticated) {
+        setEquipoIdState(null);
+        return;
+      }
+
+      try {
+        const response = await apiClient.post('/api/torneos/mis-torneos', {});
+        const torneos = response.data?.data || response.data || [];
+        const torneoActual = torneos.find(
+          (t: { torneo_id: number }) => t.torneo_id.toString() === torneoId
+        );
+
+        if (torneoActual?.mi_equipo?.id) {
+          const equipoIdStr = torneoActual.mi_equipo.id.toString();
+          setEquipoIdState(equipoIdStr);
+          setMiEquipoId(equipoIdStr); // ✅ Guardar en sessionStorage
+        }
+      } catch {
+        setEquipoIdState(null);
+      }
+    };
+
+    fetchEquipoDelTorneo();
+  }, [torneoId, isAuthenticated, setMiEquipoId]);
+
+  // Generar navegación dinámica con torneoId y equipoId
+  const navigation = navigationBase.map((item) => {
+    let href = item.href;
+
+    if (item.name === 'Equipo' && equipoId) {
+      // Para equipo, agregar equipoId como query param
+      href = `${item.href}?equipoId=${equipoId}`;
+    } else if (item.name === 'Mercado' && torneoId) {
+      // Para mercado, usar torneoId en el path (no query params)
+      href = `/mercado/${torneoId}`;
+    } else if (item.name === 'Jornada' && torneoId && equipoId) {
+      // Para jornadas, agregar tanto torneoId como equipoId
+      href = `${item.href}?torneoId=${torneoId}&equipoId=${equipoId}`;
+    } else if (item.requiresTorneo && torneoId) {
+      // Para otras rutas que requieren torneo, agregar torneoId
+      href = `${item.href}?torneoId=${torneoId}`;
+    }
+
+    return { ...item, href };
+  });
 
   const handleLogout = () => {
     logout();
@@ -63,7 +139,17 @@ export default function NavBar() {
             <div className="flex shrink-0 items-center">
               <button
                 onClick={() => {
-                  const destination = isAuthenticated ? '/LoggedMenu' : '/';
+                  let destination = '/';
+                  if (isAuthenticated) {
+                    if (user?.role === 'admin' || user?.rol === 'admin') {
+                      destination = '/admin';
+                    } else {
+                      // Redirigir al LoggedMenu con torneoId si existe
+                      destination = torneoId
+                        ? `/LoggedMenu?torneoId=${torneoId}`
+                        : '/LoggedMenu';
+                    }
+                  }
                   navigate(destination);
                 }}
                 className="transform transition-all duration-300 hover:scale-110 relative hover:opacity-80 hover:drop-shadow-2xl"
@@ -81,9 +167,9 @@ export default function NavBar() {
               <div className="hidden sm:ml-6 sm:block">
                 <div className="flex space-x-3 items-center h-16">
                   {navigation.map((item) => (
-                    <a
+                    <button
                       key={item.name}
-                      href={item.href}
+                      onClick={() => navigate(item.href)}
                       aria-current={item.current ? 'page' : undefined}
                       className={classNames(
                         item.current
@@ -93,12 +179,20 @@ export default function NavBar() {
                       )}
                     >
                       {item.name}
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
           </div>
+
+          {/* Selector de torneos */}
+          {isAuthenticated && user?.role !== 'admin' && (
+            <div className="hidden sm:flex items-center ml-4">
+              <SelectorTorneos />
+            </div>
+          )}
+
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             {/* Mostrar botones de login/register si no está autenticado */}
             {!isAuthenticated ? (
@@ -142,7 +236,6 @@ export default function NavBar() {
                       <p className="font-semibold text-gray-800">
                         {user?.username}
                       </p>
-                      <p className="text-xs mt-0.5">{user?.email}</p>
                     </div>
                   </MenuItem>
                   <MenuItem>
@@ -153,22 +246,26 @@ export default function NavBar() {
                       Tu Perfil
                     </a>
                   </MenuItem>
-                  <MenuItem>
-                    <button
-                      onClick={() => navigate('/admin')}
-                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                    >
-                      Panel de Administración
-                    </button>
-                  </MenuItem>
-                  <MenuItem>
-                    <a
-                      href="#"
-                      className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                    >
-                      Configuración
-                    </a>
-                  </MenuItem>
+                  {user?.role === 'admin' || user?.rol === 'admin' ? (
+                    <>
+                      <MenuItem>
+                        <button
+                          onClick={() => navigate('/admin')}
+                          className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
+                        >
+                          Panel de Administración
+                        </button>
+                      </MenuItem>
+                      <MenuItem>
+                        <a
+                          href="#"
+                          className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
+                        >
+                          Configuración
+                        </a>
+                      </MenuItem>
+                    </>
+                  ) : null}
                   <MenuItem>
                     <button
                       onClick={handleLogout}
@@ -191,14 +288,14 @@ export default function NavBar() {
             {navigation.map((item) => (
               <DisclosureButton
                 key={item.name}
-                as="a"
-                href={item.href}
+                as="button"
+                onClick={() => navigate(item.href)}
                 aria-current={item.current ? 'page' : undefined}
                 className={classNames(
                   item.current
                     ? 'bg-white/30 text-white shadow-xl border-white/50'
                     : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                  'block rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
+                  'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
                 )}
               >
                 {item.name}

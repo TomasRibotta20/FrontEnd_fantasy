@@ -5,6 +5,7 @@ interface User {
   username: string;
   email: string;
   role?: string;
+  rol?: string; // Backend envía "rol" en español
 }
 
 export interface AuthContextType {

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   jornadasService,
   equiposService,
+  estadisticasService,
   type Jornada,
   type HistorialEquipo,
 } from '../../../services/jornadasService';
@@ -10,6 +11,10 @@ import EndpointNoDisponible from '../../common/EndpointNoDisponible';
 
 const JornadasUsuario = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const torneoId = searchParams.get('torneoId');
+  const equipoIdFromUrl = searchParams.get('equipoId');
+
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [historial, setHistorial] = useState<HistorialEquipo | null>(null);
   const [selectedTemporada, setSelectedTemporada] = useState<string>('');
@@ -17,11 +22,14 @@ const JornadasUsuario = () => {
   const [error, setError] = useState<string | null>(null);
   const [equipoId, setEquipoId] = useState<number | null>(null);
   const [endpointNoDisponible, setEndpointNoDisponible] = useState(false);
+  const [jornadasConEstadisticas, setJornadasConEstadisticas] = useState<
+    Set<number>
+  >(new Set());
 
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTemporada]);
+  }, [selectedTemporada, torneoId]);
 
   const loadData = async () => {
     try {
@@ -31,49 +39,51 @@ const JornadasUsuario = () => {
       const jornadasData = await jornadasService.getJornadas(
         selectedTemporada || undefined
       );
-      console.log('📅 Jornadas cargadas:', jornadasData);
       // Asegurarnos que sea un array
-      setJornadas(Array.isArray(jornadasData) ? jornadasData : []);
+      const jornadasArray = Array.isArray(jornadasData) ? jornadasData : [];
+      setJornadas(jornadasArray);
 
-      // Obtener mi equipo para tener el ID
-      try {
-        const miEquipo = await equiposService.getMiEquipoConPuntos();
-        console.log('👤 Mi equipo:', miEquipo);
-
-        if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
-          const id = (miEquipo as { id: number }).id;
-          setEquipoId(id);
-          console.log('🆔 ID del equipo:', id);
-
-          // Cargar historial
+      // Verificar qué jornadas tienen estadísticas calculadas
+      const jornadasConStats = new Set<number>();
+      await Promise.all(
+        jornadasArray.map(async (jornada) => {
           try {
-            const historialData = await equiposService.getHistorialEquipo(id);
-            console.log('📊 Historial recibido completo:', historialData);
-            console.log('📊 Número de jornadas en historial:', historialData?.jornadas?.length);
-            
-            if (historialData?.jornadas && Array.isArray(historialData.jornadas)) {
-              historialData.jornadas.forEach((j, idx) => {
-                console.log(`  📌 Jornada ${idx + 1}:`, {
-                  jornadaId: j.jornada?.id,
-                  puntajeTotal: j.puntajeTotal,
-                  nombre: j.jornada?.nombre
-                });
-              });
+            const estadisticas = await estadisticasService.getPuntajesJornada(
+              jornada.id
+            );
+            if (estadisticas && estadisticas.length > 0) {
+              jornadasConStats.add(jornada.id);
             }
-            
-            setHistorial(historialData);
-          } catch (historialErr) {
-            console.warn('⚠️ Historial no disponible:', historialErr);
-            setHistorial({ jornadas: [] });
+          } catch (error) {
+            console.warn(
+              `⚠️ Error al obtener estadísticas de jornada ${jornada.id}:`,
+              error
+            );
           }
+        })
+      );
+      setJornadasConEstadisticas(jornadasConStats);
+
+      // Obtener el equipoId de la URL (igual que UpdateTeam)
+      if (equipoIdFromUrl) {
+        const id = Number(equipoIdFromUrl);
+        setEquipoId(id);
+
+        // Cargar historial del equipo
+        try {
+          const historialData = await equiposService.getHistorialEquipo(id);
+          setHistorial(historialData);
+        } catch (error) {
+          console.error('❌ Error al cargar historial:', error);
+          setHistorial({ jornadas: [] });
         }
-      } catch (equipoErr) {
-        console.warn('⚠️ Error al obtener equipo:', equipoErr);
+      } else {
+        setEquipoId(null);
+        setHistorial({ jornadas: [] });
       }
 
       setError(null);
     } catch (err) {
-      console.error('❌ Error en loadData:', err);
       // Establecer arrays vacíos en caso de error
       setJornadas([]);
       setHistorial({ jornadas: [] });
@@ -104,45 +114,57 @@ const JornadasUsuario = () => {
   }
 
   const getPuntajeJornada = (jornadaId: number): number => {
-    if (!historial || !historial.jornadas || !Array.isArray(historial.jornadas)) {
-      console.log(`⚠️ No hay historial para jornada ${jornadaId}`);
+    if (
+      !historial ||
+      !historial.jornadas ||
+      !Array.isArray(historial.jornadas)
+    ) {
       return 0;
     }
-    
+
     // La estructura real es: jornadas[].jornada.id, no jornadaId
-    const jornadaData = historial.jornadas.find(
-      (j) => {
-        // Manejar tanto j.jornada.id como j.jornadaId (por si acaso el backend cambia)
-        const id = j.jornada?.id || (j as { jornadaId?: number }).jornadaId;
-        const match = id === jornadaId;
-        if (match) {
-          console.log(`✅ Match encontrado para jornada ${jornadaId}:`, j);
-        }
-        return match;
-      }
-    );
-    
-    const puntaje = jornadaData?.puntajeTotal || 0;
-    console.log(`🎯 Puntaje final para jornada ${jornadaId}:`, puntaje);
-    
-    return puntaje;
+    const jornadaData = historial.jornadas.find((j) => {
+      // Manejar tanto j.jornada.id como j.jornadaId o j.jornada_id
+      const id =
+        j.jornada?.id ||
+        (j as { jornadaId?: number }).jornadaId ||
+        (j as { jornada_id?: number }).jornada_id;
+      return id === jornadaId;
+    });
+
+    if (jornadaData) {
+      // El backend puede enviar puntajeTotal o puntaje_total
+      const puntaje =
+        jornadaData.puntajeTotal ??
+        (jornadaData as { puntaje_total?: number }).puntaje_total ??
+        0;
+      return puntaje;
+    }
+
+    return 0;
   };
 
   const puntajeTotal =
     historial?.jornadas && Array.isArray(historial.jornadas)
-      ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0)
+      ? historial.jornadas.reduce((sum, j) => {
+          const puntaje =
+            j.puntajeTotal ??
+            (j as { puntaje_total?: number }).puntaje_total ??
+            0;
+          return sum + puntaje;
+        }, 0)
       : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-white mb-8">
-          📅 Mis Jornadas y Puntos
+          Mis Jornadas y Puntos
         </h1>
 
         {error && (
           <div className="bg-red-500 text-white p-4 rounded-lg mb-6 flex items-center justify-between">
-            <span>❌ {error}</span>
+            <span>{error}</span>
             <button onClick={() => setError(null)} className="font-bold">
               ✕
             </button>
@@ -152,9 +174,14 @@ const JornadasUsuario = () => {
         {/* Resumen de Puntos */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">🏆 Tu Rendimiento</h2>
+            <h2 className="text-2xl font-bold text-white">Tu Rendimiento</h2>
             <button
-              onClick={() => navigate('/mis-puntos/historial')}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (torneoId) params.append('torneoId', torneoId);
+                if (equipoIdFromUrl) params.append('equipoId', equipoIdFromUrl);
+                navigate(`/mis-puntos/historial?${params.toString()}`);
+              }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold flex items-center gap-2"
             >
               Ver Historial Completo →
@@ -199,7 +226,7 @@ const JornadasUsuario = () => {
               disabled={loading}
               className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold disabled:opacity-50"
             >
-              🔄 Recargar
+              Recargar
             </button>
           </div>
         </div>
@@ -207,12 +234,12 @@ const JornadasUsuario = () => {
         {/* Lista de Jornadas */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <h2 className="text-2xl font-bold text-white mb-6">
-            📋 Todas las Jornadas
+            Todas las Jornadas
           </h2>
 
           {loading && jornadas.length === 0 ? (
             <div className="text-center text-white py-12">
-              <div className="animate-spin text-6xl mb-4">⚽</div>
+              <div className="animate-spin text-6xl mb-4">●</div>
               <p>Cargando jornadas...</p>
             </div>
           ) : jornadas.length === 0 ? (
@@ -225,25 +252,28 @@ const JornadasUsuario = () => {
                 .sort((a, b) => (a.numero || a.id) - (b.numero || b.id)) // Ordenar por número ascendente (de la 1 a la última)
                 .map((jornada) => {
                   const miPuntaje = getPuntajeJornada(jornada.id);
-                  const participe = miPuntaje > 0;
-                  
-                  // Verificar si esta jornada tiene puntos calculados
-                  // Una jornada tiene puntos calculados si:
-                  // 1. Está en mi historial (participé), O
-                  // 2. Tiene el flag puntosCalculados en true (ya fue procesada por admin)
-                  const estaEnHistorial = historial?.jornadas?.some(
-                    (j) => j.jornada?.id === jornada.id
-                  ) || false;
-                  
-                  const hayPuntosCalculados = estaEnHistorial || jornada.puntosCalculados || false;
-                  
-                  console.log(`📋 Jornada ${jornada.id}:`, {
-                    miPuntaje,
-                    participe,
-                    estaEnHistorial,
-                    puntosCalculados: jornada.puntosCalculados,
-                    hayPuntosCalculados
-                  });
+
+                  // Verificar si hay estadísticas calculadas para esta jornada
+                  const hayPuntosCalculados = jornadasConEstadisticas.has(
+                    jornada.id
+                  );
+
+                  // El usuario participó si:
+                  // 1. Hay estadísticas calculadas para la jornada
+                  // 2. El usuario tiene equipo
+                  // 3. El usuario aparece en el historial de esa jornada
+                  const apareceEnHistorial =
+                    historial?.jornadas.some(
+                      (j) =>
+                        (j.jornada?.id ||
+                          (j as { jornadaId?: number }).jornadaId) ===
+                        jornada.id
+                    ) || false;
+
+                  const participe =
+                    hayPuntosCalculados &&
+                    equipoId !== null &&
+                    apareceEnHistorial;
 
                   return (
                     <div
@@ -304,7 +334,7 @@ const JornadasUsuario = () => {
                       ) : (
                         <div className="bg-yellow-600/30 rounded-lg p-4 border border-yellow-500/50">
                           <p className="text-yellow-200 text-sm text-center">
-                            ⏳ Puntos pendientes
+                            Puntos pendientes
                           </p>
                         </div>
                       )}

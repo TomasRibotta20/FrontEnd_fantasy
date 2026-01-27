@@ -54,6 +54,20 @@ const AdminPage = () => {
       route: '/admin/jornadas',
       color: 'from-yellow-500 to-orange-500',
     },
+    {
+      title: 'Gestión de Torneos',
+      description: 'CRUD completo de torneos',
+      icon: '🏅',
+      route: '/admin/torneos',
+      color: 'from-pink-500 to-rose-500',
+    },
+    {
+      title: 'Gestión de Mercado',
+      description: 'Habilitar/cerrar mercado por torneo',
+      icon: '🛒',
+      route: '/admin/mercado',
+      color: 'from-cyan-500 to-blue-500',
+    },
   ];
 
   return (
@@ -70,17 +84,14 @@ const AdminPage = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Header mejorado */}
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-white mb-3 drop-shadow-lg">
+        <div className="text-center mb-5">
+          <h1 className="text-5xl font-bold text-white mt-10 mb-15 drop-shadow-lg">
             Panel de Administración
           </h1>
-          <p className="text-white text-lg drop-shadow">
-            Gestiona todos los aspectos de tu aplicación Fantasy Football
-          </p>
         </div>
 
         {/* Cards de administración */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-0">
           {adminCards.map((card, index) => (
             <div
               key={index}
@@ -128,23 +139,6 @@ const AdminPage = () => {
           ))}
         </div>
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: translateY(20px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `,
-        }}
-      />
     </div>
   );
 };
