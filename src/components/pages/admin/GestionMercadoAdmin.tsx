@@ -216,9 +216,15 @@ const GestionMercadoAdmin = () => {
             onChange={(e) => setTorneoSeleccionado(Number(e.target.value))}
             className="w-full bg-white/10 border-2 border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/60"
           >
-            <option value="" className="bg-gray-800 text-white">-- Selecciona un torneo --</option>
+            <option value="" className="bg-gray-800 text-white">
+              -- Selecciona un torneo --
+            </option>
             {torneos.map((torneo) => (
-              <option key={torneo.id} value={torneo.id} className="bg-gray-800 text-white">
+              <option
+                key={torneo.id}
+                value={torneo.id}
+                className="bg-gray-800 text-white"
+              >
                 {torneo.nombre} ({torneo.estado})
               </option>
             ))}

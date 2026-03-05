@@ -329,7 +329,11 @@ const GestionEquiposAdmin = () => {
               Todos los torneos
             </option>
             {torneos.map((t) => (
-              <option key={t.id} value={t.nombre} className="bg-gray-800 text-white">
+              <option
+                key={t.id}
+                value={t.nombre}
+                className="bg-gray-800 text-white"
+              >
                 {t.nombre}
               </option>
             ))}

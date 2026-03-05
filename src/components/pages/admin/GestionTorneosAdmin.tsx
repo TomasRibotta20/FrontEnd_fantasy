@@ -405,10 +405,18 @@ const GestionTorneosAdmin = () => {
                   }
                   className="w-full px-3 py-2 rounded-lg bg-white/20 text-white border border-white/30"
                 >
-                  <option value="" className="bg-gray-800 text-white">Todos</option>
-                  <option value="EN_ESPERA" className="bg-gray-800 text-white">En Espera</option>
-                  <option value="ACTIVO" className="bg-gray-800 text-white">Activo</option>
-                  <option value="FINALIZADO" className="bg-gray-800 text-white">Finalizado</option>
+                  <option value="" className="bg-gray-800 text-white">
+                    Todos
+                  </option>
+                  <option value="EN_ESPERA" className="bg-gray-800 text-white">
+                    En Espera
+                  </option>
+                  <option value="ACTIVO" className="bg-gray-800 text-white">
+                    Activo
+                  </option>
+                  <option value="FINALIZADO" className="bg-gray-800 text-white">
+                    Finalizado
+                  </option>
                 </select>
               </div>
               <div>
@@ -869,10 +877,18 @@ const GestionTorneosAdmin = () => {
                   }
                   className="w-full px-3 py-2 border rounded-lg"
                 >
-                  <option value="" className="bg-gray-800 text-white">No cambiar ({selectedTorneo.estado})</option>
-                  <option value="EN_ESPERA" className="bg-gray-800 text-white">EN_ESPERA</option>
-                  <option value="ACTIVO" className="bg-gray-800 text-white">ACTIVO</option>
-                  <option value="FINALIZADO" className="bg-gray-800 text-white">FINALIZADO</option>
+                  <option value="" className="bg-gray-800 text-white">
+                    No cambiar ({selectedTorneo.estado})
+                  </option>
+                  <option value="EN_ESPERA" className="bg-gray-800 text-white">
+                    EN_ESPERA
+                  </option>
+                  <option value="ACTIVO" className="bg-gray-800 text-white">
+                    ACTIVO
+                  </option>
+                  <option value="FINALIZADO" className="bg-gray-800 text-white">
+                    FINALIZADO
+                  </option>
                 </select>
               </div>
             </div>
