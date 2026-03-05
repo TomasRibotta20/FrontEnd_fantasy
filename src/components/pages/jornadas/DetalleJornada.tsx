@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import ConfirmModal from '../../common/ConfirmModal';
 import {
   jornadasService,
   estadisticasService,
@@ -13,6 +15,7 @@ import {
   type PartidoCreate,
   type PartidoUpdate,
 } from '../../../services/partidosService';
+import apiClient from '../../../services/apiClient';
 
 interface Club {
   id: number;
@@ -61,7 +64,7 @@ const DetalleJornada = () => {
   const showConfirmation = (
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ) => {
     setConfirmAction({ title, message, onConfirm });
     setShowConfirmModal(true);
@@ -90,13 +93,10 @@ const DetalleJornada = () => {
 
   const loadClubs = async () => {
     try {
-      const response = await fetch('http://localhost:3000/clubs', {
-        credentials: 'include',
-      });
-      const data = await response.json();
+      const response = await apiClient.get('/api/clubs');
+      const data = response.data;
       setClubs(Array.isArray(data) ? data : data?.data || []);
-    } catch (error) {
-      console.error('[CLUBS] Error al cargar clubs:', error);
+    } catch {
       setClubs([]);
     }
   };
@@ -183,8 +183,7 @@ const DetalleJornada = () => {
       handleClosePartidoModal();
       await loadJornadaData(); // Recargar datos
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error('[PARTIDO] Error al guardar:', err);
+    } catch {
       setError('Error al guardar el partido');
       setTimeout(() => setError(null), 3000);
     } finally {
@@ -204,47 +203,32 @@ const DetalleJornada = () => {
           setSuccess('Partido eliminado correctamente');
           await loadJornadaData();
           setTimeout(() => setSuccess(null), 3000);
-        } catch (err) {
-          console.error('[PARTIDO] Error al eliminar:', err);
+        } catch {
           setError('Error al eliminar el partido');
           setTimeout(() => setError(null), 3000);
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
   const loadJornadaData = async () => {
     if (!id) {
-      console.error('[JORNADA] No hay ID de jornada');
       return;
     }
-
-    console.log('[JORNADA] Iniciando carga de jornada:', id);
 
     try {
       setLoading(true);
 
       // Cargar jornada
-      console.log('[JORNADA] Cargando datos de la jornada...');
       const jornadaData = await jornadasService.getJornadaById(Number(id));
-      console.log('[JORNADA] Jornada cargada:', jornadaData);
       setJornada(jornadaData);
 
       // Cargar configuración para saber si esta jornada está activa
       try {
         // Intentar primero con el servicio de admin
         const config = await adminService.getConfig();
-        console.log('[CONFIG] Config obtenida:', config);
-        console.log(
-          '[CONFIG] Config jornadaActiva tipo:',
-          typeof config.jornadaActiva
-        );
-        console.log(
-          '[CONFIG] Config jornadaActiva valor:',
-          config.jornadaActiva
-        );
 
         // Verificar si esta jornada es la activa
         // jornadaActiva puede ser un número o un objeto con id
@@ -255,51 +239,29 @@ const DetalleJornada = () => {
             : config.jornadaActiva;
 
         const esActiva = jornadaActivaId === Number(id);
-        console.log(
-          `[CONFIG] Jornada ${id} es activa: ${esActiva} (jornadaActivaId extraído: ${jornadaActivaId})`
-        );
 
         setEsJornadaActiva(esActiva);
         setModificacionesHabilitadas(config.modificacionesHabilitadas);
-      } catch (configError) {
-        console.warn(
-          '[CONFIG] Error al cargar configuración desde admin, intentando endpoints públicos:',
-          configError
-        );
-
+      } catch {
         // Fallback: Usar endpoints públicos
         try {
           const [jornadaActivaRes, estadoModsRes] = await Promise.all([
-            fetch('http://localhost:3000/api/config/jornada-activa', {
-              credentials: 'include',
-            }),
-            fetch('http://localhost:3000/api/config/estado-modificaciones', {
-              credentials: 'include',
-            }),
+            apiClient.get('/api/config/jornada-activa'),
+            apiClient.get('/api/config/estado-modificaciones'),
           ]);
 
-          const jornadaActivaData = await jornadaActivaRes.json();
-          const estadoModsData = await estadoModsRes.json();
-
-          console.log('[CONFIG] Jornada activa data:', jornadaActivaData);
-          console.log('[CONFIG] Estado modificaciones data:', estadoModsData);
+          const jornadaActivaData = jornadaActivaRes.data;
+          const estadoModsData = estadoModsRes.data;
 
           const jornadaActivaId = jornadaActivaData?.data?.jornada?.id || null;
           const modsHabilitadas =
             estadoModsData?.data?.modificacionesHabilitadas || false;
 
           const esActiva = jornadaActivaId === Number(id);
-          console.log(
-            `[CONFIG] Jornada ${id} es activa: ${esActiva} (jornadaActivaId: ${jornadaActivaId})`
-          );
 
           setEsJornadaActiva(esActiva);
           setModificacionesHabilitadas(modsHabilitadas);
-        } catch (fallbackError) {
-          console.error(
-            '[CONFIG] Error al cargar configuración desde endpoints públicos:',
-            fallbackError
-          );
+        } catch {
           setEsJornadaActiva(false);
           setModificacionesHabilitadas(false);
         }
@@ -308,96 +270,32 @@ const DetalleJornada = () => {
       // Cargar puntajes
       try {
         const puntajesData = await estadisticasService.getPuntajesJornada(
-          Number(id)
+          Number(id),
         );
 
         // Asegurarse de que sea un array
         const puntajesArray = Array.isArray(puntajesData) ? puntajesData : [];
 
-        console.log('[PUNTAJES] ========== RESUMEN DE PUNTAJES ==========');
-        console.log(
-          `[PUNTAJES] Total de jugadores con estadísticas: ${puntajesArray.length}`
-        );
-
-        if (puntajesArray.length > 0) {
-          const totalPuntos = puntajesArray.reduce(
-            (sum, p) => sum + (p.puntaje_total || 0),
-            0
-          );
-          const promedio = totalPuntos / puntajesArray.length;
-          const maxPuntos = Math.max(
-            ...puntajesArray.map((p) => p.puntaje_total || 0)
-          );
-          const jugadoresConPuntos = puntajesArray.filter(
-            (p) => (p.puntaje_total || 0) > 0
-          ).length;
-
-          console.log(
-            `[PUNTAJES] Jugadores con puntos > 0: ${jugadoresConPuntos}`
-          );
-          console.log(`[PUNTAJES] Puntos totales: ${totalPuntos.toFixed(1)}`);
-          console.log(`[PUNTAJES] Promedio de puntos: ${promedio.toFixed(2)}`);
-          console.log(`[PUNTAJES] Puntaje máximo: ${maxPuntos.toFixed(1)}`);
-          console.log('[PUNTAJES] Top 5 jugadores:');
-          puntajesArray
-            .sort((a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0))
-            .slice(0, 5)
-            .forEach((p, i) => {
-              console.log(
-                `  ${i + 1}. ${p.jugador?.name || 'Desconocido'} (ID ${
-                  p.jugador?.id || 'N/A'
-                }): ${(p.puntaje_total || 0).toFixed(1)} pts`
-              );
-            });
-        } else {
-          console.log(
-            '[PUNTAJES] No hay puntajes registrados para esta jornada'
-          );
-        }
-        console.log('[PUNTAJES] ==========================================');
-
         setPuntajes(puntajesArray);
-      } catch (puntajesError) {
-        console.warn('[PUNTAJES] Error al cargar puntajes:', puntajesError);
+      } catch {
         setPuntajes([]);
       }
 
       // Cargar partidos de esta jornada
       try {
-        console.log('[PARTIDOS] Cargando partidos de la jornada:', id);
         const partidosData = await partidosService.getPartidos({
           jornadaId: Number(id),
         });
         const partidosArray = Array.isArray(partidosData) ? partidosData : [];
-        console.log(
-          `[PARTIDOS] Total partidos cargados: ${partidosArray.length}`
-        );
-
-        if (partidosArray.length > 0) {
-          console.log('[PARTIDOS] Lista de partidos:');
-          partidosArray.forEach((p, i) => {
-            console.log(
-              `  ${i + 1}. ${p.local?.nombre || `Club ${p.localId}`} vs ${
-                p.visitante?.nombre || `Club ${p.visitanteId}`
-              } - ${p.estado} (${new Date(p.fecha).toLocaleDateString()})`
-            );
-          });
-        } else {
-          console.log(
-            '[PARTIDOS] No hay partidos registrados en el backend para esta jornada'
-          );
-        }
 
         setPartidos(partidosArray);
-      } catch (partidosError) {
-        console.error('[PARTIDOS] Error al cargar partidos:', partidosError);
+      } catch {
         setPartidos([]);
       }
 
       setError(null);
-    } catch (err) {
+    } catch {
       setError('Error al cargar datos de la jornada');
-      console.error(err);
       setPuntajes([]);
     } finally {
       setLoading(false);
@@ -421,7 +319,7 @@ const DetalleJornada = () => {
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
               body: JSON.stringify({ activarJornada: true }),
-            }
+            },
           );
 
           const data = await response.json();
@@ -434,14 +332,13 @@ const DetalleJornada = () => {
             setError(`${data.message || 'Error al procesar jornada'}`);
             setTimeout(() => setError(null), 5000);
           }
-        } catch (err) {
-          console.error('Error al procesar jornada:', err);
+        } catch {
           setError('Error al procesar jornada');
           setTimeout(() => setError(null), 5000);
         } finally {
           setProcesando(false);
         }
-      }
+      },
     );
   };
 
@@ -461,14 +358,14 @@ const DetalleJornada = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-            }
+            },
           );
 
           const data = await response.json();
 
           if (response.ok) {
             setSuccess(
-              `${data.message || 'Puntajes recalculados correctamente'}`
+              `${data.message || 'Puntajes recalculados correctamente'}`,
             );
             await loadJornadaData(); // Recargar datos
             setTimeout(() => setSuccess(null), 5000);
@@ -476,25 +373,20 @@ const DetalleJornada = () => {
             setError(`${data.message || 'Error al recalcular puntajes'}`);
             setTimeout(() => setError(null), 5000);
           }
-        } catch (err) {
-          console.error('Error al recalcular puntajes:', err);
+        } catch {
           setError('Error al recalcular puntajes');
           setTimeout(() => setError(null), 5000);
         } finally {
           setProcesando(false);
         }
-      }
+      },
     );
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">⚪</div>
-          <p className="text-xl">Cargando jornada...</p>
-          <p className="text-sm text-gray-300 mt-2">ID: {id}</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando jornada..." />
       </div>
     );
   }
@@ -677,7 +569,7 @@ const DetalleJornada = () => {
         {/* Botones de Acción (Solo para Admins) */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
           <h2 className="text-xl font-bold text-white mb-4">
-            ⚙️ Acciones de Administrador
+            Acciones de Administrador
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
@@ -685,14 +577,14 @@ const DetalleJornada = () => {
               disabled={procesando || loading}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
-              {procesando ? '⏳ Procesando...' : '⚡ Procesar Jornada'}
+              {procesando ? 'Procesando...' : 'Procesar Jornada'}
             </button>
             <button
               onClick={handleRecalcularPuntajes}
               disabled={procesando || loading}
               className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
-              {procesando ? '⏳ Recalculando...' : '🔄 Recalcular Puntajes'}
+              {procesando ? 'Recalculando...' : 'Recalcular Puntajes'}
             </button>
           </div>
         </div>
@@ -704,10 +596,6 @@ const DetalleJornada = () => {
               <h2 className="text-2xl font-bold text-white">
                 Partidos de la Jornada
               </h2>
-              <p className="text-gray-400 text-sm mt-1">
-                Los partidos se cargan automáticamente desde la API externa.
-                Puedes agregar partidos adicionales manualmente.
-              </p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -725,23 +613,6 @@ const DetalleJornada = () => {
               >
                 <span className="text-xl">+</span> Agregar Partido
               </button>
-            </div>
-          </div>
-
-          {/* Información de carga */}
-          <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-blue-400 text-xl font-bold">i</div>
-              <div className="flex-1">
-                <p className="text-blue-200 font-semibold mb-1">
-                  Total de partidos: {partidos.length}
-                </p>
-                <p className="text-blue-300 text-sm">
-                  {partidos.length === 0
-                    ? 'No hay partidos cargados desde la API. Puedes crear partidos manualmente usando el botón "Agregar Partido".'
-                    : 'Estos partidos se usan para calcular los puntos de los jugadores. Puedes editar su estado o agregar partidos adicionales.'}
-                </p>
-              </div>
             </div>
           </div>
 
@@ -786,13 +657,13 @@ const DetalleJornada = () => {
                           partido.estado === 'FT'
                             ? 'bg-green-600 text-white'
                             : partido.estado === 'LIVE'
-                            ? 'bg-red-600 text-white animate-pulse'
-                            : partido.estado === 'PST'
-                            ? 'bg-yellow-600 text-white'
-                            : partido.estado === 'CANC' ||
-                              partido.estado === 'ABD'
-                            ? 'bg-red-800 text-white'
-                            : 'bg-gray-600 text-white'
+                              ? 'bg-red-600 text-white animate-pulse'
+                              : partido.estado === 'PST'
+                                ? 'bg-yellow-600 text-white'
+                                : partido.estado === 'CANC' ||
+                                    partido.estado === 'ABD'
+                                  ? 'bg-red-800 text-white'
+                                  : 'bg-gray-600 text-white'
                         }`}
                       >
                         {partido.estado_detalle || partido.estado}
@@ -885,7 +756,7 @@ const DetalleJornada = () => {
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">
-              🏆 Top 20 Mejores Puntajes
+              Top 20 Mejores Puntajes
             </h2>
             {puntajes.length > 20 && (
               <p className="text-gray-400 text-sm">
@@ -897,7 +768,7 @@ const DetalleJornada = () => {
           {puntajes.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
               <p className="text-lg mb-2">
-                ⚠️ No hay puntajes registrados para esta jornada
+                No hay puntajes registrados para esta jornada
               </p>
               <p className="text-sm">
                 {esJornadaActiva
@@ -925,7 +796,7 @@ const DetalleJornada = () => {
                 <tbody>
                   {puntajes
                     .sort(
-                      (a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0)
+                      (a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0),
                     )
                     .slice(0, 20) // Mostrar solo los 20 primeros
                     .map((puntaje, index) => (
@@ -941,19 +812,19 @@ const DetalleJornada = () => {
                               index === 0
                                 ? 'text-yellow-400 text-xl'
                                 : index === 1
-                                ? 'text-gray-300 text-lg'
-                                : index === 2
-                                ? 'text-orange-400'
-                                : 'text-white'
+                                  ? 'text-gray-300 text-lg'
+                                  : index === 2
+                                    ? 'text-orange-400'
+                                    : 'text-white'
                             }`}
                           >
                             {index === 0
-                              ? '🥇'
+                              ? '1°'
                               : index === 1
-                              ? '🥈'
-                              : index === 2
-                              ? '🥉'
-                              : index + 1}
+                                ? '2°'
+                                : index === 2
+                                  ? '3°'
+                                  : index + 1}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -988,10 +859,10 @@ const DetalleJornada = () => {
                               (puntaje.puntaje_total || 0) >= 10
                                 ? 'bg-green-600'
                                 : (puntaje.puntaje_total || 0) >= 7
-                                ? 'bg-blue-600'
-                                : (puntaje.puntaje_total || 0) >= 5
-                                ? 'bg-indigo-600'
-                                : 'bg-gray-600'
+                                  ? 'bg-blue-600'
+                                  : (puntaje.puntaje_total || 0) >= 5
+                                    ? 'bg-indigo-600'
+                                    : 'bg-gray-600'
                             }`}
                           >
                             {(puntaje.puntaje_total || 0).toFixed(1)}
@@ -1003,7 +874,7 @@ const DetalleJornada = () => {
                         <td className="py-3 px-4 text-right">
                           {puntaje.goles ? (
                             <span className="text-green-400 font-bold">
-                              ⚽ {puntaje.goles}
+                              {puntaje.goles}
                             </span>
                           ) : (
                             <span className="text-gray-500">-</span>
@@ -1012,7 +883,7 @@ const DetalleJornada = () => {
                         <td className="py-3 px-4 text-right">
                           {puntaje.asistencias ? (
                             <span className="text-blue-400 font-bold">
-                              🎯 {puntaje.asistencias}
+                              {puntaje.asistencias}
                             </span>
                           ) : (
                             <span className="text-gray-500">-</span>
@@ -1254,8 +1125,8 @@ const DetalleJornada = () => {
                   {loading
                     ? 'Guardando...'
                     : editingPartido
-                    ? 'Actualizar'
-                    : 'Crear'}
+                      ? 'Actualizar'
+                      : 'Crear'}
                 </button>
                 <button
                   onClick={handleClosePartidoModal}
@@ -1269,30 +1140,13 @@ const DetalleJornada = () => {
         )}
 
         {/* Modal de Confirmación */}
-        {showConfirmModal && confirmAction && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 max-w-md w-full border-2 border-white/20 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-4">
-                {confirmAction.title}
-              </h2>
-              <p className="text-gray-300 mb-6">{confirmAction.message}</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleConfirm}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
-                >
-                  Confirmar
-                </button>
-                <button
-                  onClick={handleCancelConfirm}
-                  className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          open={showConfirmModal && confirmAction !== null}
+          title={confirmAction?.title ?? ''}
+          message={confirmAction?.message ?? ''}
+          onConfirm={handleConfirm}
+          onCancel={handleCancelConfirm}
+        />
       </div>
     </div>
   );

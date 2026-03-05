@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface Position {
   id: number;
-  description: string;
+  descripcion: string;
 }
 
+/** CRUD de posiciones de jugadores. */
 function CrudPositions() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -19,6 +21,7 @@ function CrudPositions() {
     type: 'success' | 'error' | 'warning' | 'info';
     text: string;
   } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const [editData, setEditData] = useState({
     descripcion: '',
@@ -30,7 +33,7 @@ function CrudPositions() {
 
   useEffect(() => {
     const filtered = positions.filter((position) =>
-      position.description.toLowerCase().includes(searchTerm.toLowerCase())
+      position.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredPositions(filtered);
   }, [searchTerm, positions]);
@@ -38,55 +41,71 @@ function CrudPositions() {
   const getPositions = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('http://localhost:3000/api/positions');
-      const sortedPositions = response.data.data.sort(
-        (a: Position, b: Position) => a.description.localeCompare(b.description)
+      const response = await apiClient.get('/api/positions');
+      const positionsData = response.data.data || response.data;
+      const sortedPositions = positionsData.sort((a: Position, b: Position) =>
+        a.descripcion.localeCompare(b.descripcion),
       );
       setPositions(sortedPositions);
       setFilteredPositions(sortedPositions);
-      setNotification({
-        type: 'success',
-        text: 'Posiciones cargadas exitosamente',
-      });
-    } catch (error) {
-      console.error('Error al obtener posiciones:', error);
+    } catch (err) {
+      const error = err as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+      let errorMsg = 'Error al obtener posiciones';
+
+      if (error.response?.status === 401) {
+        errorMsg = 'No autorizado - Por favor inicia sesión nuevamente';
+      } else if (error.response?.status === 403) {
+        errorMsg = 'No tienes permisos para ver las posiciones';
+      } else if (error.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      } else if (!error.response) {
+        errorMsg =
+          'No se pudo conectar con el servidor - Verifica que el backend esté corriendo';
+      }
+
       setNotification({
         type: 'error',
-        text: 'Error al obtener posiciones',
+        text: errorMsg,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const deletePosition = async (positionId: number) => {
-    if (window.confirm('¿Estás seguro de eliminar esta posición?')) {
-      setIsLoading(true);
-      try {
-        await axios.delete(`http://localhost:3000/api/positions/${positionId}`);
-        setPositions((prevPositions) =>
-          prevPositions.filter((position) => position.id !== positionId)
-        );
-        setNotification({
-          type: 'success',
-          text: 'Posición eliminada con éxito',
-        });
-      } catch (error) {
-        console.error('Error al eliminar posición:', error);
-        setNotification({
-          type: 'error',
-          text: 'Error al eliminar posición',
-        });
-      } finally {
-        setIsLoading(false);
-      }
+  const deletePosition = (positionId: number) => {
+    setConfirmDeleteId(positionId);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setIsLoading(true);
+    try {
+      await apiClient.delete(`/api/positions/${confirmDeleteId}`);
+      setPositions((prevPositions) =>
+        prevPositions.filter((position) => position.id !== confirmDeleteId),
+      );
+      setNotification({
+        type: 'success',
+        text: 'Posición eliminada con éxito',
+      });
+    } catch {
+      setNotification({
+        type: 'error',
+        text: 'Error al eliminar posición',
+      });
+    } finally {
+      setIsLoading(false);
+      setConfirmDeleteId(null);
     }
   };
 
   const handleEdit = (position: Position) => {
     setEditingPosition(position.id);
     setEditData({
-      descripcion: position.description || '',
+      descripcion: position.descripcion || '',
     });
   };
 
@@ -99,17 +118,14 @@ function CrudPositions() {
         descripcion: editData.descripcion,
       };
 
-      await axios.patch(
-        `http://localhost:3000/api/positions/${editingPosition}`,
-        updateData
-      );
+      await apiClient.patch(`/api/positions/${editingPosition}`, updateData);
 
       setPositions((prevPositions) =>
         prevPositions.map((position) =>
           position.id === editingPosition
-            ? { ...position, description: updateData.descripcion }
-            : position
-        )
+            ? { ...position, descripcion: updateData.descripcion }
+            : position,
+        ),
       );
 
       setNotification({
@@ -117,8 +133,7 @@ function CrudPositions() {
         text: 'Posición actualizada exitosamente',
       });
       cancelEdit();
-    } catch (error) {
-      console.error('Error al editar posición:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al editar posición',
@@ -297,7 +312,7 @@ function CrudPositions() {
                             </td>
                             <td className="p-5">
                               <span className="text-lg font-bold drop-shadow">
-                                {position.description}
+                                {position.descripcion}
                               </span>
                             </td>
                             <td className="p-5">
@@ -327,6 +342,15 @@ function CrudPositions() {
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar posición"
+        message="¿Estás seguro de eliminar esta posición?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

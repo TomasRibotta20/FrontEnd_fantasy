@@ -1,9 +1,4 @@
 import apiClient from './apiClient';
-import axios from 'axios';
-
-// ============================================
-// INTERFACES
-// ============================================
 
 export interface Jornada {
   id: number;
@@ -14,10 +9,10 @@ export interface Jornada {
   liga_id?: number;
   activa?: boolean;
   permitirModificaciones?: boolean;
-  fecha_inicio?: string; // Backend usa snake_case
-  fecha_fin?: string; // Backend usa snake_case
-  fechaInicio?: string; // Por compatibilidad camelCase
-  fechaFin?: string; // Por compatibilidad camelCase
+  fecha_inicio?: string; 
+  fecha_fin?: string; 
+  fechaInicio?: string; 
+  fechaFin?: string; 
   puntosCalculados?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -100,58 +95,42 @@ export interface HistorialEquipo {
   jornadas: JornadaHistorial[];
 }
 
-// ============================================
-// SERVICIOS DE JORNADAS
-// ============================================
 
+/** Servicio para gestionar jornadas, puntuaciones e historial de equipos. */
 export const jornadasService = {
   // Obtener todas las jornadas
   async getJornadas(temporada?: string): Promise<Jornada[]> {
     try {
-      const params = temporada ? { temporada } : {};
-      // Usar axios directo sin /api ya que el endpoint es /jornadas (no /api/jornadas)
-      const response = await axios.get('http://localhost:3000/jornadas', { 
-        params,
-        withCredentials: true 
-      });
-      // El backend puede devolver { data: [...] } o directamente [...]
+      const params = temporada ? `?temporada=${temporada}` : '';
+      const response = await apiClient.get(`/api/jornadas${params}`);
+      
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error('Error al obtener jornadas:', error);
+    } catch {
       return [];
     }
   },
 
   // Obtener jornada por ID
   async getJornadaById(id: number): Promise<Jornada> {
-    // Usar axios directo sin /api ya que el endpoint es /jornadas/:id (no /api/jornadas/:id)
-    const response = await axios.get(`http://localhost:3000/jornadas/${id}`, {
-      withCredentials: true
-    });
-    // El backend puede devolver { data: {...} } o directamente {...}
+    const response = await apiClient.get(`/api/jornadas/${id}`);
     return response.data?.data || response.data;
   },
 
   // Crear nueva jornada
   async createJornada(data: Partial<Jornada>): Promise<Jornada> {
-    const response = await axios.post('http://localhost:3000/jornadas', data, {
-      withCredentials: true
-    });
+    const response = await apiClient.post('/api/jornadas', data);
     return response.data;
   },
 };
 
-// ============================================
-// SERVICIOS DE ADMINISTRACIÓN
-// ============================================
+
 
 export const adminService = {
   // Obtener jornada activa con todos sus detalles
   async getJornadaActiva(): Promise<{ jornada: Jornada | null; modificacionesHabilitadas: boolean }> {
     try {
-      const response = await apiClient.get('/config/jornada-activa');
-      console.log('[getJornadaActiva] Respuesta completa:', response.data);
+      const response = await apiClient.get('/api/config/jornada-activa');
       
       const data = response.data?.data || response.data;
       
@@ -159,8 +138,7 @@ export const adminService = {
         jornada: data.jornada || null,
         modificacionesHabilitadas: data.modificacionesHabilitadas || false
       };
-    } catch (error) {
-      console.error('[getJornadaActiva] Error al obtener jornada activa:', error);
+    } catch {
       return {
         jornada: null,
         modificacionesHabilitadas: false
@@ -171,50 +149,60 @@ export const adminService = {
   // Ver configuración actual (combinando ambos endpoints)
   async getConfig(): Promise<ConfiguracionSistema> {
     try {
-      // Intentar obtener del endpoint /api/admin/config primero
-      const response = await apiClient.get('/admin/config');
+      
+      const response = await apiClient.get('/api/admin/config');
       const data = response.data?.data || response.data;
-      return {
-        jornadaActiva: data.jornadaActiva !== undefined ? data.jornadaActiva : null,
-        modificacionesHabilitadas: data.modificacionesHabilitadas !== undefined ? data.modificacionesHabilitadas : false
-      };
-    } catch (error) {
-      // Si falla, intentar obtener de los endpoints separados
-      try {
-        const [jornadaActivaRes, estadoModsRes] = await Promise.all([
-          apiClient.get('/config/jornada-activa').catch(() => ({ data: { jornadaActiva: null } })),
-          apiClient.get('/config/estado-modificaciones').catch(() => ({ data: { habilitadas: false } }))
-        ]);
-        
-        const jornadaActiva = jornadaActivaRes.data?.jornadaActiva || jornadaActivaRes.data?.data?.jornadaActiva || null;
-        const modificacionesHabilitadas = estadoModsRes.data?.habilitadas || estadoModsRes.data?.data?.habilitadas || false;
-        
-        return {
-          jornadaActiva,
-          modificacionesHabilitadas
-        };
-      } catch {
-        console.warn('⚠️ No se pudo cargar configuración del servidor');
-        throw error;
+
+      // El backend devuelve snake_case: jornada_activa, modificaciones_habilitadas
+      const jornadaRaw = data.jornada_activa ?? data.jornadaActiva ?? null;
+      let jornadaId: number | null = null;
+      if (jornadaRaw !== null && jornadaRaw !== undefined) {
+        if (typeof jornadaRaw === 'object' && 'id' in jornadaRaw) {
+          jornadaId = jornadaRaw.id;
+        } else if (typeof jornadaRaw === 'number') {
+          jornadaId = jornadaRaw;
+        } else if (typeof jornadaRaw === 'string') {
+          jornadaId = parseInt(jornadaRaw);
+        }
       }
+
+      const modsRaw = data.modificaciones_habilitadas ?? data.modificacionesHabilitadas;
+
+      return {
+        jornadaActiva: jornadaId,
+        modificacionesHabilitadas: modsRaw !== undefined ? modsRaw : false
+      };
+    } catch {
+      const [jornadaActivaRes, estadoModsRes] = await Promise.all([
+        apiClient.get('/api/config/jornada-activa').catch(() => ({ data: { jornadaActiva: null } })),
+        apiClient.get('/api/config/estado-modificaciones').catch(() => ({ data: { habilitadas: false } }))
+      ]);
+      
+      const jornadaActiva = jornadaActivaRes.data?.jornadaActiva || jornadaActivaRes.data?.data?.jornadaActiva || null;
+      const modificacionesHabilitadas = estadoModsRes.data?.habilitadas || estadoModsRes.data?.data?.habilitadas || false;
+      
+      return {
+        jornadaActiva,
+        modificacionesHabilitadas
+      };
     }
   },
 
   // Establecer jornada activa
   async setJornadaActiva(jornadaId: string | number): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.post('/admin/set-jornada-activa', { jornadaId });
+    const response = await apiClient.patch('/api/admin/config', { jornadaId });
     return response.data;
   },
 
   // Deshabilitar modificaciones (bloquear equipos)
   async deshabilitarModificaciones(): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.post('/admin/deshabilitar-modificaciones');
+    const response = await apiClient.patch('/api/admin/config', { modificacionesHabilitadas: false });
     return response.data;
   },
 
   // Habilitar modificaciones (permitir cambios en equipos)
   async habilitarModificaciones(): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.post('/admin/habilitar-modificaciones');
+    const response = await apiClient.patch('/api/admin/config', { modificacionesHabilitadas: true });
     return response.data;
   },
 
@@ -223,42 +211,65 @@ export const adminService = {
     jornadaId: number,
     activarJornada: boolean = true
   ): Promise<void> {
-    await apiClient.post(`/admin/jornadas/${jornadaId}/procesar`, {
+    await apiClient.post(`/api/admin/jornadas/${jornadaId}/procesar`, {
       activarJornada,
     });
   },
 
   // Recalcular puntajes de una jornada
   async recalcularPuntajes(jornadaId: number): Promise<void> {
-    await apiClient.post(`/admin/jornadas/${jornadaId}/recalcular`);
+    await apiClient.post(`/api/admin/jornadas/${jornadaId}/recalcular`);
   },
 };
 
-// ============================================
-// SERVICIOS DE ESTADÍSTICAS
-// ============================================
+
 
 export const estadisticasService = {
   // Actualizar estadísticas para una jornada específica
   async actualizarEstadisticas(jornadaId: number): Promise<void> {
-    await apiClient.post(`/estadisticas/jornadas/${jornadaId}/actualizar`);
+    await apiClient.post(`/api/estadisticas/jornadas/${jornadaId}/actualizar`);
   },
 
   // Obtener todos los puntajes de una jornada
   async getPuntajesJornada(jornadaId: number): Promise<EstadisticaJugador[]> {
-    const response = await apiClient.get(
-      `/estadisticas/jornadas/${jornadaId}/puntajes`
-    );
-    // Manejar tanto { data: [...] } como array directo
-    const data = response.data?.data || response.data;
-    
-    // Si no es un array, retornar array vacío
-    if (!Array.isArray(data)) {
-      console.warn('getPuntajesJornada: respuesta no es un array', data);
+    try {
+      const url = `/api/estadisticas/jornadas/${jornadaId}/puntajes`;
+            const response = await apiClient.get(url);
+            const data = response.data?.data || response.data;
+      
+      if (!Array.isArray(data)) {
+        return [];
+      }
+      
+      // Mapear los datos del backend para normalizar nombres de campos
+      return data.map((item: Record<string, unknown>) => {
+        const jugador = item.jugador as Record<string, unknown> | undefined;
+        
+        // Construir nombre del jugador desde campos en español o inglés
+        const firstName = jugador?.primer_nombre || jugador?.firstname || '';
+        const lastName = jugador?.apellido || jugador?.lastname || '';
+        const fullName = jugador?.nombre || jugador?.name || 
+          (firstName && lastName ? `${firstName} ${lastName}`.trim() : '') ||
+          'Jugador Desconocido';
+        
+        return {
+          ...item,
+          jugador: jugador ? {
+            ...jugador,
+            // Normalizar campos del jugador
+            id: jugador.id,
+            apiId: jugador.id_api || jugador.apiId || jugador.id,
+            name: fullName,
+            firstname: firstName,
+            lastname: lastName,
+            photo: jugador.foto || jugador.photo || '',
+            jerseyNumber: jugador.numero_camiseta ?? jugador.jerseyNumber ?? null,
+          } : undefined,
+        };
+      }) as EstadisticaJugador[];
+    } catch {
       return [];
     }
-    
-    return data;
   },
 
   // Obtener puntaje de un jugador específico en una jornada
@@ -267,41 +278,38 @@ export const estadisticasService = {
     jugadorId: number
   ): Promise<EstadisticaJugador> {
     const response = await apiClient.get(
-      `/estadisticas/jornadas/${jornadaId}/jugadores/${jugadorId}`
+      `/api/estadisticas/jornadas/${jornadaId}/jugadores/${jugadorId}`
     );
     return response.data?.data || response.data;
   },
 };
 
-// ============================================
-// SERVICIOS DE EQUIPOS Y PUNTOS
-// ============================================
 
 export const equiposService = {
   // Obtener historial de jornadas donde el equipo puntuó
   async getHistorialEquipo(equipoId: number): Promise<HistorialEquipo> {
-    const response = await apiClient.get(`/equipos/${equipoId}/historial`);
-    console.log('🔍 [getHistorialEquipo] Respuesta completa:', response.data);
+    const response = await apiClient.get(`/api/equipos/${equipoId}/historial`);
     
-    // El backend devuelve { data: [...] } donde data es un ARRAY directo
     const rawData = response.data?.data || response.data;
-    console.log('🔍 [getHistorialEquipo] Datos extraídos:', rawData);
-    console.log('🔍 [getHistorialEquipo] Es array?', Array.isArray(rawData));
-    
-    // Si rawData es un array directamente (la estructura correcta del backend)
+        // Si rawData es un array directamente (la estructura correcta del backend)
     if (Array.isArray(rawData)) {
-      console.log('✅ [getHistorialEquipo] Array de jornadas encontrado:', rawData.length);
-      return { jornadas: rawData };
+      // Normalizar los campos del backend
+      const jornadas = rawData.map((item: Record<string, unknown>) => ({
+        jornada: item.jornada as JornadaHistorial['jornada'],
+        // El backend puede enviar puntaje_total o puntajeTotal
+        puntajeTotal: (item.puntaje_total ?? item.puntajeTotal ?? 0) as number,
+        fechaSnapshot: item.fechaSnapshot as string | undefined,
+        jugadores: item.jugadores as unknown[],
+      }));
+            return { jornadas };
     }
     
     // Si tiene la propiedad jornadas (formato antiguo por si acaso)
     if (rawData && Array.isArray(rawData.jornadas)) {
-      console.log('✅ [getHistorialEquipo] Jornadas en objeto:', rawData.jornadas.length);
       return rawData as HistorialEquipo;
     }
     
     // Si no hay datos válidos
-    console.warn('⚠️ [getHistorialEquipo] No hay jornadas o formato inválido');
     return { jornadas: [] };
   },
 
@@ -311,42 +319,26 @@ export const equiposService = {
     jornadaId: number
   ): Promise<PuntajeEquipo> {
     try {
-      // Intento 1: Usar apiClient con /api prefix
       const response = await apiClient.get(
-        `/equipos/${equipoId}/jornadas/${jornadaId}`
+        `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
       );
-      console.log('[getPuntajesEquipoJornada] Respuesta con apiClient:', response.data);
       const result = response.data?.data || response.data;
-      console.log('[getPuntajesEquipoJornada] Resultado final:', result);
       return result;
-    } catch (error) {
-      console.warn(`[getPuntajesEquipoJornada] Error con /api prefix, intentando sin prefix:`, error);
-      
-      // Intento 2: Fallback sin /api prefix usando axios directo
-      try {
-        const response = await axios.get(
-          `http://localhost:3000/equipos/${equipoId}/jornadas/${jornadaId}`,
-          { withCredentials: true }
-        );
-        console.log('[getPuntajesEquipoJornada] Respuesta sin /api:', response.data);
-        const result = response.data?.data || response.data;
-        return result;
-      } catch {
-        console.warn(`[getPuntajesEquipoJornada] Endpoint no disponible para equipo ${equipoId}, jornada ${jornadaId}`);
-        // Retornar estructura vacía
-        return {
-          equipoId,
-          jornadaId,
-          puntajeTotal: 0,
-          jugadores: []
-        };
-      }
+    } catch {
+      // Retornar estructura vacía si falla
+      return {
+        equipoId,
+        jornadaId,
+        puntajeTotal: 0,
+        jugadores: []
+      };
     }
   },
 
-  // Obtener mi equipo con puntos
-  async getMiEquipoConPuntos(): Promise<unknown> {
-    const response = await apiClient.get('/equipos/mi-equipo');
+  // Obtener equipo específico por ID (para un torneo)
+  async getEquipoPorId(equipoId: number): Promise<unknown> {
+    const response = await apiClient.get(`/api/equipos/detalle-equipo/${equipoId}`);
     return response.data?.data || response.data;
   },
 };
+

@@ -1,58 +1,95 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  equiposService,
-  type HistorialEquipo,
-} from '../../services/jornadasService';
+import apiClient from '../../services/apiClient';
 
-const WidgetPuntos = () => {
+interface WidgetPuntosProps {
+  equipoId?: number | null;
+  torneoId?: number | string | null;
+}
+
+interface HistorialItem {
+  puntaje_total?: number;
+  puntajeTotal?: number;
+  puntos_acumulados?: number;
+  puntos?: number;
+  jornada?: {
+    puntaje_total?: number;
+  };
+}
+
+const WidgetPuntos = ({ equipoId, torneoId }: WidgetPuntosProps) => {
   const navigate = useNavigate();
-  const [historial, setHistorial] = useState<HistorialEquipo | null>(null);
+  const [puntajeTotal, setPuntajeTotal] = useState(0);
+  const [jornadasJugadas, setJornadasJugadas] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPuntos();
-  }, []);
+  const loadPuntos = useCallback(async () => {
+    if (!equipoId) return;
 
-  const loadPuntos = async () => {
     try {
-      const miEquipo = await equiposService.getMiEquipoConPuntos();
+      // Usar el endpoint correcto: GET /api/equipos/:id/historial
+      const response = await apiClient.get(
+        `/api/equipos/${equipoId}/historial`
+      );
+      const historialData = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
 
-      if (miEquipo && typeof miEquipo === 'object' && 'id' in miEquipo) {
-        const equipoId = (miEquipo as { id: number }).id;
-        const historialData = await equiposService.getHistorialEquipo(equipoId);
-        setHistorial(historialData);
+      if (historialData.length > 0) {
+        // El backend devuelve un array de objetos con estructura: { jornada: {...}, puntaje_total: X }
+        const total = historialData.reduce(
+          (sum: number, item: HistorialItem) => {
+            // Intentar diferentes ubicaciones del puntaje
+            const puntos =
+              item.puntaje_total ||
+              item.puntajeTotal ||
+              item.jornada?.puntaje_total ||
+              item.puntos_acumulados ||
+              item.puntos ||
+              0;
+
+            return sum + Number(puntos);
+          },
+          0
+        );
+
+        setPuntajeTotal(total);
+        setJornadasJugadas(historialData.length);
       }
     } catch (error) {
-      // Silenciar error si el endpoint no existe aún
-      console.warn('Historial de jornadas no disponible aún:', error);
-      setHistorial(null);
+      // Error al cargar puntos - silenciar
     } finally {
       setLoading(false);
     }
-  };
+  }, [equipoId]);
 
-  // No mostrar nada si está cargando o hubo error
-  if (loading || !historial || !historial.jornadas) {
+  useEffect(() => {
+    if (equipoId) {
+      loadPuntos();
+    } else {
+      setLoading(false);
+    }
+  }, [equipoId, loadPuntos]);
+
+  // No mostrar nada si está cargando o no hay equipoId
+  if (loading || !equipoId) {
     return null;
   }
 
-  const puntajeTotal = Array.isArray(historial.jornadas)
-    ? historial.jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0)
-    : 0;
-  const jornadasJugadas = Array.isArray(historial.jornadas)
-    ? historial.jornadas.length
-    : 0;
-  const promedio =
-    jornadasJugadas > 0 ? Math.round(puntajeTotal / jornadasJugadas) : 0;
+  const promedio = jornadasJugadas > 0 ? puntajeTotal / jornadasJugadas : 0;
 
   return (
     <div
-      className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-3 shadow-xl cursor-pointer hover:shadow-2xl transition-all duration-300 flex-shrink-0 border-2 border-purple-400/30"
-      onClick={() => navigate('/mis-puntos/historial')}
+      className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg p-2 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 flex-shrink-0 border border-purple-400/30"
+      onClick={() => {
+        const params = new URLSearchParams();
+        if (equipoId) params.append('equipoId', String(equipoId));
+        if (torneoId) params.append('torneoId', String(torneoId));
+        navigate(`/mis-puntos/historial?${params.toString()}`);
+      }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-white font-bold text-base drop-shadow-lg">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-white font-bold text-sm drop-shadow-lg">
           Tus Puntos
         </h3>
         <span className="text-white/90 text-xs font-semibold drop-shadow">
@@ -60,28 +97,28 @@ const WidgetPuntos = () => {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <div className="text-center bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-          <p className="text-white/90 text-xs mb-0.5 font-semibold drop-shadow">
+      <div className="grid grid-cols-3 gap-1.5">
+        <div className="text-center bg-white/10 rounded-md p-1 backdrop-blur-sm">
+          <p className="text-white/90 text-xs font-semibold drop-shadow">
             Total
           </p>
-          <p className="text-yellow-300 text-lg font-bold leading-tight drop-shadow-lg">
+          <p className="text-yellow-300 text-base font-bold leading-tight drop-shadow-lg">
             {puntajeTotal.toFixed(1)}
           </p>
         </div>
-        <div className="text-center bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-          <p className="text-white/90 text-xs mb-0.5 font-semibold drop-shadow">
+        <div className="text-center bg-white/10 rounded-md p-1 backdrop-blur-sm">
+          <p className="text-white/90 text-xs font-semibold drop-shadow">
             Jornadas
           </p>
-          <p className="text-blue-300 text-lg font-bold leading-tight drop-shadow-lg">
+          <p className="text-blue-300 text-base font-bold leading-tight drop-shadow-lg">
             {jornadasJugadas}
           </p>
         </div>
-        <div className="text-center bg-white/10 rounded-lg p-1.5 backdrop-blur-sm">
-          <p className="text-white/90 text-xs mb-0.5 font-semibold drop-shadow">
+        <div className="text-center bg-white/10 rounded-md p-1 backdrop-blur-sm">
+          <p className="text-white/90 text-xs font-semibold drop-shadow">
             Promedio
           </p>
-          <p className="text-green-300 text-lg font-bold leading-tight drop-shadow-lg">
+          <p className="text-green-300 text-base font-bold leading-tight drop-shadow-lg">
             {promedio.toFixed(1)}
           </p>
         </div>

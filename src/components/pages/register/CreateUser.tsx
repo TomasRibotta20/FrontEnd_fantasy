@@ -4,6 +4,8 @@ import apiClient from '../../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { AxiosError } from 'axios';
+import PasswordRequirements from '../../common/PasswordRequirements';
+import type { ReactNode } from 'react';
 
 interface ErrorResponse {
   message?: string;
@@ -19,10 +21,17 @@ function CreateUser() {
     label: string;
     type: 'number' | 'text' | 'email' | 'password' | 'tel';
     required: boolean;
+    hint?: ReactNode;
   }[] = [
     { name: 'name', label: 'Nombre', type: 'text', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
-    { name: 'password', label: 'Contraseña', type: 'password', required: true },
+    {
+      name: 'password',
+      label: 'Contraseña',
+      type: 'password',
+      required: true,
+      hint: <PasswordRequirements />,
+    },
   ];
 
   const [message, setMessage] = useState<{
@@ -31,26 +40,19 @@ function CreateUser() {
   } | null>(null);
 
   const handleRegistrationSubmit = async (
-    formValues: Record<string, string>
+    formValues: Record<string, string>,
   ) => {
     setIsLoading(true);
     setMessage(null);
-    console.log('Datos de registro:', formValues);
     const userValues = {
       username: formValues.name,
       email: formValues.email,
       password: formValues.password,
     };
 
-    console.log('Datos que se envían al backend:', userValues);
-
     try {
       // Primero registrar el usuario
-      const registerResponse = await apiClient.post(
-        '/auth/register',
-        userValues
-      );
-      console.log('Registro exitoso:', registerResponse.data);
+      await apiClient.post('/api/auth/register', userValues);
 
       // Después hacer login automático con las mismas credenciales
       const loginValues = {
@@ -58,13 +60,13 @@ function CreateUser() {
         password: formValues.password,
       };
 
-      const loginResponse = await apiClient.post('/auth/login', loginValues);
-      console.log('Login automático exitoso:', loginResponse.data);
+      const loginResponse = await apiClient.post(
+        '/api/auth/login',
+        loginValues,
+      );
 
       // Extraer los datos del usuario de la respuesta del login
       const userData = loginResponse.data.data;
-
-      console.log('Usuario logueado automáticamente:', userData);
 
       // Loguear al usuario (el token viene en la cookie del login)
       login(userData);
@@ -76,14 +78,10 @@ function CreateUser() {
 
       // Redirigir al usuario logueado
       setTimeout(() => {
-        navigate('/CreateTeam');
+        navigate('/torneos');
       }, 1000);
     } catch (error: unknown) {
       const axiosError = error as AxiosError;
-      console.error('Error completo:', axiosError);
-      console.error('Response data:', axiosError.response?.data);
-      console.error('Response status:', axiosError.response?.status);
-      console.error('Response headers:', axiosError.response?.headers);
 
       let errorMessage = 'Error al registrar el Usuario. Inténtalo de nuevo.';
 

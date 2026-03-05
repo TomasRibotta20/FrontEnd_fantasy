@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface Club {
   id: number;
@@ -17,6 +18,7 @@ interface Club {
   estadio_imagen: string;
 }
 
+/** CRUD de clubes. */
 function ClubReadUpdateDelete() {
   const navigate = useNavigate();
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -28,6 +30,7 @@ function ClubReadUpdateDelete() {
     type: 'success' | 'error' | 'warning' | 'info';
     text: string;
   } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const [editData, setEditData] = useState({
     nombre: '',
@@ -50,7 +53,7 @@ function ClubReadUpdateDelete() {
       (club) =>
         (club.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (club.codigo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (club.pais || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (club.pais || '').toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredClubs(filtered);
   }, [searchTerm, clubs]);
@@ -58,9 +61,9 @@ function ClubReadUpdateDelete() {
   const getClubs = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('http://localhost:3000/api/clubs');
+      const response = await apiClient.get('/api/clubs');
       const sortedClubs = response.data.data.sort((a: Club, b: Club) =>
-        a.nombre.localeCompare(b.nombre)
+        a.nombre.localeCompare(b.nombre),
       );
       setClubs(sortedClubs);
       setFilteredClubs(sortedClubs);
@@ -68,8 +71,7 @@ function ClubReadUpdateDelete() {
         type: 'success',
         text: 'Clubes cargados exitosamente',
       });
-    } catch (error) {
-      console.error('Error al obtener clubes:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al obtener clubes',
@@ -79,25 +81,30 @@ function ClubReadUpdateDelete() {
     }
   };
 
-  const deleteClub = async (clubId: number) => {
-    if (window.confirm('¿Estás seguro de eliminar este club?')) {
-      setIsLoading(true);
-      try {
-        await axios.delete(`http://localhost:3000/api/clubs/${clubId}`);
-        setClubs((prevClubs) => prevClubs.filter((club) => club.id !== clubId));
-        setNotification({
-          type: 'success',
-          text: 'Club eliminado con éxito',
-        });
-      } catch (error) {
-        console.error('Error al eliminar club:', error);
-        setNotification({
-          type: 'error',
-          text: 'Error al eliminar club',
-        });
-      } finally {
-        setIsLoading(false);
-      }
+  const deleteClub = (clubId: number) => {
+    setConfirmDeleteId(clubId);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setIsLoading(true);
+    try {
+      await apiClient.delete(`/api/clubs/${confirmDeleteId}`);
+      setClubs((prevClubs) =>
+        prevClubs.filter((club) => club.id !== confirmDeleteId),
+      );
+      setNotification({
+        type: 'success',
+        text: 'Club eliminado con éxito',
+      });
+    } catch {
+      setNotification({
+        type: 'error',
+        text: 'Error al eliminar club',
+      });
+    } finally {
+      setIsLoading(false);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -137,15 +144,12 @@ function ClubReadUpdateDelete() {
         estadio_imagen: editData.estadio_imagen,
       };
 
-      await axios.patch(
-        `http://localhost:3000/api/clubs/${editingClub}`,
-        updateData
-      );
+      await apiClient.patch(`/api/clubs/${editingClub}`, updateData);
 
       setClubs((prevClubs) =>
         prevClubs.map((club) =>
-          club.id === editingClub ? { ...club, ...updateData } : club
-        )
+          club.id === editingClub ? { ...club, ...updateData } : club,
+        ),
       );
 
       setNotification({
@@ -153,8 +157,7 @@ function ClubReadUpdateDelete() {
         text: 'Club actualizado exitosamente',
       });
       cancelEdit();
-    } catch (error) {
-      console.error('Error al editar club:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al editar club',
@@ -425,7 +428,7 @@ function ClubReadUpdateDelete() {
                           className="w-16 h-16 object-contain rounded-lg bg-white/10 p-2 shadow-lg"
                           onError={(e) => {
                             e.currentTarget.src =
-                              'https://via.placeholder.com/64x64/3B82F6/FFFFFF?text=⚽';
+                              'https://via.placeholder.com/64x64/3B82F6/FFFFFF?text=?';
                           }}
                         />
                         <div className="flex-1 min-w-0">
@@ -500,6 +503,15 @@ function ClubReadUpdateDelete() {
             }
           `,
         }}
+      />
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar club"
+        message="¿Estás seguro de eliminar este club?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
       />
     </div>
   );

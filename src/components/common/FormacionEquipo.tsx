@@ -1,10 +1,9 @@
 import { useState } from 'react';
-
-interface Position {
-  description: string;
-}
-
-type PlayerPosition = Position[] | string | { description: string } | unknown;
+import {
+  getPositionType as getPositionTypeFromMapper,
+  getPlayerDisplayName,
+} from '../../utils/playerMapper';
+import type { PlayerPosition } from '../../types/player.types';
 
 interface Player {
   apiId: number;
@@ -26,6 +25,7 @@ interface FormacionEquipoProps {
   showSuplentes?: boolean;
 }
 
+/** Componente visual de formación de equipo con titulares y suplentes. */
 const FormacionEquipo = ({
   players,
   compact = false,
@@ -33,40 +33,9 @@ const FormacionEquipo = ({
 }: FormacionEquipoProps) => {
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
-  const getPlayerName = (player: Player): string => {
-    if (player.name && player.name.trim() && player.name !== 'undefined') {
-      return player.name;
-    }
-
-    const firstName =
-      player.firstName &&
-      player.firstName.trim() &&
-      player.firstName !== 'undefined'
-        ? player.firstName
-        : '';
-    const lastName =
-      player.lastName &&
-      player.lastName.trim() &&
-      player.lastName !== 'undefined'
-        ? player.lastName
-        : '';
-
-    if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
-    }
-
-    if (firstName) {
-      return firstName;
-    }
-
-    if (lastName) {
-      return lastName;
-    }
-
-    return `Jugador #${
-      player.jerseyNumber || Math.floor(Math.random() * 99) + 1
-    }`;
-  };
+  // Usar getPlayerDisplayName del mapper
+  const getPlayerName = (player: Player): string =>
+    getPlayerDisplayName(player);
 
   const handleImageLoad = (apiId: number) => {
     setLoadedImages((prev) => new Set(prev).add(apiId));
@@ -130,7 +99,7 @@ const FormacionEquipo = ({
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src =
-                'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=⚽';
+                'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
             }}
           />
           {isLoaded && (
@@ -186,13 +155,57 @@ const FormacionEquipo = ({
     );
   };
 
+  // Función para obtener el tipo de posición de un jugador (usa el mapper)
+  const getPositionType = (position: PlayerPosition): string => {
+    const type = getPositionTypeFromMapper(position);
+    // Mapear del formato del mapper al formato usado en este componente
+    switch (type) {
+      case 'goalkeeper':
+        return 'portero';
+      case 'defender':
+        return 'defensor';
+      case 'midfielder':
+        return 'mediocampista';
+      case 'forward':
+        return 'delantero';
+      default:
+        return 'unknown';
+    }
+  };
+
   const organizePlayersInFormation = (players: Player[]) => {
+    // Clasificar jugadores por su posición real
+    const porteros = players.filter(
+      (p) => getPositionType(p.position) === 'portero'
+    );
+    const defensores = players.filter(
+      (p) => getPositionType(p.position) === 'defensor'
+    );
+    const mediocampistas = players.filter(
+      (p) => getPositionType(p.position) === 'mediocampista'
+    );
+    const delanteros = players.filter(
+      (p) => getPositionType(p.position) === 'delantero'
+    );
+
+    // Los que no tienen posición clara van a suplentes
+    const sinPosicion = players.filter(
+      (p) => getPositionType(p.position) === 'unknown'
+    );
+
+    // Para formación 4-3-3: 1 portero titular, 4 defensores, 3 mediocampistas, 3 delanteros
     const formation = {
-      delanteros: players.slice(0, 3),
-      mediocampistas: players.slice(3, 6),
-      defensores: players.slice(6, 10),
-      portero: players.slice(10, 11),
-      suplentes: players.slice(11),
+      delanteros: delanteros.slice(0, 3),
+      mediocampistas: mediocampistas.slice(0, 3),
+      defensores: defensores.slice(0, 4),
+      portero: porteros.slice(0, 1),
+      suplentes: [
+        ...porteros.slice(1),
+        ...defensores.slice(4),
+        ...mediocampistas.slice(3),
+        ...delanteros.slice(3),
+        ...sinPosicion,
+      ],
     };
     return formation;
   };
@@ -321,34 +334,6 @@ const FormacionEquipo = ({
           </div>
         )}
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes gentleGlow {
-              0%, 100% { 
-                opacity: 0.3;
-                transform: scale(1);
-              }
-              50% { 
-                opacity: 0.6;
-                transform: scale(1.05);
-              }
-            }
-
-            @keyframes twinkle {
-              0%, 100% { 
-                transform: scale(1) rotate(0deg);
-                opacity: 0.4;
-              }
-              50% { 
-                transform: scale(1.3) rotate(180deg);
-                opacity: 1;
-              }
-            }
-          `,
-        }}
-      />
     </>
   );
 };

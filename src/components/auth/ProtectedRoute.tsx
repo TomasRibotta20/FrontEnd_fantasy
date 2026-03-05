@@ -3,27 +3,47 @@ import { useAuth } from '../../hooks/useAuth';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import apiClient from '../../services/apiClient';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../hooks/useSessionData';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   redirectTo?: string;
-  requireTeam?: boolean; // Nueva prop para indicar si requiere equipo
+  requireTeam?: boolean;
 }
 
+/** Componente de ruta protegida que requiere autenticación. */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   redirectTo = '/login',
-  requireTeam = true, // Por defecto requiere equipo
+  requireTeam = true,
 }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [checkingTeam, setCheckingTeam] = useState(true);
+  const [torneoId] = useTorneoSeleccionado();
+  const [equipoId] = useMiEquipoId();
 
   useEffect(() => {
     const checkUserTeam = async () => {
-      // Si estamos en la página de crear equipo, no verificamos
-      if (location.pathname === '/crear-equipo' || !requireTeam) {
+      // Si hay torneoId o equipoId en el estado global, el usuario está en un torneo
+      if (
+        location.pathname.startsWith('/torneos') ||
+        location.pathname.startsWith('/jornadas') ||
+        location.pathname.startsWith('/equipos') ||
+        location.pathname.startsWith('/mis-puntos') ||
+        location.pathname.startsWith('/LoggedMenu') ||
+        location.pathname.startsWith('/leaderboard') ||
+        location.pathname.startsWith('/ver-equipo') ||
+        location.pathname.startsWith('/mercado') ||
+        location.pathname.startsWith('/mis-ofertas') ||
+        equipoId ||
+        torneoId ||
+        !requireTeam
+      ) {
         setCheckingTeam(false);
         setHasTeam(true);
         return;
@@ -32,7 +52,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // Solo verificamos si el usuario está autenticado
       if (isAuthenticated && !isLoading) {
         try {
-          const response = await apiClient.get('equipos/mi-equipo');
+          const response = await apiClient.get('/api/equipos/mi-equipo');
           if (response.data !== null) {
             setHasTeam(true);
           } else {
@@ -50,7 +70,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
 
     checkUserTeam();
-  }, [isAuthenticated, isLoading, location.pathname, requireTeam]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    location.pathname,
+    torneoId,
+    equipoId,
+    requireTeam,
+  ]);
 
   if (isLoading || checkingTeam) {
     return (
@@ -67,13 +94,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Si requiere equipo y no lo tiene, redirigir a crear equipo
+  // Si requiere equipo y no lo tiene, redirigir a torneos (excepto en ciertas rutas)
   if (
     requireTeam &&
     hasTeam === false &&
-    location.pathname !== '/crear-equipo'
+    !location.pathname.startsWith('/torneos') &&
+    !location.pathname.startsWith('/jornadas') &&
+    !location.pathname.startsWith('/LoggedMenu')
   ) {
-    return <Navigate to="/crear-equipo" replace />;
+    return <Navigate to="/torneos" replace />;
   }
 
   return <>{children}</>;

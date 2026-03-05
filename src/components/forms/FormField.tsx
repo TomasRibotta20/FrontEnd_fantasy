@@ -10,6 +10,7 @@ interface FormFieldProps {
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  hint?: React.ReactNode;
 }
 
 export const FormField: React.FC<FormFieldProps> = ({
@@ -22,16 +23,20 @@ export const FormField: React.FC<FormFieldProps> = ({
   required = false,
   disabled = false,
   className = '',
+  hint,
 }) => {
   return (
     <div className={`form_group ${className} flex flex-col space-y-2`}>
-      <label
-        htmlFor={name}
-        className="form_label text-white text-base font-bold drop-shadow-md"
-      >
-        {label}
-        {required && <span className="text-yellow-300 ml-1">*</span>}
-      </label>
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor={name}
+          className="form_label text-white text-base font-bold drop-shadow-md"
+        >
+          {label}
+          {required && <span className="text-yellow-300 ml-1">*</span>}
+        </label>
+        {hint}
+      </div>
       <input
         type={type}
         id={name}

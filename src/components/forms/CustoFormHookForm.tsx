@@ -9,6 +9,7 @@ export interface FormFieldConfig {
   type: 'text' | 'email' | 'password' | 'number' | 'tel';
   placeholder?: string;
   required?: boolean;
+  hint?: React.ReactNode;
 }
 
 interface CustoFormHookFormProps {
@@ -34,10 +35,13 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
   className = '',
 }) => {
   // Crear valores iniciales basados en los campos
-  const defaultInitialValues = fields.reduce((acc, field) => {
-    acc[field.name] = initialValues[field.name] || '';
-    return acc;
-  }, {} as Record<string, string>);
+  const defaultInitialValues = fields.reduce(
+    (acc, field) => {
+      acc[field.name] = initialValues[field.name] || '';
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 
   const { formValues, handleChange, resetForm } = useForm(defaultInitialValues);
 
@@ -47,7 +51,6 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
     if (onSubmit) {
       onSubmit(formValues);
     } else {
-      console.log('Form submitted:', formValues);
     }
 
     resetForm();
@@ -81,6 +84,7 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
                 onChange={handleChange}
                 placeholder={field.placeholder}
                 required={field.required}
+                hint={field.hint}
               />
             </div>
           ))}

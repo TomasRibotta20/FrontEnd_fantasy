@@ -30,6 +30,7 @@ export interface PartidoUpdate {
   estado_detalle?: string;
 }
 
+/** Servicio CRUD para consultar y gestionar partidos. */
 export const partidosService = {
   // Obtener todos los partidos con filtros opcionales
   async getPartidos(params?: {
@@ -44,97 +45,31 @@ export const partidosService = {
     if (params?.from) queryParams.append('from', params.from);
     if (params?.to) queryParams.append('to', params.to);
 
-    try {
-      // Intentar primero sin el prefijo /api (endpoint directo)
-      const response = await fetch(
-        `http://localhost:3000/partidos?${queryParams.toString()}`,
-        { credentials: 'include' }
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        return Array.isArray(data) ? data : data?.data || [];
-      }
-      
-      // Si falla, intentar con el prefijo /api
-      const responseApi = await apiClient.get(`/partidos?${queryParams.toString()}`);
-      return responseApi.data;
-    } catch (error) {
-      console.error('[PARTIDOS_SERVICE] Error al obtener partidos:', error);
-      throw error;
-    }
+    const response = await apiClient.get(`/api/partidos?${queryParams.toString()}`);
+    const data = response.data?.data || response.data;
+    return Array.isArray(data) ? data : [];
   },
 
   // Obtener un partido por ID
   async getPartidoById(id: number): Promise<Partido> {
-    try {
-      const response = await fetch(`http://localhost:3000/partidos/${id}`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-      const responseApi = await apiClient.get(`/partidos/${id}`);
-      return responseApi.data;
-    } catch (error) {
-      console.error('[PARTIDOS_SERVICE] Error al obtener partido:', error);
-      throw error;
-    }
+    const response = await apiClient.get(`/api/partidos/${id}`);
+    return response.data?.data || response.data;
   },
 
   // Crear un nuevo partido
   async createPartido(partido: PartidoCreate): Promise<Partido> {
-    try {
-      const response = await fetch('http://localhost:3000/partidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(partido),
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-      const responseApi = await apiClient.post('/partidos', partido);
-      return responseApi.data;
-    } catch (error) {
-      console.error('[PARTIDOS_SERVICE] Error al crear partido:', error);
-      throw error;
-    }
+    const response = await apiClient.post('/api/partidos', partido);
+    return response.data?.data || response.data;
   },
 
   // Actualizar un partido (solo estado y estado_detalle)
   async updatePartido(id: number, data: PartidoUpdate): Promise<Partido> {
-    try {
-      const response = await fetch(`http://localhost:3000/partidos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-      const responseApi = await apiClient.put(`/partidos/${id}`, data);
-      return responseApi.data;
-    } catch (error) {
-      console.error('[PARTIDOS_SERVICE] Error al actualizar partido:', error);
-      throw error;
-    }
+    const response = await apiClient.put(`/api/partidos/${id}`, data);
+    return response.data?.data || response.data;
   },
 
   // Eliminar un partido
   async deletePartido(id: number): Promise<void> {
-    try {
-      const response = await fetch(`http://localhost:3000/partidos/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok && response.status !== 204) {
-        await apiClient.delete(`/partidos/${id}`);
-      }
-    } catch (error) {
-      console.error('[PARTIDOS_SERVICE] Error al eliminar partido:', error);
-      throw error;
-    }
+    await apiClient.delete(`/api/partidos/${id}`);
   },
 };

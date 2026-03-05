@@ -8,19 +8,35 @@ import {
   MenuItems,
 } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import ballLogo from '../../assets/Ball_Logo.png';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import apiClient from '../../services/apiClient';
+import SelectorTorneos from './SelectorTorneos';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../hooks/useSessionData';
 
 type NavigationItem = {
   name: string;
   href: string;
   current: boolean;
+  requiresTorneo?: boolean;
 };
 
-const navigation: NavigationItem[] = [
-  { name: 'Equipo', href: '/UpdateTeam', current: false },
-  { name: 'Jornada', href: '/jornadas', current: false },
-  { name: 'Mercado', href: '#', current: false },
+const navigationBase: NavigationItem[] = [
+  { name: 'Torneos', href: '/torneos', current: false, requiresTorneo: false },
+  { name: 'Equipo', href: '/UpdateTeam', current: false, requiresTorneo: true },
+  { name: 'Jornada', href: '/jornadas', current: false, requiresTorneo: false },
+  { name: 'Mercado', href: '/mercado', current: false, requiresTorneo: true },
+  {
+    name: 'Mis Ofertas',
+    href: '/mis-ofertas',
+    current: false,
+    requiresTorneo: true,
+  },
 ];
 
 function classNames(...classes: (string | undefined | null | false)[]) {
@@ -30,6 +46,56 @@ function classNames(...classes: (string | undefined | null | false)[]) {
 export default function NavBar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showTorneoWarning, setShowTorneoWarning] = useState(false);
+
+  // Fuente única de verdad: hooks de sesión
+  const [torneoId] = useTorneoSeleccionado();
+  const [equipoId, setMiEquipoId] = useMiEquipoId();
+
+  // Obtener el equipoId cuando cambia el torneo seleccionado y no tenemos equipoId
+  useEffect(() => {
+    const fetchEquipoDelTorneo = async () => {
+      if (!torneoId || !isAuthenticated || equipoId) return;
+
+      try {
+        const response = await apiClient.post('/api/torneos/mis-torneos', {});
+        const torneos = response.data?.data || response.data || [];
+        const torneoActual = torneos.find(
+          (t: { torneo_id: number }) => t.torneo_id.toString() === torneoId,
+        );
+
+        if (torneoActual?.mi_equipo?.id) {
+          setMiEquipoId(torneoActual.mi_equipo.id.toString());
+        }
+      } catch {
+        // error silenciado
+      }
+    };
+
+    fetchEquipoDelTorneo();
+  }, [torneoId, isAuthenticated, equipoId, setMiEquipoId]);
+
+  // Generar navegación dinámica con torneoId y equipoId
+  const navigation = navigationBase.map((item) => {
+    let href = item.href;
+
+    if (item.name === 'Equipo' && equipoId) {
+      // Para equipo, agregar equipoId como query param
+      href = `${item.href}?equipoId=${equipoId}`;
+    } else if (item.name === 'Mercado' && torneoId) {
+      // Para mercado, usar torneoId en el path (no query params)
+      href = `/mercado/${torneoId}`;
+    } else if (item.name === 'Jornada' && torneoId && equipoId) {
+      // Para jornadas, agregar tanto torneoId como equipoId
+      href = `${item.href}?torneoId=${torneoId}&equipoId=${equipoId}`;
+    } else if (item.requiresTorneo && torneoId) {
+      // Para otras rutas que requieren torneo, agregar torneoId
+      href = `${item.href}?torneoId=${torneoId}`;
+    }
+
+    return { ...item, href };
+  });
 
   const handleLogout = () => {
     logout();
@@ -40,6 +106,11 @@ export default function NavBar() {
       as="nav"
       className="fixed top-0 left-0 right-0 z-50 w-full backdrop-blur-lg bg-white/25 border-b-2 border-white/40 shadow-2xl"
     >
+      {showTorneoWarning && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] bg-yellow-500 text-white px-6 py-2 rounded-lg shadow-lg font-semibold text-sm animate-fade-in whitespace-nowrap">
+          ⚠️ Primero seleccioná un torneo para acceder a esta sección
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
           {/* Mobile menu button - Solo mostrar si NO es admin */}
@@ -63,7 +134,14 @@ export default function NavBar() {
             <div className="flex shrink-0 items-center">
               <button
                 onClick={() => {
-                  const destination = isAuthenticated ? '/LoggedMenu' : '/';
+                  let destination = '/';
+                  if (isAuthenticated) {
+                    if (user?.role === 'admin' || user?.rol === 'admin') {
+                      destination = '/admin';
+                    } else {
+                      destination = '/LoggedMenu';
+                    }
+                  }
                   navigate(destination);
                 }}
                 className="transform transition-all duration-300 hover:scale-110 relative hover:opacity-80 hover:drop-shadow-2xl"
@@ -71,7 +149,7 @@ export default function NavBar() {
               >
                 <img
                   alt="Logo - Ir a inicio"
-                  src="./src/assets/Ball_logo.png"
+                  src={ballLogo}
                   className="h-12 w-auto drop-shadow-lg"
                 />
               </button>
@@ -81,24 +159,41 @@ export default function NavBar() {
               <div className="hidden sm:ml-6 sm:block">
                 <div className="flex space-x-3 items-center h-16">
                   {navigation.map((item) => (
-                    <a
+                    <button
                       key={item.name}
-                      href={item.href}
+                      onClick={() => {
+                        if (item.requiresTorneo && !torneoId) {
+                          setShowTorneoWarning(true);
+                          setTimeout(() => setShowTorneoWarning(false), 3000);
+                          return;
+                        }
+                        navigate(item.href);
+                      }}
                       aria-current={item.current ? 'page' : undefined}
                       className={classNames(
                         item.current
                           ? 'bg-white/30 text-white shadow-xl border-white/50'
-                          : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                        'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2'
+                          : item.requiresTorneo && !torneoId
+                            ? 'text-white/50 border-white/20 cursor-not-allowed'
+                            : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                        'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2',
                       )}
                     >
                       {item.name}
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
           </div>
+
+          {/* Selector de torneos */}
+          {isAuthenticated && user?.role !== 'admin' && (
+            <div className="hidden sm:flex items-center ml-4">
+              <SelectorTorneos />
+            </div>
+          )}
+
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             {/* Mostrar botones de login/register si no está autenticado */}
             {!isAuthenticated ? (
@@ -142,7 +237,6 @@ export default function NavBar() {
                       <p className="font-semibold text-gray-800">
                         {user?.username}
                       </p>
-                      <p className="text-xs mt-0.5">{user?.email}</p>
                     </div>
                   </MenuItem>
                   <MenuItem>
@@ -153,22 +247,26 @@ export default function NavBar() {
                       Tu Perfil
                     </a>
                   </MenuItem>
-                  <MenuItem>
-                    <button
-                      onClick={() => navigate('/admin')}
-                      className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                    >
-                      Panel de Administración
-                    </button>
-                  </MenuItem>
-                  <MenuItem>
-                    <a
-                      href="#"
-                      className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                    >
-                      Configuración
-                    </a>
-                  </MenuItem>
+                  {user?.role === 'admin' || user?.rol === 'admin' ? (
+                    <>
+                      <MenuItem>
+                        <button
+                          onClick={() => navigate('/admin')}
+                          className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
+                        >
+                          Panel de Administración
+                        </button>
+                      </MenuItem>
+                      <MenuItem>
+                        <a
+                          href="#"
+                          className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
+                        >
+                          Configuración
+                        </a>
+                      </MenuItem>
+                    </>
+                  ) : null}
                   <MenuItem>
                     <button
                       onClick={handleLogout}
@@ -191,14 +289,23 @@ export default function NavBar() {
             {navigation.map((item) => (
               <DisclosureButton
                 key={item.name}
-                as="a"
-                href={item.href}
+                as="button"
+                onClick={() => {
+                  if (item.requiresTorneo && !torneoId) {
+                    setShowTorneoWarning(true);
+                    setTimeout(() => setShowTorneoWarning(false), 3000);
+                    return;
+                  }
+                  navigate(item.href);
+                }}
                 aria-current={item.current ? 'page' : undefined}
                 className={classNames(
                   item.current
                     ? 'bg-white/30 text-white shadow-xl border-white/50'
-                    : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                  'block rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
+                    : item.requiresTorneo && !torneoId
+                      ? 'text-white/50 border-white/20'
+                      : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                  'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2',
                 )}
               >
                 {item.name}

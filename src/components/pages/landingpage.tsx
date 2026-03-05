@@ -12,25 +12,6 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      {/* Estilos CSS personalizados para la animación */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          @keyframes spin-slow {
-            from {
-              transform: rotate(0deg);
-            }
-            to {
-              transform: rotate(360deg);
-            }
-          }
-          
-          .animate-spin-slow {
-            animation: spin-slow 8s linear infinite;
-          }
-        `,
-        }}
-      />
       {/* Imagen de fondo */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"

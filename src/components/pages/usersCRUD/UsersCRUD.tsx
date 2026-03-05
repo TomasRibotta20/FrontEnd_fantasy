@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface User {
   id: number;
@@ -30,6 +31,7 @@ const UsersCRUD = () => {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -38,13 +40,10 @@ const UsersCRUD = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get('/users');
+      const response = await apiClient.get('/api/users');
       setUsers(response.data.data || response.data);
-      setHasPermission(true); // ✅ Siempre permitir acceso temporalmente
+      setHasPermission(true);
     } catch {
-      // ⚠️ TEMPORALMENTE DESHABILITADO - Permitir acceso a todos los usuarios
-      // Silenciar completamente el error 403 para evitar spam en consola
-      // Establecer lista vacía y permitir acceso
       setUsers([]);
       setHasPermission(true);
     } finally {
@@ -64,13 +63,13 @@ const UsersCRUD = () => {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        await apiClient.put(`/users/${editingId}`, updateData);
+        await apiClient.put(`/api/users/${editingId}`, updateData);
         setNotification({
           type: 'success',
           text: 'Usuario actualizado exitosamente',
         });
       } else {
-        await apiClient.post('/users', formData);
+        await apiClient.post('/api/users', formData);
         setNotification({
           type: 'success',
           text: 'Usuario creado exitosamente',
@@ -78,8 +77,7 @@ const UsersCRUD = () => {
       }
       resetForm();
       fetchUsers();
-    } catch (error) {
-      console.error('Error al guardar usuario:', error);
+    } catch {
       setNotification({ type: 'error', text: 'Error al guardar usuario' });
     }
   };
@@ -94,19 +92,23 @@ const UsersCRUD = () => {
     setEditingId(user.id);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-      try {
-        await apiClient.delete(`/users/${id}`);
-        setNotification({
-          type: 'success',
-          text: 'Usuario eliminado exitosamente',
-        });
-        fetchUsers();
-      } catch (error) {
-        console.error('Error al eliminar usuario:', error);
-        setNotification({ type: 'error', text: 'Error al eliminar usuario' });
-      }
+  const handleDelete = (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    try {
+      await apiClient.delete(`/api/users/${confirmDeleteId}`);
+      setNotification({
+        type: 'success',
+        text: 'Usuario eliminado exitosamente',
+      });
+      fetchUsers();
+    } catch {
+      setNotification({ type: 'error', text: 'Error al eliminar usuario' });
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -123,11 +125,11 @@ const UsersCRUD = () => {
   const filteredUsers = users.filter(
     (user) =>
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
-    <div className="min-h-screen pt-20 pb-10">
+    <div className="h-screen pt-20 pb-4 overflow-hidden flex flex-col">
       <Notification
         message={notification}
         onClose={() => setNotification(null)}
@@ -143,9 +145,9 @@ const UsersCRUD = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Botón volver */}
-        <div className="max-w-7xl mx-auto mb-6">
+      <div className="container mx-auto px-4 relative z-10 flex flex-col flex-1 overflow-hidden">
+        {/* Header con botón volver y título en la misma línea */}
+        <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => navigate('/admin')}
             className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-lg text-white px-4 py-2 rounded-lg font-bold transition-all border-2 border-white/30 hover:border-white/50 drop-shadow-md"
@@ -165,15 +167,18 @@ const UsersCRUD = () => {
             </svg>
             Volver
           </button>
-        </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-            Gestión de Usuarios
-          </h1>
-          <p className="text-white text-lg drop-shadow">
-            Administra todos los usuarios del sistema
-          </p>
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+              Gestión de Usuarios
+            </h1>
+            <p className="text-white/80 text-sm drop-shadow">
+              Administra todos los usuarios del sistema
+            </p>
+          </div>
+
+          {/* Espaciador para centrar el título */}
+          <div className="w-24"></div>
         </div>
 
         {/* Mensaje de acceso denegado */}
@@ -215,14 +220,14 @@ const UsersCRUD = () => {
 
         {/* Contenido principal - solo mostrar si tiene permisos */}
         {hasPermission && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden">
             {/* Formulario */}
-            <div className="lg:col-span-1">
-              <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border-2 border-white/30 shadow-2xl">
-                <h2 className="text-2xl font-bold text-white mb-5 drop-shadow-lg">
+            <div className="lg:col-span-1 overflow-auto">
+              <div className="bg-white/15 backdrop-blur-lg rounded-xl p-5 border-2 border-white/30 shadow-2xl">
+                <h2 className="text-xl font-bold text-white mb-4 drop-shadow-lg">
                   {editingId ? 'Editar Usuario' : 'Nuevo Usuario'}
                 </h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3">
                   <div>
                     <label className="block text-white text-sm font-bold mb-2 drop-shadow">
                       Nombre de Usuario
@@ -319,10 +324,10 @@ const UsersCRUD = () => {
             </div>
 
             {/* Lista */}
-            <div className="lg:col-span-2">
-              <div className="bg-white/15 backdrop-blur-lg rounded-xl p-6 border-2 border-white/30 shadow-2xl">
-                <div className="flex justify-between items-center mb-5 gap-4">
-                  <h2 className="text-2xl font-bold text-white drop-shadow-lg">
+            <div className="lg:col-span-2 flex flex-col overflow-hidden">
+              <div className="bg-white/15 backdrop-blur-lg rounded-xl p-4 border-2 border-white/30 shadow-2xl flex flex-col flex-1 overflow-hidden">
+                <div className="flex justify-between items-center mb-4 gap-4">
+                  <h2 className="text-xl font-bold text-white drop-shadow-lg">
                     Lista de Usuarios{' '}
                     <span className="text-blue-300">
                       ({filteredUsers.length})
@@ -333,7 +338,7 @@ const UsersCRUD = () => {
                     placeholder="Buscar usuario..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="p-3 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-white/60 font-medium shadow-inner min-w-[250px]"
+                    className="p-2 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-white/60 font-medium shadow-inner min-w-[200px]"
                   />
                 </div>
 
@@ -368,24 +373,24 @@ const UsersCRUD = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                  <div className="overflow-x-auto flex-1 overflow-hidden">
+                    <div className="h-full overflow-y-auto custom-scrollbar">
                       <table className="w-full text-white">
                         <thead className="bg-white/20 sticky top-0 border-b-2 border-white/30">
                           <tr>
-                            <th className="p-4 text-left font-bold drop-shadow">
+                            <th className="p-3 text-left font-bold drop-shadow">
                               ID
                             </th>
-                            <th className="p-4 text-left font-bold drop-shadow">
+                            <th className="p-3 text-left font-bold drop-shadow">
                               Usuario
                             </th>
-                            <th className="p-4 text-left font-bold drop-shadow">
+                            <th className="p-3 text-left font-bold drop-shadow">
                               Email
                             </th>
-                            <th className="p-4 text-left font-bold drop-shadow">
+                            <th className="p-3 text-left font-bold drop-shadow">
                               Rol
                             </th>
-                            <th className="p-4 text-center font-bold drop-shadow">
+                            <th className="p-3 text-center font-bold drop-shadow">
                               Acciones
                             </th>
                           </tr>
@@ -396,18 +401,18 @@ const UsersCRUD = () => {
                               key={user.id}
                               className="border-b border-white/20 hover:bg-white/10 transition-colors"
                             >
-                              <td className="p-4 font-bold drop-shadow">
+                              <td className="p-3 font-bold drop-shadow">
                                 {user.id}
                               </td>
-                              <td className="p-4 font-semibold drop-shadow">
+                              <td className="p-3 font-semibold drop-shadow">
                                 {user.username}
                               </td>
-                              <td className="p-4 font-medium drop-shadow">
+                              <td className="p-3 font-medium drop-shadow">
                                 {user.email}
                               </td>
-                              <td className="p-4">
+                              <td className="p-3">
                                 <span
-                                  className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-lg border-2 ${
+                                  className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 ${
                                     user.rol === 'admin'
                                       ? 'bg-purple-500/30 text-purple-200 border-purple-400/50'
                                       : 'bg-blue-500/30 text-blue-200 border-blue-400/50'
@@ -416,17 +421,17 @@ const UsersCRUD = () => {
                                   {user.rol === 'admin' ? 'Admin' : 'Usuario'}
                                 </span>
                               </td>
-                              <td className="p-4">
+                              <td className="p-3">
                                 <div className="flex gap-2 justify-center">
                                   <button
                                     onClick={() => handleEdit(user)}
-                                    className="bg-yellow-500/80 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors duration-300 shadow-lg border-2 border-yellow-400/50"
+                                    className="bg-yellow-500/80 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-colors duration-300 shadow-lg border-2 border-yellow-400/50"
                                   >
                                     Editar
                                   </button>
                                   <button
                                     onClick={() => handleDelete(user.id)}
-                                    className="bg-red-500/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors duration-300 shadow-lg border-2 border-red-400/50"
+                                    className="bg-red-500/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition-colors duration-300 shadow-lg border-2 border-red-400/50"
                                   >
                                     Eliminar
                                   </button>
@@ -461,6 +466,15 @@ const UsersCRUD = () => {
             }
           `,
         }}
+      />
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar usuario"
+        message="¿Estás seguro de eliminar este usuario?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
       />
     </div>
   );

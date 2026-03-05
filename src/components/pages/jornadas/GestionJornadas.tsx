@@ -45,8 +45,7 @@ const GestionJornadas = () => {
         type: 'success',
         text: 'Jornadas cargadas correctamente',
       });
-    } catch (error) {
-      console.error('❌ Error al cargar jornadas:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cargar las jornadas (endpoint pendiente)',
@@ -90,8 +89,7 @@ const GestionJornadas = () => {
         text: 'Jornada activada correctamente',
       });
       fetchJornadas();
-    } catch (error) {
-      console.error('❌ Error al activar jornada:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al activar jornada (endpoint pendiente)',
@@ -119,8 +117,7 @@ const GestionJornadas = () => {
         } correctamente`,
       });
       fetchJornadas();
-    } catch (error) {
-      console.error('❌ Error al cambiar permisos de modificación:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cambiar permisos (endpoint pendiente)',
@@ -141,8 +138,7 @@ const GestionJornadas = () => {
         text: 'Puntos calculados correctamente',
       });
       fetchJornadas();
-    } catch (error) {
-      console.error('❌ Error al calcular puntos:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al calcular puntos (endpoint pendiente)',
@@ -163,8 +159,7 @@ const GestionJornadas = () => {
         text: 'Jornada avanzada correctamente',
       });
       fetchJornadas();
-    } catch (error) {
-      console.error('❌ Error al avanzar jornada:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al avanzar jornada (endpoint pendiente)',
@@ -197,8 +192,7 @@ const GestionJornadas = () => {
       setShowCreateModal(false);
       setNewJornadaNumero('');
       fetchJornadas();
-    } catch (error) {
-      console.error('❌ Error al crear jornada:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al crear jornada (endpoint pendiente)',
@@ -245,7 +239,7 @@ const GestionJornadas = () => {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="bg-green-500 rounded-full p-4">
-                    <span className="text-4xl">🏆</span>
+                    <span className="text-4xl">●</span>
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold text-white">
@@ -266,7 +260,7 @@ const GestionJornadas = () => {
                     }`}
                   >
                     <span className="text-2xl">
-                      {jornadaActual.permitirModificaciones ? '🟢' : '🔴'}
+                      {jornadaActual.permitirModificaciones ? '●' : '○'}
                     </span>
                     <span className="font-bold">
                       {jornadaActual.permitirModificaciones
@@ -294,8 +288,8 @@ const GestionJornadas = () => {
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {jornadaActual.permitirModificaciones
-                    ? '🔒 Bloquear'
-                    : '🔓 Habilitar'}{' '}
+                    ? 'Bloquear'
+                    : 'Habilitar'}{' '}
                   Modificaciones
                 </button>
 
@@ -305,8 +299,8 @@ const GestionJornadas = () => {
                   className="p-4 rounded-xl bg-blue-500/30 hover:bg-blue-500/40 text-blue-200 border-2 border-blue-400/50 font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {jornadaActual.puntosCalculados
-                    ? '✅ Puntos Calculados'
-                    : '📊 Calcular Puntos'}
+                    ? 'Puntos Calculados'
+                    : 'Calcular Puntos'}
                 </button>
 
                 <button
@@ -314,14 +308,14 @@ const GestionJornadas = () => {
                   disabled={isLoading || !jornadaActual.puntosCalculados}
                   className="p-4 rounded-xl bg-purple-500/30 hover:bg-purple-500/40 text-purple-200 border-2 border-purple-400/50 font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  ⏭️ Avanzar a Siguiente Jornada
+                  Avanzar a Siguiente Jornada
                 </button>
               </div>
 
               {!jornadaActual.puntosCalculados && (
                 <div className="mt-4 bg-yellow-500/20 border border-yellow-400/50 rounded-lg p-3">
                   <p className="text-yellow-200 text-sm">
-                    ⚠️ Debes calcular los puntos antes de avanzar a la siguiente
+                    Debes calcular los puntos antes de avanzar a la siguiente
                     jornada
                   </p>
                 </div>
@@ -367,10 +361,10 @@ const GestionJornadas = () => {
                       <div className="flex items-center gap-4">
                         <div className="text-3xl">
                           {jornada.activa
-                            ? '🎯'
+                            ? '●'
                             : jornada.puntosCalculados
-                            ? '✅'
-                            : '📅'}
+                            ? '✓'
+                            : '○'}
                         </div>
                         <div>
                           <h4 className="text-xl font-bold text-white">
@@ -378,19 +372,19 @@ const GestionJornadas = () => {
                           </h4>
                           <div className="flex gap-3 text-sm text-white/70">
                             <span>
-                              {jornada.activa ? '🟢 Activa' : '⚪ Inactiva'}
+                              {jornada.activa ? 'Activa' : 'Inactiva'}
                             </span>
                             <span>•</span>
                             <span>
                               {jornada.permitirModificaciones
-                                ? '🔓 Modificable'
-                                : '🔒 Bloqueada'}
+                                ? 'Modificable'
+                                : 'Bloqueada'}
                             </span>
                             <span>•</span>
                             <span>
                               {jornada.puntosCalculados
-                                ? '✅ Puntos calculados'
-                                : '⏳ Pendiente'}
+                                ? 'Puntos calculados'
+                                : 'Pendiente'}
                             </span>
                           </div>
                         </div>
@@ -425,7 +419,7 @@ const GestionJornadas = () => {
         <div className="max-w-4xl mx-auto mt-8">
           <div className="bg-blue-500/20 backdrop-blur-md rounded-xl p-6 border border-blue-400/30">
             <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-              <span>ℹ️</span>
+              <span>i</span>
               Información sobre Jornadas
             </h4>
             <ul className="space-y-2 text-white/80 text-sm">
@@ -500,24 +494,6 @@ const GestionJornadas = () => {
           </div>
         </div>
       )}
-
-      {/* Estilos */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @keyframes fadeIn {
-              from {
-                opacity: 0;
-                transform: translateY(20px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `,
-        }}
-      />
     </div>
   );
 };

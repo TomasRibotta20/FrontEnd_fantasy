@@ -5,6 +5,7 @@ interface AdminRouteProps {
   children: React.ReactNode;
 }
 
+/** Componente de ruta protegida que requiere rol de administrador. */
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
@@ -24,7 +25,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   }
 
   // Si no es admin, redirigir al LoggedMenu
-  if (user.role !== 'admin') {
+  if (user.role !== 'admin' && user.rol !== 'admin') {
     return <Navigate to="/LoggedMenu" replace />;
   }
 

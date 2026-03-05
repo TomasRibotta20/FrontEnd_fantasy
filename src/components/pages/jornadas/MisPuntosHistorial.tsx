@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import apiClient from '../../../services/apiClient';
+import { useMiEquipoId } from '../../../hooks/useSessionData';
 
 interface JornadaHistorial {
   jornada: {
@@ -11,6 +14,7 @@ interface JornadaHistorial {
     fecha_fin?: string;
   };
   puntajeTotal: number;
+  puntaje_total?: number; // Backend puede enviar snake_case
   fechaSnapshot?: string;
 }
 
@@ -20,6 +24,7 @@ interface HistorialEquipo {
 
 const MisPuntosHistorial = () => {
   const navigate = useNavigate();
+  const [miEquipoIdHook] = useMiEquipoId();
   const [historial, setHistorial] = useState<HistorialEquipo | null>(null);
   const [miEquipoId, setMiEquipoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,59 +46,49 @@ const MisPuntosHistorial = () => {
       try {
         setLoading(true);
 
-        // Primero obtener mi equipo
-        const equipoRes = await fetch(
-          'http://localhost:3000/api/equipos/mi-equipo',
-          {
-            credentials: 'include',
-          }
-        );
-
-        if (!equipoRes.ok) {
-          throw new Error('No se pudo obtener el equipo');
-        }
-
-        const equipoData = await equipoRes.json();
-        const equipoId = equipoData?.data?.id || equipoData?.id;
+        // Obtener equipoId desde el hook de sesión
+        let equipoId: number | null = miEquipoIdHook
+          ? Number(miEquipoIdHook)
+          : null;
 
         if (!equipoId) {
-          throw new Error('No tienes un equipo registrado');
+          throw new Error(
+            'No se encontró el ID del equipo. Por favor, selecciona un torneo primero.',
+          );
         }
 
         setMiEquipoId(equipoId);
 
         // Obtener historial del equipo
-        const historialRes = await fetch(
-          `http://localhost:3000/api/equipos/${equipoId}/historial`,
-          {
-            credentials: 'include',
-          }
+        const historialRes = await apiClient.get(
+          `/api/equipos/${equipoId}/historial`,
         );
+        const historialData = historialRes.data;
 
-        const historialData = await historialRes.json();
-        console.log('📊 [MisPuntosHistorial] Respuesta completa:', historialData);
-        
         // El backend devuelve { data: [...] } donde data es un ARRAY directo
         const dataArray = historialData?.data || historialData;
-        console.log('📊 [MisPuntosHistorial] Data extraída:', dataArray);
-        console.log('📊 [MisPuntosHistorial] Es array?', Array.isArray(dataArray));
-        
+
+        // Normalizar datos: convertir puntaje_total a puntajeTotal
+        const normalizeJornada = (
+          item: Partial<JornadaHistorial> & { puntaje_total?: number },
+        ): JornadaHistorial =>
+          ({
+            ...item,
+            puntajeTotal: item.puntajeTotal ?? item.puntaje_total ?? 0,
+          }) as JornadaHistorial;
+
         // Si es un array, envolver en objeto con propiedad jornadas
         if (Array.isArray(dataArray)) {
-          console.log('✅ [MisPuntosHistorial] Convirtiendo array a formato esperado');
-          setHistorial({ jornadas: dataArray });
+          setHistorial({ jornadas: dataArray.map(normalizeJornada) });
         } else if (dataArray?.jornadas && Array.isArray(dataArray.jornadas)) {
           // Si ya tiene la propiedad jornadas (formato antiguo)
-          console.log('✅ [MisPuntosHistorial] Formato con jornadas encontrado');
-          setHistorial(dataArray);
+          setHistorial({ jornadas: dataArray.jornadas.map(normalizeJornada) });
         } else {
-          console.warn('⚠️ [MisPuntosHistorial] Formato desconocido, usando array vacío');
           setHistorial({ jornadas: [] });
         }
       } catch (err) {
-        console.error('❌ [MisPuntosHistorial] Error al cargar historial:', err);
         setError(
-          err instanceof Error ? err.message : 'Error al cargar historial'
+          err instanceof Error ? err.message : 'Error al cargar historial',
         );
       } finally {
         setLoading(false);
@@ -101,32 +96,44 @@ const MisPuntosHistorial = () => {
     };
 
     loadHistorial();
-  }, []);
+  }, [miEquipoIdHook]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">⚽</div>
-          <p className="text-xl">Cargando historial...</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando historial..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+      <div
+        className="min-h-screen pt-24 pb-8 px-8"
+        style={{
+          backgroundImage: "url('/Background_LandingPage.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-500 text-white p-6 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
-            <p>{error}</p>
-            <button
-              onClick={() => navigate('/jornadas')}
-              className="mt-4 px-4 py-2 bg-white text-red-500 rounded-lg font-semibold"
-            >
-              Volver a Jornadas
-            </button>
+          <div className="backdrop-blur-lg bg-red-500/20 border-2 border-red-400/50 text-white p-8 rounded-2xl shadow-2xl">
+            <h2 className="text-3xl font-bold mb-4 text-red-300">Error</h2>
+            <p className="text-white/90 text-lg mb-6">{error}</p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate('/torneos')}
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold transition-all shadow-lg"
+              >
+                Ir a Torneos
+              </button>
+              <button
+                onClick={() => navigate('/home')}
+                className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold transition-all border border-white/30"
+              >
+                Volver al Inicio
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -134,15 +141,13 @@ const MisPuntosHistorial = () => {
   }
 
   const jornadas = historial?.jornadas || [];
-  console.log('📊 [Renderizando] Total de jornadas:', jornadas.length);
-  console.log('📊 [Renderizando] Jornadas:', jornadas);
-  
-  const puntajeTotal = jornadas.reduce((sum, j) => sum + (j.puntajeTotal || 0), 0);
+
+  const puntajeTotal = jornadas.reduce(
+    (sum, j) => sum + (j.puntajeTotal || 0),
+    0,
+  );
   const promedio =
     jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
-  
-  console.log('📊 [Renderizando] Puntaje total calculado:', puntajeTotal);
-  console.log('📊 [Renderizando] Promedio:', promedio);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
@@ -150,13 +155,18 @@ const MisPuntosHistorial = () => {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (equipoIdFromUrl) params.append('equipoId', equipoIdFromUrl);
+              if (torneoIdFromUrl) params.append('torneoId', torneoIdFromUrl);
+              navigate(`/jornadas?${params.toString()}`);
+            }}
             className="text-white hover:text-gray-300 mb-4 flex items-center gap-2"
           >
-            ← Volver
+            ← Volver a Jornadas
           </button>
           <h1 className="text-4xl font-bold text-white mb-4">
-            📊 Mi Historial de Puntos
+            Mi Historial de Puntos
           </h1>
         </div>
 
@@ -164,7 +174,9 @@ const MisPuntosHistorial = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Puntos Totales</p>
-            <p className="text-white text-5xl font-bold">{puntajeTotal.toFixed(1)}</p>
+            <p className="text-white text-5xl font-bold">
+              {puntajeTotal.toFixed(1)}
+            </p>
           </div>
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Jornadas Jugadas</p>
@@ -172,21 +184,21 @@ const MisPuntosHistorial = () => {
           </div>
           <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Promedio</p>
-            <p className="text-white text-5xl font-bold">{promedio.toFixed(1)}</p>
+            <p className="text-white text-5xl font-bold">
+              {promedio.toFixed(1)}
+            </p>
           </div>
         </div>
 
         {/* Historial */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <h2 className="text-2xl font-bold text-white mb-6">
-            📅 Historial por Jornada
+            Historial por Jornada
           </h2>
 
           {jornadas.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
-              <p className="text-xl mb-4">
-                📋 Aún no tienes puntos registrados
-              </p>
+              <p className="text-xl mb-4">Aún no tienes puntos registrados</p>
               <p className="text-sm">
                 Las jornadas deben ser procesadas por un administrador para que
                 aparezcan tus puntos aquí.
@@ -196,7 +208,14 @@ const MisPuntosHistorial = () => {
                 tu equipo.
               </p>
               <button
-                onClick={() => navigate('/jornadas')}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (equipoIdFromUrl)
+                    params.append('equipoId', equipoIdFromUrl);
+                  if (torneoIdFromUrl)
+                    params.append('torneoId', torneoIdFromUrl);
+                  navigate(`/jornadas?${params.toString()}`);
+                }}
                 className="mt-6 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold"
               >
                 Ver Jornadas Disponibles
@@ -212,7 +231,7 @@ const MisPuntosHistorial = () => {
                     className="bg-black/30 rounded-lg p-4 border border-white/10 hover:border-white/30 transition-all cursor-pointer"
                     onClick={() =>
                       navigate(
-                        `/equipos/${miEquipoId}/jornadas/${jornadaData.jornada?.id}`
+                        `/equipos/${miEquipoId}/jornadas/${jornadaData.jornada?.id}`,
                       )
                     }
                   >

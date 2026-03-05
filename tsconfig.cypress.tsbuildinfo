@@ -1,0 +1,1 @@
+{"root":["./cypress/e2e/auth.cy.ts","./cypress/e2e/onboarding.cy.ts","./cypress/e2e/team-management.cy.ts","./cypress/support/commands.ts","./cypress/support/e2e.ts"],"version":"5.8.3"}

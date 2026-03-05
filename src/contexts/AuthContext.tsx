@@ -1,85 +1,123 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './AuthContextDefinition';
 import type { AuthContextType, User } from './AuthContextDefinition';
+import apiClient from '../services/apiClient';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+/** Proveedor de contexto de autenticación para la aplicación. */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshIntervalRef = useRef<number | null>(null);
 
-  // Verificar si hay una sesión guardada al iniciar la app
-  useEffect(() => {
-    const savedUser = localStorage.getItem('authUser');
-
-    if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        // Verificar que parsedUser es un objeto válido
-        if (
-          parsedUser &&
-          typeof parsedUser === 'object' &&
-          parsedUser.id &&
-          parsedUser.username
-        ) {
-          setUser(parsedUser);
-        } else {
-          localStorage.removeItem('authUser');
-        }
-      } catch (error) {
-        console.error(
-          'Error al parsear los datos del usuario guardados:',
-          error
-        );
-        localStorage.removeItem('authUser');
+  // Función para verificar la sesión con el backend
+  const verifySession = useCallback(async (): Promise<User | null> => {
+    try {
+      // El backend usa /api/users/profile para obtener el usuario actual
+      // basándose en la cookie HttpOnly
+      const response = await apiClient.get('/api/users/profile', {
+        _skipAuthRefresh: true,
+      } as any);
+      const userData =
+        response.data?.data || response.data?.user || response.data;
+      if (userData) {
+        // Normalizar el campo "rol" del backend a "role" del frontend
+        return {
+          ...userData,
+          role: userData.rol || userData.role,
+        };
       }
+      return null;
+    } catch {
+      return null;
     }
-    setIsLoading(false);
   }, []);
 
-  const login = (userData: User) => {
-    console.log('Intentando login con:', { userData });
-
-    if (!userData) {
-      console.error('userData es null o undefined');
-      return;
-    }
-    if (!userData.id && userData.id !== 0) {
-      console.error('userData.id está faltando:', userData);
-      return;
-    }
-    if (!userData.username) {
-      console.error('userData.username está faltando:', userData);
-      return;
+  // Función para refrescar el token periódicamente
+  const startRefreshTokenInterval = useCallback(() => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
     }
 
-    setUser(userData);
+    // Refrescar token cada 14 minutos (antes de que expire a los 15 min)
+    refreshIntervalRef.current = setInterval(
+      async () => {
+        try {
+          await apiClient.post('/api/auth/refreshToken');
+        } catch {
+          // Si falla el refresh, cerrar sesión
+          setUser(null);
+        }
+      },
+      14 * 60 * 1000,
+    ) as unknown as number;
+  }, []);
 
-    // Solo guardar datos del usuario en localStorage (la cookie maneja la autenticación)
-    try {
-      localStorage.setItem('authUser', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Error al guardar datos del usuario:', error);
+  // Verificar sesión al iniciar la app (en lugar de leer localStorage)
+  useEffect(() => {
+    const initAuth = async () => {
+      setIsLoading(true);
+      const currentUser = await verifySession();
+      if (currentUser) {
+        setUser(currentUser);
+        startRefreshTokenInterval();
+      } else {
+        // Si no hay sesión válida, limpiar datos del torneo guardados
+        localStorage.removeItem('torneoSeleccionadoId');
+        localStorage.removeItem('miEquipoId');
+        sessionStorage.removeItem('torneoSeleccionadoId');
+        sessionStorage.removeItem('miEquipoId');
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [verifySession, startRefreshTokenInterval]);
+
+  const login = useCallback(
+    (userData: User) => {
+      if (!userData?.id || !userData?.username) {
+        return;
+      }
+      setUser(userData);
+      startRefreshTokenInterval();
+    },
+    [startRefreshTokenInterval],
+  );
+
+  const logout = useCallback(async () => {
+    // Limpiar intervalo de refresh
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
     }
-  };
 
-  const logout = async () => {
     setUser(null);
-    localStorage.removeItem('authUser');
+
+    // Limpiar datos de sesión del localStorage (donde se guarda el torneo)
+    localStorage.removeItem('torneoSeleccionadoId');
+    localStorage.removeItem('miEquipoId');
+    // También limpiar sessionStorage por si acaso
+    sessionStorage.removeItem('torneoSeleccionadoId');
+    sessionStorage.removeItem('miEquipoId');
 
     // Hacer request al backend para limpiar la cookie
     try {
-      await fetch('http://localhost:3000/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include', // Importante para incluir cookies
-      });
-    } catch (error) {
-      console.error('Error al hacer logout en el servidor:', error);
+      await apiClient.post('/api/auth/logout');
+    } catch {
+      // Error al hacer logout en el servidor
     }
-  };
+  }, []);
 
   const value: AuthContextType = {
     user,

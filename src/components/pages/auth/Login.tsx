@@ -3,6 +3,7 @@ import { CustoFormHookForm } from '../../forms';
 import apiClient from '../../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
+import { obtenerMisTorneos } from '../../../services/torneosService';
 
 function Login() {
   const navigate = useNavigate();
@@ -26,36 +27,53 @@ function Login() {
   const handleLoginSubmit = async (formValues: Record<string, string>) => {
     setIsLoading(true);
     setMessage(null);
-    console.log('Datos de login:', formValues);
     const userValues = {
       email: formValues.email,
       password: formValues.password,
     };
 
     try {
-      const response = await apiClient.post('/auth/login', userValues);
-      console.log('Login exitoso:', response.data);
+      const response = await apiClient.post('/api/auth/login', userValues);
 
       // Extraer los datos del usuario de la respuesta
       const userData = response.data.data;
 
-      console.log('User extraído:', userData);
-
+      // Normalizar el campo rol del backend al campo role del frontend
+      const normalizedUser = {
+        ...userData,
+        role: userData.rol || userData.role // El backend envía "rol" en español
+      };
+      
       // Loguear al usuario (el token viene en la cookie automáticamente)
-      login(userData);
+      login(normalizedUser);
 
       setMessage({ type: 'success', text: 'Login exitoso! Redirigiendo...' });
 
       // Redirigir según el rol del usuario
-      setTimeout(() => {
-        if (userData.role === 'admin') {
+      setTimeout(async () => {
+        if (normalizedUser.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate('/LoggedMenu');
+          // Obtener los torneos del usuario
+          try {
+            const torneosResponse = await obtenerMisTorneos();
+            const torneos = torneosResponse.data || [];
+
+            if (torneos.length > 0) {
+              // Redirigir al LoggedMenu con el primer torneo
+              const primerTorneo = torneos[0];
+              navigate(`/LoggedMenu?torneoId=${primerTorneo.torneo_id}`);
+            } else {
+              // Si no tiene torneos, redirigir a la página de torneos
+              navigate('/torneos');
+            }
+          } catch {
+            // Si hay error al obtener torneos, redirigir a la página de torneos
+            navigate('/torneos');
+          }
         }
       }, 1000);
-    } catch (error) {
-      console.error('Error al hacer login:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al iniciar sesión. Verifica tus credenciales.',
@@ -102,17 +120,26 @@ function Login() {
             {message.text}
           </div>
         )}
-        <CustoFormHookForm
-          title="Iniciar Sesión"
-          fields={loginFields}
-          buttonText="Ingresar"
-          buttonVariant="primary"
-          buttonSize="lg"
-          onSubmit={handleLoginSubmit}
-          initialValues={{ email: '', password: '' }}
-          disabled={isLoading}
-          className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
-        />
+        <div className="flex flex-col items-center gap-4">
+          <CustoFormHookForm
+            title="Iniciar Sesión"
+            fields={loginFields}
+            buttonText="Ingresar"
+            buttonVariant="primary"
+            buttonSize="lg"
+            onSubmit={handleLoginSubmit}
+            initialValues={{ email: '', password: '' }}
+            disabled={isLoading}
+            className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
+          />
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="text-white/90 hover:text-white underline text-sm font-medium transition-colors duration-200"
+            disabled={isLoading}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
         <div className="absolute bottom-4 text-center">
           <p className="text-white text-base font-semibold drop-shadow-md">
             ¿No tienes cuenta?{' '}

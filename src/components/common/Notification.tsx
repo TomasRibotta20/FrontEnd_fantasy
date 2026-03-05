@@ -10,6 +10,7 @@ interface NotificationProps {
   duration?: number;
 }
 
+/** Componente de notificación con auto-ocultamiento y estilos por tipo. */
 export const Notification: React.FC<NotificationProps> = ({
   message,
   onClose,
@@ -52,7 +53,7 @@ export const Notification: React.FC<NotificationProps> = ({
       case 'error':
         return '✕';
       case 'warning':
-        return '⚠';
+        return '!';
       case 'info':
         return 'ℹ';
       default:

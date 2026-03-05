@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import FormacionEquipoCompacta from '../../common/FormacionEquipoCompacta';
+import apiClient from '../../../services/apiClient';
+import { useMiEquipoId } from '../../../hooks/useSessionData';
 
 interface Estadisticas {
   minutos: number;
@@ -44,45 +47,43 @@ interface JornadaEquipo {
   };
   puntajeTotal: number;
   fechaSnapshot?: string;
-  jugadores: Jugador[];
+  // Backend puede devolver jugadores[] o titulares[]+suplentes[]
+  jugadores?: Jugador[];
+  titulares?: Jugador[];
+  suplentes?: Jugador[];
 }
 
 const DetalleJornadaEquipo = () => {
   const { equipoId, jornadaId } = useParams();
   const navigate = useNavigate();
+  const [miEquipoIdHook] = useMiEquipoId();
   const [data, setData] = useState<JornadaEquipo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Si el usuario cambia de torneo y su equipoId actual difiere del de la URL,
+  // redirigir a jornadas para evitar mostrar datos del equipo anterior.
+  useEffect(() => {
+    if (miEquipoIdHook && equipoId && miEquipoIdHook !== equipoId) {
+      navigate('/jornadas', { replace: true });
+    }
+  }, [miEquipoIdHook, equipoId, navigate]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:3000/api/equipos/${equipoId}/jornadas/${jornadaId}`,
-          { credentials: 'include' }
+        const response = await apiClient.get(
+          `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`,
         );
+        const jsonData = response.data;
 
-        if (!response.ok) {
-          throw new Error('No se pudo obtener el detalle de la jornada');
-        }
-
-        const jsonData = await response.json();
-        console.log('🔍 [DetalleJornadaEquipo] Respuesta completa:', jsonData);
-        
         const extractedData = jsonData?.data || jsonData;
-        console.log('🔍 [DetalleJornadaEquipo] Datos extraídos:', extractedData);
-        console.log('🔍 [DetalleJornadaEquipo] Estructura de datos:');
-        console.log('  - Equipo:', extractedData?.equipo);
-        console.log('  - Jornada:', extractedData?.jornada);
-        console.log('  - Jugadores (directos):', extractedData?.jugadores?.length || 0);
-        console.log('  - Puntaje total:', extractedData?.puntajeTotal);
-        
+
         setData(extractedData);
       } catch (err) {
-        console.error('❌ Error al cargar detalle:', err);
         setError(
-          err instanceof Error ? err.message : 'Error al cargar detalle'
+          err instanceof Error ? err.message : 'Error al cargar detalle',
         );
       } finally {
         setLoading(false);
@@ -95,10 +96,7 @@ const DetalleJornadaEquipo = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">⚽</div>
-          <p className="text-xl">Cargando detalle...</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando detalle..." />
       </div>
     );
   }
@@ -111,10 +109,18 @@ const DetalleJornadaEquipo = () => {
             <h2 className="text-2xl font-bold mb-2">Error</h2>
             <p>{error || 'No se encontraron datos'}</p>
             <button
-              onClick={() => navigate('/mis-puntos/historial')}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (equipoId) params.append('equipoId', equipoId);
+                if (data?.jornada?.id) {
+                  // Si tenemos la jornada, podemos intentar obtener el torneoId
+                  // Por ahora volvemos solo con equipoId
+                }
+                navigate(`/jornadas?${params.toString()}`);
+              }}
               className="mt-4 px-4 py-2 bg-white text-red-500 rounded-lg font-semibold"
             >
-              Volver al Historial
+              Volver a Jornadas
             </button>
           </div>
         </div>
@@ -122,20 +128,22 @@ const DetalleJornadaEquipo = () => {
     );
   }
 
-  const jugadores = data.jugadores || [];
+  // Backend devuelve titulares[] y suplentes[] separados, o jugadores[] combinado
+  const jugadores = data.jugadores || [
+    ...(data.titulares || []),
+    ...(data.suplentes || []),
+  ];
   const puntajeTotal = data.puntajeTotal || 0;
-  
-  console.log('📊 [Renderizando] Total de jugadores:', jugadores.length);
-  console.log('📊 [Renderizando] Puntaje total:', puntajeTotal);
-  
+
   // Calcular el total sumando los puntos de los jugadores como verificación
-  const totalCalculado = jugadores.reduce((sum: number, j: Jugador) => sum + (j.puntaje || 0), 0);
-  console.log('📊 [Renderizando] Total calculado sumando jugadores:', totalCalculado.toFixed(1));
-  
+  const totalCalculado = jugadores.reduce(
+    (sum: number, j: Jugador) => sum + (j.puntaje || 0),
+    0,
+  );
+
   // Separar titulares y suplentes
-  const titulares = jugadores.filter(j => j.esTitular);
-  const suplentes = jugadores.filter(j => !j.esTitular);
-  console.log('📊 [Renderizando] Titulares:', titulares.length, 'Suplentes:', suplentes.length);
+  const titulares = jugadores.filter((j) => j.esTitular);
+  const suplentes = jugadores.filter((j) => !j.esTitular);
 
   // Mapear jugadores al formato que espera FormacionEquipoCompacta
   const playersForFormacion = titulares.map((jugador) => ({
@@ -146,11 +154,13 @@ const DetalleJornadaEquipo = () => {
     lastName: '',
     age: 25, // Valores por defecto
     nationality: '',
-    photo: jugador.foto || 'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=⚽',
+    photo:
+      jugador.foto ||
+      'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=Player',
     jerseyNumber: 0,
     position: jugador.posicion,
     esTitular: jugador.esTitular,
-    puntaje: jugador.puntaje, // ✅ IMPORTANTE: Pasar el puntaje
+    puntaje: jugador.puntaje,
   }));
 
   return (
@@ -159,10 +169,14 @@ const DetalleJornadaEquipo = () => {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/mis-puntos/historial')}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (equipoId) params.append('equipoId', equipoId);
+              navigate(`/jornadas?${params.toString()}`);
+            }}
             className="text-white hover:text-gray-300 mb-4 flex items-center gap-2"
           >
-            ← Volver al Historial
+            ← Volver a Jornadas
           </button>
           <h1 className="text-4xl font-bold text-white mb-2">
             {data.equipo?.nombre || 'Mi Equipo'}
@@ -174,7 +188,7 @@ const DetalleJornadaEquipo = () => {
           {/* Información de la jornada */}
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <h2 className="text-2xl font-bold text-white mb-4">
-              📋 Información de Jornada
+              Información de Jornada
             </h2>
             <div className="space-y-3">
               <div>
@@ -195,7 +209,9 @@ const DetalleJornadaEquipo = () => {
                 <div>
                   <p className="text-gray-400 text-sm">Fecha Inicio</p>
                   <p className="text-white text-lg font-semibold">
-                    {new Date(data.jornada.fecha_inicio).toLocaleDateString('es-ES')}
+                    {new Date(data.jornada.fecha_inicio).toLocaleDateString(
+                      'es-ES',
+                    )}
                   </p>
                 </div>
               )}
@@ -203,7 +219,9 @@ const DetalleJornadaEquipo = () => {
                 <div>
                   <p className="text-gray-400 text-sm">Fecha Fin</p>
                   <p className="text-white text-lg font-semibold">
-                    {new Date(data.jornada.fecha_fin).toLocaleDateString('es-ES')}
+                    {new Date(data.jornada.fecha_fin).toLocaleDateString(
+                      'es-ES',
+                    )}
                   </p>
                 </div>
               )}
@@ -226,7 +244,7 @@ const DetalleJornadaEquipo = () => {
           {/* Formación del equipo con puntajes */}
           <div className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <h2 className="text-2xl font-bold text-white mb-4">
-              ⚽ Formación Titular
+              Formación Titular
             </h2>
             {playersForFormacion.length > 0 ? (
               <FormacionEquipoCompacta
@@ -245,49 +263,69 @@ const DetalleJornadaEquipo = () => {
         {/* Estadísticas Globales del Equipo */}
         <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 mb-8 border-2 border-white/20">
           <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-            📊 Estadísticas Globales
+            Estadísticas Globales
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Titulares</p>
-              <p className="text-white text-3xl font-bold">{titulares.length}</p>
+              <p className="text-white text-3xl font-bold">
+                {titulares.length}
+              </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Suplentes</p>
-              <p className="text-white text-3xl font-bold">{suplentes.length}</p>
+              <p className="text-white text-3xl font-bold">
+                {suplentes.length}
+              </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Promedio Puntos</p>
               <p className="text-white text-3xl font-bold">
-                {jugadores.length > 0 ? (puntajeTotal / jugadores.length).toFixed(1) : '0.0'}
+                {jugadores.length > 0
+                  ? (puntajeTotal / jugadores.length).toFixed(1)
+                  : '0.0'}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Total Jugadores</p>
-              <p className="text-white text-3xl font-bold">{jugadores.length}</p>
+              <p className="text-white text-3xl font-bold">
+                {jugadores.length}
+              </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Total Goles</p>
               <p className="text-white text-3xl font-bold">
-                {jugadores.reduce((sum, j) => sum + (j.estadisticas?.goles || 0), 0)}
+                {jugadores.reduce(
+                  (sum, j) => sum + (j.estadisticas?.goles || 0),
+                  0,
+                )}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Total Asistencias</p>
               <p className="text-white text-3xl font-bold">
-                {jugadores.reduce((sum, j) => sum + (j.estadisticas?.asistencias || 0), 0)}
+                {jugadores.reduce(
+                  (sum, j) => sum + (j.estadisticas?.asistencias || 0),
+                  0,
+                )}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Tarjetas Amarillas</p>
               <p className="text-yellow-400 text-3xl font-bold">
-                {jugadores.reduce((sum, j) => sum + (j.estadisticas?.tarjetasAmarillas || 0), 0)}
+                {jugadores.reduce(
+                  (sum, j) => sum + (j.estadisticas?.tarjetasAmarillas || 0),
+                  0,
+                )}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-4 text-center backdrop-blur-sm">
               <p className="text-white/80 text-sm mb-2">Tarjetas Rojas</p>
               <p className="text-red-400 text-3xl font-bold">
-                {jugadores.reduce((sum, j) => sum + (j.estadisticas?.tarjetasRojas || 0), 0)}
+                {jugadores.reduce(
+                  (sum, j) => sum + (j.estadisticas?.tarjetasRojas || 0),
+                  0,
+                )}
               </p>
             </div>
           </div>
@@ -295,9 +333,7 @@ const DetalleJornadaEquipo = () => {
 
         {/* Tabla de Titulares */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-6 border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-6">
-            ⭐ Titulares
-          </h2>
+          <h2 className="text-2xl font-bold text-white mb-6">Titulares</h2>
 
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -344,15 +380,21 @@ const DetalleJornadaEquipo = () => {
                               alt={jugador.nombre}
                               className="w-8 h-8 rounded-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
                               }}
                             />
                           )}
                           <div>
-                            <p className="text-white font-medium">{jugador.nombre}</p>
-                            {jugador.nombreCompleto && jugador.nombreCompleto !== jugador.nombre && (
-                              <p className="text-gray-400 text-xs">{jugador.nombreCompleto}</p>
-                            )}
+                            <p className="text-white font-medium">
+                              {jugador.nombre}
+                            </p>
+                            {jugador.nombreCompleto &&
+                              jugador.nombreCompleto !== jugador.nombre && (
+                                <p className="text-gray-400 text-xs">
+                                  {jugador.nombreCompleto}
+                                </p>
+                              )}
                           </div>
                         </div>
                       </td>
@@ -367,25 +409,32 @@ const DetalleJornadaEquipo = () => {
                               alt={jugador.club}
                               className="w-5 h-5 object-contain"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
                               }}
                             />
                           )}
-                          <span className="text-gray-300 text-sm">{jugador.club}</span>
+                          <span className="text-gray-300 text-sm">
+                            {jugador.club}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center text-gray-300">
                         {jugador.estadisticas?.minutos || 0}'
                       </td>
                       <td className="py-3 px-4 text-center text-gray-300">
-                        {jugador.estadisticas?.rating ? jugador.estadisticas.rating.toFixed(1) : '-'}
+                        {jugador.estadisticas?.rating
+                          ? jugador.estadisticas.rating.toFixed(1)
+                          : '-'}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-3 py-1 font-bold rounded-lg ${
-                          (jugador.puntaje ?? 0) > 0 
-                            ? 'bg-yellow-500 text-black' 
-                            : 'bg-gray-600 text-gray-300'
-                        }`}>
+                        <span
+                          className={`px-3 py-1 font-bold rounded-lg ${
+                            (jugador.puntaje ?? 0) > 0
+                              ? 'bg-yellow-500 text-black'
+                              : 'bg-gray-600 text-gray-300'
+                          }`}
+                        >
                           {(jugador.puntaje ?? 0).toFixed(1)}
                         </span>
                       </td>
@@ -400,9 +449,7 @@ const DetalleJornadaEquipo = () => {
         {/* Tabla de Suplentes */}
         {suplentes.length > 0 && (
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-6 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6">
-              🔄 Suplentes
-            </h2>
+            <h2 className="text-2xl font-bold text-white mb-6">Suplentes</h2>
 
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -442,15 +489,21 @@ const DetalleJornadaEquipo = () => {
                               alt={jugador.nombre}
                               className="w-8 h-8 rounded-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
                               }}
                             />
                           )}
                           <div>
-                            <p className="text-white font-medium">{jugador.nombre}</p>
-                            {jugador.nombreCompleto && jugador.nombreCompleto !== jugador.nombre && (
-                              <p className="text-gray-400 text-xs">{jugador.nombreCompleto}</p>
-                            )}
+                            <p className="text-white font-medium">
+                              {jugador.nombre}
+                            </p>
+                            {jugador.nombreCompleto &&
+                              jugador.nombreCompleto !== jugador.nombre && (
+                                <p className="text-gray-400 text-xs">
+                                  {jugador.nombreCompleto}
+                                </p>
+                              )}
                           </div>
                         </div>
                       </td>
@@ -465,25 +518,32 @@ const DetalleJornadaEquipo = () => {
                               alt={jugador.club}
                               className="w-5 h-5 object-contain"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
                               }}
                             />
                           )}
-                          <span className="text-gray-300 text-sm">{jugador.club}</span>
+                          <span className="text-gray-300 text-sm">
+                            {jugador.club}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center text-gray-300">
                         {jugador.estadisticas?.minutos || 0}'
                       </td>
                       <td className="py-3 px-4 text-center text-gray-300">
-                        {jugador.estadisticas?.rating ? jugador.estadisticas.rating.toFixed(1) : '-'}
+                        {jugador.estadisticas?.rating
+                          ? jugador.estadisticas.rating.toFixed(1)
+                          : '-'}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-3 py-1 font-bold rounded-lg ${
-                          (jugador.puntaje ?? 0) > 0 
-                            ? 'bg-yellow-500 text-black' 
-                            : 'bg-gray-600 text-gray-300'
-                        }`}>
+                        <span
+                          className={`px-3 py-1 font-bold rounded-lg ${
+                            (jugador.puntaje ?? 0) > 0
+                              ? 'bg-yellow-500 text-black'
+                              : 'bg-gray-600 text-gray-300'
+                          }`}
+                        >
                           {(jugador.puntaje ?? 0).toFixed(1)}
                         </span>
                       </td>
@@ -500,10 +560,11 @@ const DetalleJornadaEquipo = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-white text-xl font-bold mb-2">
-                💰 Resumen de Puntos
+                Resumen de Puntos
               </h3>
               <p className="text-white/80 text-sm">
-                {titulares.length} titulares • {suplentes.length} suplentes • {jugadores.length} total
+                {titulares.length} titulares • {suplentes.length} suplentes •{' '}
+                {jugadores.length} total
               </p>
             </div>
             <div className="text-right">
