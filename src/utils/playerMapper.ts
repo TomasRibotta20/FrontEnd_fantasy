@@ -169,6 +169,9 @@ export const mapBackendPlayerToFrontend = (
     esTitular: item.es_titular,
     precio: jugador.precio_actual,
     valor_clausula: item.valor_clausula,
+    valor_clausula_efectiva: item.valor_clausula_efectiva,
+    dias_proteccion_restantes: item.dias_proteccion_restantes,
+    esta_protegido: item.esta_protegido,
     club: jugador.club,
   };
 };

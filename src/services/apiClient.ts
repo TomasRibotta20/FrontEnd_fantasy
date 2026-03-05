@@ -1,10 +1,11 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
+/** Cliente HTTP configurado con interceptores de autenticación. */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || '',
   timeout: 10000,
-  withCredentials: true, // ✅ Esto es lo importante para enviar cookies HttpOnly
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -29,10 +30,16 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
+      _skipAuthRefresh?: boolean;
     };
 
     // Si es 401 y no hemos intentado refrescar aún
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Si el request marcó que no debe intentar refresh, rechazar silenciosamente
+      if (originalRequest._skipAuthRefresh) {
+        return Promise.reject(error);
+      }
+
       // No intentar refresh en endpoints de auth
       if (
         originalRequest.url?.includes('/api/auth/login') ||

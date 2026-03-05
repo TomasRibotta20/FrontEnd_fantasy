@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import ConfirmModal from '../../common/ConfirmModal';
 import {
   jornadasService,
   estadisticasService,
@@ -62,7 +64,7 @@ const DetalleJornada = () => {
   const showConfirmation = (
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ) => {
     setConfirmAction({ title, message, onConfirm });
     setShowConfirmModal(true);
@@ -207,7 +209,7 @@ const DetalleJornada = () => {
         } finally {
           setLoading(false);
         }
-      }
+      },
     );
   };
 
@@ -268,7 +270,7 @@ const DetalleJornada = () => {
       // Cargar puntajes
       try {
         const puntajesData = await estadisticasService.getPuntajesJornada(
-          Number(id)
+          Number(id),
         );
 
         // Asegurarse de que sea un array
@@ -317,7 +319,7 @@ const DetalleJornada = () => {
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
               body: JSON.stringify({ activarJornada: true }),
-            }
+            },
           );
 
           const data = await response.json();
@@ -336,7 +338,7 @@ const DetalleJornada = () => {
         } finally {
           setProcesando(false);
         }
-      }
+      },
     );
   };
 
@@ -356,14 +358,14 @@ const DetalleJornada = () => {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-            }
+            },
           );
 
           const data = await response.json();
 
           if (response.ok) {
             setSuccess(
-              `${data.message || 'Puntajes recalculados correctamente'}`
+              `${data.message || 'Puntajes recalculados correctamente'}`,
             );
             await loadJornadaData(); // Recargar datos
             setTimeout(() => setSuccess(null), 5000);
@@ -377,18 +379,14 @@ const DetalleJornada = () => {
         } finally {
           setProcesando(false);
         }
-      }
+      },
     );
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">●</div>
-          <p className="text-xl">Cargando jornada...</p>
-          <p className="text-sm text-gray-300 mt-2">ID: {id}</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando jornada..." />
       </div>
     );
   }
@@ -659,13 +657,13 @@ const DetalleJornada = () => {
                           partido.estado === 'FT'
                             ? 'bg-green-600 text-white'
                             : partido.estado === 'LIVE'
-                            ? 'bg-red-600 text-white animate-pulse'
-                            : partido.estado === 'PST'
-                            ? 'bg-yellow-600 text-white'
-                            : partido.estado === 'CANC' ||
-                              partido.estado === 'ABD'
-                            ? 'bg-red-800 text-white'
-                            : 'bg-gray-600 text-white'
+                              ? 'bg-red-600 text-white animate-pulse'
+                              : partido.estado === 'PST'
+                                ? 'bg-yellow-600 text-white'
+                                : partido.estado === 'CANC' ||
+                                    partido.estado === 'ABD'
+                                  ? 'bg-red-800 text-white'
+                                  : 'bg-gray-600 text-white'
                         }`}
                       >
                         {partido.estado_detalle || partido.estado}
@@ -798,7 +796,7 @@ const DetalleJornada = () => {
                 <tbody>
                   {puntajes
                     .sort(
-                      (a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0)
+                      (a, b) => (b.puntaje_total || 0) - (a.puntaje_total || 0),
                     )
                     .slice(0, 20) // Mostrar solo los 20 primeros
                     .map((puntaje, index) => (
@@ -814,19 +812,19 @@ const DetalleJornada = () => {
                               index === 0
                                 ? 'text-yellow-400 text-xl'
                                 : index === 1
-                                ? 'text-gray-300 text-lg'
-                                : index === 2
-                                ? 'text-orange-400'
-                                : 'text-white'
+                                  ? 'text-gray-300 text-lg'
+                                  : index === 2
+                                    ? 'text-orange-400'
+                                    : 'text-white'
                             }`}
                           >
                             {index === 0
                               ? '1°'
                               : index === 1
-                              ? '2°'
-                              : index === 2
-                              ? '3°'
-                              : index + 1}
+                                ? '2°'
+                                : index === 2
+                                  ? '3°'
+                                  : index + 1}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -861,10 +859,10 @@ const DetalleJornada = () => {
                               (puntaje.puntaje_total || 0) >= 10
                                 ? 'bg-green-600'
                                 : (puntaje.puntaje_total || 0) >= 7
-                                ? 'bg-blue-600'
-                                : (puntaje.puntaje_total || 0) >= 5
-                                ? 'bg-indigo-600'
-                                : 'bg-gray-600'
+                                  ? 'bg-blue-600'
+                                  : (puntaje.puntaje_total || 0) >= 5
+                                    ? 'bg-indigo-600'
+                                    : 'bg-gray-600'
                             }`}
                           >
                             {(puntaje.puntaje_total || 0).toFixed(1)}
@@ -1127,8 +1125,8 @@ const DetalleJornada = () => {
                   {loading
                     ? 'Guardando...'
                     : editingPartido
-                    ? 'Actualizar'
-                    : 'Crear'}
+                      ? 'Actualizar'
+                      : 'Crear'}
                 </button>
                 <button
                   onClick={handleClosePartidoModal}
@@ -1142,30 +1140,13 @@ const DetalleJornada = () => {
         )}
 
         {/* Modal de Confirmación */}
-        {showConfirmModal && confirmAction && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 max-w-md w-full border-2 border-white/20 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white mb-4">
-                {confirmAction.title}
-              </h2>
-              <p className="text-gray-300 mb-6">{confirmAction.message}</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleConfirm}
-                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
-                >
-                  Confirmar
-                </button>
-                <button
-                  onClick={handleCancelConfirm}
-                  className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          open={showConfirmModal && confirmAction !== null}
+          title={confirmAction?.title ?? ''}
+          message={confirmAction?.message ?? ''}
+          onConfirm={handleConfirm}
+          onCancel={handleCancelConfirm}
+        />
       </div>
     </div>
   );

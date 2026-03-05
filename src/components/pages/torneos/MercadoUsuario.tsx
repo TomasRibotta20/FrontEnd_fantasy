@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import MoneyInput from '../../common/MoneyInput';
+import PlayerStatsModal from '../../common/PlayerStatsModal';
+import ConfirmModal from '../../common/ConfirmModal';
 import {
   obtenerMercadoActivo,
   realizarPuja,
@@ -16,6 +20,7 @@ import type {
 import { obtenerDetalleTorneo } from '../../../services/torneosService';
 import { useTorneoSeleccionado } from '../../../hooks/useSessionData';
 
+/** Componente del mercado de jugadores para el usuario. */
 const MercadoUsuario = () => {
   const { torneoId: torneoIdFromParams } = useParams<{ torneoId: string }>();
   const navigate = useNavigate();
@@ -60,6 +65,15 @@ const MercadoUsuario = () => {
   const [vendiendo, setVendiendo] = useState<number | null>(null);
   const [montoPuja, setMontoPuja] = useState<{ [key: number]: string }>({});
 
+  // Estado para modal de estadísticas del jugador
+  const [statsJugador, setStatsJugador] = useState<{
+    id: number;
+    nombre: string;
+    foto?: string;
+    posicion?: string;
+    club?: string;
+  } | null>(null);
+
   // Estado para modal de confirmación
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
@@ -68,11 +82,14 @@ const MercadoUsuario = () => {
     onConfirm: () => void;
   } | null>(null);
 
+  // Estado del torneo para verificar si está activo
+  const [torneoEstado, setTorneoEstado] = useState<string | null>(null);
+
   // Función helper para mostrar confirmación
   const showConfirmation = (
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ) => {
     setConfirmAction({ title, message, onConfirm });
     setShowConfirmModal(true);
@@ -108,14 +125,20 @@ const MercadoUsuario = () => {
       try {
         const torneoResponse = await obtenerDetalleTorneo(parseInt(torneoId));
         const miEquipoId = torneoResponse.data.mi_equipo_id;
+        const estado = torneoResponse.data.estado;
+        setTorneoEstado(estado);
+
+        if (estado === 'EN_ESPERA') {
+          return; // No cargar nada más si el torneo no ha iniciado
+        }
 
         if (miEquipoId) {
           setEquipoId(miEquipoId);
         } else {
           setError('No tienes un equipo en este torneo');
         }
-      } catch (err) {
-        console.error('Error al obtener equipoId:', err);
+      } catch {
+        // error silenciado
       }
     };
 
@@ -131,7 +154,6 @@ const MercadoUsuario = () => {
       const data = await obtenerMercadoActivo(parseInt(torneoId));
       // Validar que los datos tengan la estructura correcta
       if (!data || !data.items || !Array.isArray(data.items)) {
-        console.error('Estructura de datos incorrecta:', data);
         setError('El mercado no tiene jugadores disponibles');
         setMercado(null);
         return;
@@ -139,7 +161,6 @@ const MercadoUsuario = () => {
 
       setMercado(data);
     } catch (err) {
-      console.error('Error al cargar mercado:', err);
       const error = err as {
         response?: { data?: { message?: string }; status?: number };
       };
@@ -171,7 +192,6 @@ const MercadoUsuario = () => {
         setMiEquipo({ equipo_id: 0, jugadores: [] });
       }
     } catch (err) {
-      console.error('Error al cargar mi equipo:', err);
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Error al cargar tu equipo');
       setMiEquipo(null);
@@ -190,7 +210,6 @@ const MercadoUsuario = () => {
         const data = await obtenerMisPujas(equipoId);
         setMisPujas(data);
       } catch (err) {
-        console.error('Error al cargar mis pujas:', err);
         const error = err as { response?: { data?: { message?: string } } };
         setError(error.response?.data?.message || 'Error al cargar tus pujas');
         setMisPujas([]);
@@ -198,7 +217,7 @@ const MercadoUsuario = () => {
         setLoadingPujas(false);
       }
     },
-    [equipoId, misPujas.length]
+    [equipoId, misPujas.length],
   );
 
   useEffect(() => {
@@ -233,14 +252,14 @@ const MercadoUsuario = () => {
       resultado = resultado.filter(
         (item) =>
           item.jugador.nombre?.toLowerCase().includes(busquedaLower) ||
-          item.jugador.nombreCompleto?.toLowerCase().includes(busquedaLower)
+          item.jugador.nombreCompleto?.toLowerCase().includes(busquedaLower),
       );
     }
 
     // Filtro por posición
     if (posicionFiltro !== 'TODAS') {
       resultado = resultado.filter(
-        (item) => item.jugador.posicion === posicionFiltro
+        (item) => item.jugador.posicion === posicionFiltro,
       );
     }
 
@@ -268,12 +287,26 @@ const MercadoUsuario = () => {
     return resultado;
   }, [mercado, busqueda, posicionFiltro, ordenamiento]);
 
+  const traducirPosicion = (pos: string): string => {
+    const traducciones: Record<string, string> = {
+      GOALKEEPER: 'Portero',
+      DEFENDER: 'Defensor',
+      MIDFIELDER: 'Mediocampista',
+      ATTACKER: 'Delantero',
+      Goalkeeper: 'Portero',
+      Defender: 'Defensor',
+      Midfielder: 'Mediocampista',
+      Attacker: 'Delantero',
+    };
+    return traducciones[pos] || pos;
+  };
+
   const posicionesDisponibles = useMemo(() => {
     if (!mercado || !mercado.items) return [];
     const posiciones = new Set(
       mercado.items
         .map((item) => item.jugador.posicion)
-        .filter((pos): pos is string => !!pos)
+        .filter((pos): pos is string => !!pos),
     );
     return Array.from(posiciones).sort();
   }, [mercado]);
@@ -307,7 +340,7 @@ const MercadoUsuario = () => {
     // Verificar si ya tiene una puja activa en este jugador
     if (tienePujaActiva(itemId)) {
       setError(
-        'Ya tienes una puja activa en este jugador. Ve a "Mis Pujas" para actualizarla.'
+        'Ya tienes una puja activa en este jugador. Ve a "Mis Pujas" para actualizarla.',
       );
       setTimeout(() => setError(null), 3000);
       return;
@@ -319,8 +352,8 @@ const MercadoUsuario = () => {
     if (monto < precioActual) {
       setError(
         `La puja debe ser mayor o igual a ${precioActual.toLocaleString(
-          'es-AR'
-        )}`
+          'es-AR',
+        )}`,
       );
       setTimeout(() => setError(null), 3000);
       return;
@@ -359,7 +392,7 @@ const MercadoUsuario = () => {
 
   const handleActualizarPuja = async (
     pujaId: number,
-    itemMercadoId: number
+    itemMercadoId: number,
   ) => {
     if (!equipoId) {
       setError('No se encontró tu equipo en este torneo');
@@ -429,7 +462,7 @@ const MercadoUsuario = () => {
     showConfirmation(
       'Cancelar Puja',
       '¿Estás seguro de cancelar esta puja?',
-      () => ejecutarCancelarPuja(pujaId)
+      () => ejecutarCancelarPuja(pujaId),
     );
   };
 
@@ -464,9 +497,43 @@ const MercadoUsuario = () => {
     showConfirmation(
       'Vender Jugador',
       '¿Estás seguro de vender este jugador?',
-      () => ejecutarVenderJugador(jugadorId)
+      () => ejecutarVenderJugador(jugadorId),
     );
   };
+
+  // Mostrar mensaje si el torneo no ha iniciado
+  if (torneoEstado === 'EN_ESPERA') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-20">
+        <div
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
+          style={{
+            backgroundImage: `url('/Background_LandingPage.png')`,
+            filter: 'blur(2px)',
+          }}
+        >
+          <div className="absolute inset-0 bg-black opacity-30"></div>
+        </div>
+        <div className="bg-yellow-500/20 backdrop-blur-lg border-2 border-yellow-500/50 rounded-xl p-8 max-w-md relative z-10">
+          <div className="text-center">
+            <span className="text-5xl mb-4 block">🔒</span>
+            <h2 className="text-white text-2xl font-bold mb-2">
+              Mercado no disponible
+            </h2>
+            <p className="text-yellow-300 text-center text-lg mb-4">
+              El mercado estará disponible una vez que el torneo sea iniciado.
+            </p>
+            <button
+              onClick={() => navigate(-1)}
+              className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-all"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Mostrar error solo si no hay datos cargados
   if (error && !mercado && !miEquipo) {
@@ -511,91 +578,81 @@ const MercadoUsuario = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="mb-4 text-white/80 hover:text-white transition-colors flex items-center gap-2"
-          >
-            <span>← Volver</span>
-          </button>
-
-          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
-            Mercado de Fichajes
-          </h1>
-          <p className="text-white/80 text-lg">
-            {tabActiva === 'mercado' &&
-              mercado &&
-              `Mercado #${mercado.numero_mercado} - ${mercado.items.length} jugadores disponibles`}
-            {tabActiva === 'mi-equipo' &&
-              miEquipo &&
-              `Mi Equipo - ${miEquipo.jugadores.length} jugadores`}
-            {tabActiva === 'mis-pujas' &&
-              `Mis Pujas - ${misPujas.length} oferta${
-                misPujas.length !== 1 ? 's' : ''
-              } activa${misPujas.length !== 1 ? 's' : ''}`}
-          </p>
+      <div className="container mx-auto px-4 relative z-10 max-w-6xl">
+        {/* Header compacto */}
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <button
+              onClick={() => navigate(-1)}
+              className="text-white/70 hover:text-white transition-colors text-sm flex items-center gap-1 mb-1"
+            >
+              ← Volver
+            </button>
+            <h1 className="text-2xl font-bold text-white drop-shadow-lg">
+              Mercado de Fichajes
+            </h1>
+            <p className="text-white/60 text-sm">
+              {tabActiva === 'mercado' &&
+                mercado &&
+                `Mercado #${mercado.numero_mercado} · ${mercado.items.length} jugadores`}
+              {tabActiva === 'mi-equipo' &&
+                miEquipo &&
+                `Mi Equipo · ${miEquipo.jugadores.length} jugadores`}
+              {tabActiva === 'mis-pujas' &&
+                `Mis Pujas · ${misPujas.length} oferta${misPujas.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-4 mb-6">
-          <button
-            onClick={() => setTabActiva('mercado')}
-            className={`flex-1 py-3 px-6 rounded-xl font-bold transition-all ${
-              tabActiva === 'mercado'
-                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
-            }`}
-          >
-            Mercado
-          </button>
-          <button
-            onClick={() => setTabActiva('mis-pujas')}
-            className={`flex-1 py-3 px-6 rounded-xl font-bold transition-all ${
-              tabActiva === 'mis-pujas'
-                ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
-            }`}
-          >
-            Mis Pujas
-          </button>
-          <button
-            onClick={() => setTabActiva('mi-equipo')}
-            className={`flex-1 py-3 px-6 rounded-xl font-bold transition-all ${
-              tabActiva === 'mi-equipo'
-                ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg'
-                : 'bg-white/10 text-white/70 hover:bg-white/20'
-            }`}
-          >
-            Mi Equipo
-          </button>
+        {/* Tabs compactos */}
+        <div className="flex gap-2 mb-4">
+          {[
+            {
+              key: 'mercado' as const,
+              label: 'Mercado',
+              colors: 'from-blue-500 to-purple-600',
+            },
+            {
+              key: 'mis-pujas' as const,
+              label: 'Mis Pujas',
+              colors: 'from-yellow-500 to-orange-600',
+            },
+            {
+              key: 'mi-equipo' as const,
+              label: 'Mi Equipo',
+              colors: 'from-emerald-500 to-green-600',
+            },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setTabActiva(tab.key)}
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
+                tabActiva === tab.key
+                  ? `bg-gradient-to-r ${tab.colors} text-white shadow-lg`
+                  : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white/80'
+              }`}
+            >
+              {tab.label}
+              {tab.key === 'mis-pujas' && misPujas.length > 0 && (
+                <span className="ml-1.5 bg-white/20 px-1.5 py-0.5 rounded-full text-xs">
+                  {misPujas.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Mensajes - Fixed para que siempre sean visibles */}
+        {/* Mensajes - Fixed */}
         {error && (
-          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-2xl px-4">
-            <div className="bg-red-500/90 backdrop-blur-lg border-2 border-red-400 rounded-xl p-4 shadow-2xl">
+          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
+            <div className="bg-red-500/90 backdrop-blur-lg border border-red-400 rounded-lg p-3 shadow-2xl">
               <div className="flex items-center justify-between">
-                <p className="text-white text-center font-semibold flex-1">
-                  {error}
-                </p>
+                <p className="text-white text-sm font-medium flex-1">{error}</p>
                 <button
                   onClick={() => setError(null)}
-                  className="text-white/80 hover:text-white ml-4"
+                  className="text-white/80 hover:text-white ml-3"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  ✕
                 </button>
               </div>
             </div>
@@ -603,458 +660,232 @@ const MercadoUsuario = () => {
         )}
 
         {success && (
-          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-2xl px-4">
-            <div className="bg-green-500/90 backdrop-blur-lg border-2 border-green-400 rounded-xl p-4 shadow-2xl">
+          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
+            <div className="bg-green-500/90 backdrop-blur-lg border border-green-400 rounded-lg p-3 shadow-2xl">
               <div className="flex items-center justify-between">
-                <p className="text-white text-center font-semibold flex-1">
+                <p className="text-white text-sm font-medium flex-1">
                   {success}
                 </p>
                 <button
                   onClick={() => setSuccess(null)}
-                  className="text-white/80 hover:text-white ml-4"
+                  className="text-white/80 hover:text-white ml-3"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  ✕
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Contenido según tab activa */}
+        {/* ═══════════ TAB MERCADO ═══════════ */}
         {tabActiva === 'mercado' && (
           <>
-            {/* Filtros y búsqueda */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border-2 border-white/20 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Búsqueda */}
+            {/* Filtros compactos */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-3 border border-white/20 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <input
                   type="text"
                   placeholder="Buscar jugador o club..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="bg-white/10 border-2 border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-white/60"
+                  className="bg-white/10 border border-white/30 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/50 focus:outline-none focus:border-white/60"
                 />
-
-                {/* Filtro por posición */}
                 <select
                   value={posicionFiltro}
                   onChange={(e) => setPosicionFiltro(e.target.value)}
-                  className="bg-white/10 border-2 border-white/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-white/60"
+                  className="bg-white/10 border border-white/30 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/60"
                 >
-                  <option value="TODAS">Todas las posiciones</option>
+                  <option value="TODAS" className="bg-gray-800 text-white">
+                    Todas las posiciones
+                  </option>
                   {posicionesDisponibles.map((pos) => (
-                    <option key={pos} value={pos}>
-                      {pos}
+                    <option
+                      key={pos}
+                      value={pos}
+                      className="bg-gray-800 text-white"
+                    >
+                      {traducirPosicion(pos)}
                     </option>
                   ))}
                 </select>
-
-                {/* Ordenamiento */}
                 <select
                   value={ordenamiento}
                   onChange={(e) =>
                     setOrdenamiento(
-                      e.target.value as 'nombre' | 'precio' | 'puntos'
+                      e.target.value as 'nombre' | 'precio' | 'puntos',
                     )
                   }
-                  className="bg-white/10 border-2 border-white/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-white/60"
+                  className="bg-white/10 border border-white/30 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/60"
                 >
-                  <option value="nombre">Ordenar por Nombre</option>
-                  <option value="precio">Ordenar por Precio</option>
-                  <option value="puntos">Ordenar por Puntos</option>
+                  <option value="nombre" className="bg-gray-800 text-white">
+                    Nombre
+                  </option>
+                  <option value="precio" className="bg-gray-800 text-white">
+                    Precio
+                  </option>
+                  <option value="puntos" className="bg-gray-800 text-white">
+                    Puntos
+                  </option>
                 </select>
-
-                {/* Contador de resultados */}
-                <div className="flex items-center justify-center text-white font-semibold">
+                <div className="flex items-center justify-center text-white/70 text-sm font-medium">
                   {jugadores.length} jugador{jugadores.length !== 1 ? 'es' : ''}
                 </div>
               </div>
             </div>
 
-            {/* Lista de jugadores */}
+            {/* Lista de jugadores - cards compactas horizontales */}
             {loadingMercado ? (
-              <div className="text-center text-white text-xl py-10">
-                Cargando mercado...
-              </div>
+              <LoadingSpinner variant="section" message="Cargando mercado..." />
             ) : jugadores.length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border-2 border-white/20 text-center">
-                <p className="text-white/80 text-lg">
+              <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 text-center">
+                <p className="text-white/70">
                   No se encontraron jugadores con los filtros aplicados
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
                 {jugadores.map((item) => {
                   const jugador = item.jugador;
                   const precioActual = jugador.precio_actual || 0;
+                  const precioDisplay =
+                    precioActual >= 1000000
+                      ? `$${Math.floor(precioActual / 1000000).toLocaleString('es-AR')}M`
+                      : `$${Math.floor(precioActual / 1000).toLocaleString('es-AR')}K`;
 
                   return (
                     <div
                       key={item.id}
-                      className="bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-lg rounded-2xl border-2 border-white/30 hover:border-white/50 transition-all hover:shadow-2xl overflow-hidden"
+                      className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 hover:border-white/40 transition-all p-3"
                     >
-                      {/* Header con foto */}
-                      <div className="relative h-56 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center p-4">
-                        {jugador.foto ? (
-                          <img
-                            src={jugador.foto}
-                            alt={jugador.nombreCompleto || jugador.nombre}
-                            className="h-full w-auto max-w-full object-contain rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                jugador.nombreCompleto || jugador.nombre || 'J'
-                              )}&size=200&background=4F46E5&color=fff`;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl">
-                            {(jugador.nombreCompleto || jugador.nombre || 'J')
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-
-                        {item.cantidad_pujas > 0 && (
-                          <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                            {item.cantidad_pujas} puja
-                            {item.cantidad_pujas !== 1 ? 's' : ''}
-                          </div>
-                        )}
-
-                        {jugador.clubLogo && (
-                          <div className="absolute top-3 left-3 bg-white/90 p-2 rounded-lg shadow-lg">
+                      <div className="flex items-center gap-3">
+                        {/* Foto compacta */}
+                        <div className="relative flex-shrink-0">
+                          {jugador.foto ? (
+                            <img
+                              src={jugador.foto}
+                              alt={jugador.nombreCompleto || jugador.nombre}
+                              className="w-14 h-14 rounded-lg object-cover bg-white/10"
+                              onError={(e) => {
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                  jugador.nombreCompleto ||
+                                    jugador.nombre ||
+                                    'J',
+                                )}&size=56&background=4F46E5&color=fff`;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+                              {(jugador.nombreCompleto || jugador.nombre || 'J')
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                          )}
+                          {jugador.clubLogo && (
                             <img
                               src={jugador.clubLogo}
                               alt={jugador.club}
-                              className="w-8 h-8 object-contain"
+                              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white p-0.5 object-contain"
                             />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Información del jugador */}
-                      <div className="p-5">
-                        <div className="text-center mb-4">
-                          <h3 className="text-xl font-bold text-white mb-1 leading-tight">
-                            {jugador.nombreCompleto || jugador.nombre}
-                          </h3>
-                          {jugador.club && (
-                            <p className="text-white/70 text-sm">
-                              {jugador.club}
-                            </p>
-                          )}
-                          {jugador.posicion && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-blue-500/30 text-blue-300 rounded-full text-xs font-semibold">
-                              {jugador.posicion}
-                            </span>
                           )}
                         </div>
 
-                        {/* Precio actual - Centrado y destacado */}
-                        <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl p-4 mb-4 text-center border-2 border-green-500/40">
-                          <p className="text-green-200 text-sm font-medium mb-2">
-                            Precio Actual
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold text-sm truncate">
+                              {jugador.nombreCompleto || jugador.nombre}
+                            </h3>
+                            {jugador.posicion && (
+                              <span className="flex-shrink-0 px-2 py-0.5 bg-blue-500/30 text-blue-300 rounded text-[10px] font-semibold uppercase">
+                                {traducirPosicion(jugador.posicion)}
+                              </span>
+                            )}
+                            {item.cantidad_pujas > 0 && (
+                              <span className="flex-shrink-0 px-1.5 py-0.5 bg-red-500/80 text-white rounded text-[10px] font-bold">
+                                {item.cantidad_pujas} puja
+                                {item.cantidad_pujas !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {jugador.club && (
+                              <span className="text-white/50 text-xs truncate">
+                                {jugador.club}
+                              </span>
+                            )}
+                            {jugador.puntos_totales !== undefined && (
+                              <span className="text-blue-300/70 text-xs font-medium">
+                                {jugador.puntos_totales} pts
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Precio */}
+                        <div className="flex-shrink-0 text-right">
+                          <p className="text-green-400 font-bold text-lg leading-tight">
+                            {precioDisplay}
                           </p>
-                          <p className="text-green-400 font-black text-3xl tracking-tight">
-                            $
-                            {precioActual >= 1000000
-                              ? `${Math.floor(
-                                  precioActual / 1000000
-                                ).toLocaleString('es-AR')}M`
-                              : `${Math.floor(
-                                  precioActual / 1000
-                                ).toLocaleString('es-AR')}K`}
+                          <p className="text-white/40 text-[10px]">
+                            Precio actual
                           </p>
                         </div>
 
-                        {/* Puntos totales */}
-                        {jugador.puntos_totales !== undefined && (
-                          <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl p-3 mb-4 text-center border-2 border-blue-500/40">
-                            <p className="text-blue-200 text-sm font-medium mb-1">
-                              Puntos Totales
-                            </p>
-                            <p className="text-blue-400 font-bold text-2xl">
-                              {jugador.puntos_totales}
-                            </p>
-                          </div>
-                        )}
+                        {/* Botón estadísticas */}
+                        <button
+                          onClick={() =>
+                            setStatsJugador({
+                              id: jugador.id,
+                              nombre:
+                                jugador.nombreCompleto ||
+                                jugador.nombre ||
+                                'Jugador',
+                              foto: jugador.foto,
+                              posicion: jugador.posicion,
+                              club: jugador.club,
+                            })
+                          }
+                          className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 transition-all"
+                          title="Ver estadísticas y precios"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
+                          </svg>
+                        </button>
 
-                        {/* Formulario de puja */}
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-white/70 text-sm mb-2">
-                              Tu puja (mínimo:{' '}
-                              {precioActual.toLocaleString('es-AR')})
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={
-                                  montoPuja[item.id]
-                                    ? parseFloat(
-                                        montoPuja[item.id]
-                                      ).toLocaleString('es-AR')
-                                    : ''
-                                }
-                                onChange={(e) => {
-                                  const raw = e.target.value.replace(
-                                    /[^0-9]/g,
-                                    ''
-                                  );
-                                  setMontoPuja({
-                                    ...montoPuja,
-                                    [item.id]: raw,
-                                  });
-                                }}
-                                placeholder={precioActual.toLocaleString(
-                                  'es-AR'
-                                )}
-                                className="w-full bg-white/10 border-2 border-white/30 rounded-lg pl-4 pr-12 py-2 text-white placeholder-white/50 focus:outline-none focus:border-green-400 transition-colors"
-                              />
-                              {/* Botones de incremento/decremento */}
-                              <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l border-white/20">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const current = parseFloat(
-                                      montoPuja[item.id] ||
-                                        precioActual.toString()
-                                    );
-                                    setMontoPuja({
-                                      ...montoPuja,
-                                      [item.id]: (current + 100000).toString(),
-                                    });
-                                  }}
-                                  className="flex-1 w-10 flex items-center justify-center bg-white/5 hover:bg-white/20 text-white/70 hover:text-white text-sm transition-all rounded-tr-lg border-b border-white/20"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                    className="w-4 h-4"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const current = parseFloat(
-                                      montoPuja[item.id] ||
-                                        precioActual.toString()
-                                    );
-                                    const newValue = Math.max(
-                                      precioActual,
-                                      current - 100000
-                                    );
-                                    setMontoPuja({
-                                      ...montoPuja,
-                                      [item.id]: newValue.toString(),
-                                    });
-                                  }}
-                                  className="flex-1 w-10 flex items-center justify-center bg-white/5 hover:bg-white/20 text-white/70 hover:text-white text-sm transition-all rounded-br-lg"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                    className="w-4 h-4"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {tienePujaActiva(item.id) && (
-                            <div className="bg-yellow-500/20 border-2 border-yellow-500/50 rounded-lg p-3 mb-3 text-center">
-                              <p className="text-yellow-300 text-sm font-semibold">
-                                Ya tienes una puja activa en este jugador
-                              </p>
-                              <p className="text-yellow-200/70 text-xs mt-1">
-                                Ve a "Mis Pujas" para actualizarla
-                              </p>
-                            </div>
-                          )}
-
+                        {/* Input puja + botón */}
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          <MoneyInput
+                            value={montoPuja[item.id] || ''}
+                            onChange={(raw) =>
+                              setMontoPuja({ ...montoPuja, [item.id]: raw })
+                            }
+                            placeholder={precioActual.toString()}
+                            min={precioActual}
+                            step={100000}
+                            focusColor="green"
+                            className="w-40"
+                          />
                           <button
                             onClick={() => handlePujar(item.id, precioActual)}
                             disabled={
                               pujando === item.id || tienePujaActiva(item.id)
                             }
-                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg disabled:cursor-not-allowed"
+                            className="flex-shrink-0 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all disabled:cursor-not-allowed whitespace-nowrap"
                           >
                             {pujando === item.id ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <svg
-                                  className="animate-spin h-5 w-5"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    fill="none"
-                                  />
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  />
-                                </svg>
-                                Pujando...
-                              </span>
-                            ) : tienePujaActiva(item.id) ? (
-                              'Ya tienes una puja activa'
-                            ) : (
-                              'Realizar Puja'
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Mi Equipo Tab */}
-        {tabActiva === 'mi-equipo' && (
-          <>
-            {loadingMiEquipo ? (
-              <div className="text-center text-white text-xl py-10">
-                Cargando tu equipo...
-              </div>
-            ) : miEquipo ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {miEquipo.jugadores.map((jugador) => {
-                  const precioVenta = jugador.precio_actual || 0;
-
-                  return (
-                    <div
-                      key={jugador.id}
-                      className="bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-lg rounded-2xl border-2 border-white/30 hover:border-emerald-500/50 transition-all hover:shadow-2xl overflow-hidden"
-                    >
-                      {/* Header con foto */}
-                      <div className="relative h-56 bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center p-4">
-                        {jugador.foto ? (
-                          <img
-                            src={jugador.foto}
-                            alt={jugador.nombreCompleto || jugador.nombre}
-                            className="h-full w-auto max-w-full object-contain rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                jugador.nombreCompleto || jugador.nombre || 'J'
-                              )}&size=200&background=10B981&color=fff`;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl">
-                            {(jugador.nombreCompleto || jugador.nombre || 'J')
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-
-                        {jugador.es_titular && (
-                          <div className="absolute top-3 right-3 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                            Titular
-                          </div>
-                        )}
-
-                        {jugador.clubLogo && (
-                          <div className="absolute top-3 left-3 bg-white/90 p-2 rounded-lg shadow-lg">
-                            <img
-                              src={jugador.clubLogo}
-                              alt={jugador.club}
-                              className="w-8 h-8 object-contain"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Información del jugador */}
-                      <div className="p-5">
-                        <div className="text-center mb-4">
-                          <h3 className="text-xl font-bold text-white mb-1 leading-tight">
-                            {jugador.nombreCompleto || jugador.nombre}
-                          </h3>
-                          {jugador.club && (
-                            <p className="text-white/70 text-sm">
-                              {jugador.club}
-                            </p>
-                          )}
-                          {jugador.posicion && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-emerald-500/30 text-emerald-300 rounded-full text-xs font-semibold">
-                              {jugador.posicion}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Precio de venta - Centrado y destacado */}
-                        <div className="bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl p-4 mb-4 text-center border-2 border-orange-500/40">
-                          <p className="text-orange-200 text-sm font-medium mb-2">
-                            Precio de Venta
-                          </p>
-                          <p className="text-orange-400 font-black text-3xl tracking-tight">
-                            $
-                            {precioVenta >= 1
-                              ? `${Math.floor(precioVenta).toLocaleString(
-                                  'es-AR'
-                                )}M`
-                              : `${Math.floor(
-                                  precioVenta * 1000
-                                ).toLocaleString('es-AR')}K`}
-                          </p>
-                        </div>
-
-                        {/* Puntos totales */}
-                        {jugador.puntos_totales !== undefined && (
-                          <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl p-3 mb-4 text-center border-2 border-blue-500/40">
-                            <p className="text-blue-200 text-sm font-medium mb-1">
-                              Puntos Totales
-                            </p>
-                            <p className="text-blue-400 font-bold text-2xl">
-                              {jugador.puntos_totales}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Botón de vender */}
-                        <button
-                          onClick={() => handleVender(jugador.id)}
-                          disabled={vendiendo === jugador.id}
-                          className="w-full bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg disabled:cursor-not-allowed"
-                        >
-                          {vendiendo === jugador.id ? (
-                            <span className="flex items-center justify-center gap-2">
                               <svg
-                                className="animate-spin h-5 w-5"
+                                className="animate-spin h-4 w-4"
                                 viewBox="0 0 24 24"
                               >
                                 <circle
@@ -1072,18 +903,189 @@ const MercadoUsuario = () => {
                                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                 />
                               </svg>
-                              Vendiendo...
-                            </span>
+                            ) : tienePujaActiva(item.id) ? (
+                              'Puja activa'
+                            ) : (
+                              'Pujar'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Warning de puja activa */}
+                      {tienePujaActiva(item.id) && (
+                        <div className="mt-2 bg-yellow-500/15 border border-yellow-500/30 rounded-lg px-3 py-1.5 text-center">
+                          <p className="text-yellow-300 text-xs">
+                            Ya tienes una puja activa · Ve a "Mis Pujas" para
+                            actualizarla
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════ TAB MI EQUIPO ═══════════ */}
+        {tabActiva === 'mi-equipo' && (
+          <>
+            {loadingMiEquipo ? (
+              <LoadingSpinner
+                variant="section"
+                message="Cargando tu equipo..."
+              />
+            ) : miEquipo ? (
+              <div className="space-y-2">
+                {miEquipo.jugadores.map((jugador) => {
+                  const precioVenta = jugador.precio_actual || 0;
+                  const precioDisplay =
+                    precioVenta >= 1000000
+                      ? `$${Math.floor(precioVenta / 1000000).toLocaleString('es-AR')}M`
+                      : precioVenta >= 1000
+                        ? `$${Math.floor(precioVenta / 1000).toLocaleString('es-AR')}K`
+                        : `$${precioVenta.toLocaleString('es-AR')}`;
+
+                  return (
+                    <div
+                      key={jugador.id}
+                      className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 hover:border-emerald-500/40 transition-all p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Foto */}
+                        <div className="relative flex-shrink-0">
+                          {jugador.foto ? (
+                            <img
+                              src={jugador.foto}
+                              alt={jugador.nombreCompleto || jugador.nombre}
+                              className="w-14 h-14 rounded-lg object-cover bg-white/10"
+                              onError={(e) => {
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                  jugador.nombreCompleto ||
+                                    jugador.nombre ||
+                                    'J',
+                                )}&size=56&background=10B981&color=fff`;
+                              }}
+                            />
                           ) : (
-                            `Vender por $${
-                              precioVenta >= 1
-                                ? `${Math.floor(precioVenta).toLocaleString(
-                                    'es-AR'
-                                  )}M`
-                                : `${Math.floor(
-                                    precioVenta * 1000
-                                  ).toLocaleString('es-AR')}K`
-                            }`
+                            <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white text-lg font-bold">
+                              {(jugador.nombreCompleto || jugador.nombre || 'J')
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                          )}
+                          {jugador.clubLogo && (
+                            <img
+                              src={jugador.clubLogo}
+                              alt={jugador.club}
+                              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white p-0.5 object-contain"
+                            />
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold text-sm truncate">
+                              {jugador.nombreCompleto || jugador.nombre}
+                            </h3>
+                            {jugador.posicion && (
+                              <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-500/30 text-emerald-300 rounded text-[10px] font-semibold uppercase">
+                                {traducirPosicion(jugador.posicion)}
+                              </span>
+                            )}
+                            {jugador.es_titular && (
+                              <span className="flex-shrink-0 px-1.5 py-0.5 bg-yellow-500/80 text-white rounded text-[10px] font-bold">
+                                Titular
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {jugador.club && (
+                              <span className="text-white/50 text-xs truncate">
+                                {jugador.club}
+                              </span>
+                            )}
+                            {jugador.puntos_totales !== undefined && (
+                              <span className="text-blue-300/70 text-xs font-medium">
+                                {jugador.puntos_totales} pts
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Precio */}
+                        <div className="flex-shrink-0 text-right mr-2">
+                          <p className="text-orange-400 font-bold text-lg leading-tight">
+                            {precioDisplay}
+                          </p>
+                          <p className="text-white/40 text-[10px]">
+                            Precio venta
+                          </p>
+                        </div>
+
+                        {/* Botón estadísticas */}
+                        <button
+                          onClick={() =>
+                            setStatsJugador({
+                              id: jugador.id,
+                              nombre:
+                                jugador.nombreCompleto ||
+                                jugador.nombre ||
+                                'Jugador',
+                              foto: jugador.foto,
+                              posicion: jugador.posicion,
+                              club: jugador.club,
+                            })
+                          }
+                          className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 transition-all"
+                          title="Ver estadísticas y precios"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* Botón vender */}
+                        <button
+                          onClick={() => handleVender(jugador.id)}
+                          disabled={vendiendo === jugador.id}
+                          className="flex-shrink-0 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {vendiendo === jugador.id ? (
+                            <svg
+                              className="animate-spin h-4 w-4"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                          ) : (
+                            'Vender'
                           )}
                         </button>
                       </div>
@@ -1092,8 +1094,8 @@ const MercadoUsuario = () => {
                 })}
               </div>
             ) : (
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border-2 border-white/20 text-center">
-                <p className="text-white/80 text-lg">
+              <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 text-center">
+                <p className="text-white/70">
                   No tienes jugadores en este torneo
                 </p>
               </div>
@@ -1101,31 +1103,29 @@ const MercadoUsuario = () => {
           </>
         )}
 
-        {/* Mis Pujas Tab */}
+        {/* ═══════════ TAB MIS PUJAS ═══════════ */}
         {tabActiva === 'mis-pujas' && (
           <>
             {loadingPujas ? (
-              <div className="text-center text-white text-xl py-10">
-                Cargando tus pujas...
-              </div>
+              <LoadingSpinner
+                variant="section"
+                message="Cargando tus pujas..."
+              />
             ) : misPujas.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
                 {misPujas.map((puja) => {
-                  // El backend puede devolver jugador en diferentes lugares
                   const jugador = puja.jugador || puja.item_mercado?.jugador;
+                  if (!jugador) return null;
 
-                  if (!jugador) {
-                    console.warn('Puja sin jugador:', puja);
-                    return null;
-                  }
+                  const montoDisplay =
+                    puja.monto >= 1000000
+                      ? `$${Math.floor(puja.monto / 1000000).toLocaleString('es-AR')}M`
+                      : `$${Math.floor(puja.monto / 1000).toLocaleString('es-AR')}K`;
 
-                  const montoEnMillones = puja.monto / 1000000;
-
-                  // Buscar el item_mercado_id en el mercado usando el jugador
                   let itemMercadoId = puja.item_mercado?.id;
                   if (!itemMercadoId && mercado?.items) {
                     const itemEnMercado = mercado.items.find(
-                      (item) => item.jugador?.id === jugador.id
+                      (item) => item.jugador?.id === jugador.id,
                     );
                     itemMercadoId = itemEnMercado?.id;
                   }
@@ -1133,114 +1133,125 @@ const MercadoUsuario = () => {
                   return (
                     <div
                       key={puja.id}
-                      className="bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-lg rounded-2xl border-2 border-yellow-500/30 hover:border-yellow-500/50 transition-all hover:shadow-2xl overflow-hidden"
+                      className="bg-white/10 backdrop-blur-lg rounded-xl border border-yellow-500/30 hover:border-yellow-500/50 transition-all p-3"
                     >
-                      {/* Header con foto */}
-                      <div className="relative h-56 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center p-4">
-                        {jugador.foto ? (
-                          <img
-                            src={jugador.foto}
-                            alt={jugador.nombreCompleto || jugador.nombre}
-                            className="h-full w-auto max-w-full object-contain rounded-lg"
-                            onError={(e) => {
-                              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                jugador.nombreCompleto || jugador.nombre || 'J'
-                              )}&size=200&background=F59E0B&color=fff`;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl">
-                            {(jugador.nombreCompleto || jugador.nombre || 'J')
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-
-                        <div className="absolute top-3 right-3 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                          Ofertando
-                        </div>
-
-                        {jugador.clubLogo && (
-                          <div className="absolute top-3 left-3 bg-white/90 p-2 rounded-lg shadow-lg">
+                      <div className="flex items-center gap-3">
+                        {/* Foto */}
+                        <div className="relative flex-shrink-0">
+                          {jugador.foto ? (
+                            <img
+                              src={jugador.foto}
+                              alt={jugador.nombreCompleto || jugador.nombre}
+                              className="w-14 h-14 rounded-lg object-cover bg-white/10"
+                              onError={(e) => {
+                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                  jugador.nombreCompleto ||
+                                    jugador.nombre ||
+                                    'J',
+                                )}&size=56&background=F59E0B&color=fff`;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold">
+                              {(jugador.nombreCompleto || jugador.nombre || 'J')
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                          )}
+                          {jugador.clubLogo && (
                             <img
                               src={jugador.clubLogo}
                               alt={jugador.club}
-                              className="w-8 h-8 object-contain"
+                              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white p-0.5 object-contain"
                             />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Información del jugador */}
-                      <div className="p-5">
-                        <div className="text-center mb-4">
-                          <h3 className="text-xl font-bold text-white mb-1 leading-tight">
-                            {jugador.nombreCompleto || jugador.nombre}
-                          </h3>
-                          {jugador.club && (
-                            <p className="text-white/70 text-sm">
-                              {jugador.club}
-                            </p>
                           )}
-                          {(jugador.posicion || jugador.posicion) && (
-                            <span className="inline-block mt-2 px-3 py-1 bg-yellow-500/30 text-yellow-300 rounded-full text-xs font-semibold">
-                              {jugador.posicion || jugador.posicion}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-semibold text-sm truncate">
+                              {jugador.nombreCompleto || jugador.nombre}
+                            </h3>
+                            {jugador.posicion && (
+                              <span className="flex-shrink-0 px-2 py-0.5 bg-yellow-500/30 text-yellow-300 rounded text-[10px] font-semibold uppercase">
+                                {traducirPosicion(jugador.posicion)}
+                              </span>
+                            )}
+                            <span className="flex-shrink-0 px-1.5 py-0.5 bg-yellow-500/80 text-white rounded text-[10px] font-bold">
+                              Ofertando
                             </span>
-                          )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            {jugador.club && (
+                              <span className="text-white/50 text-xs truncate">
+                                {jugador.club}
+                              </span>
+                            )}
+                            <span className="text-yellow-300/60 text-xs">
+                              {new Date(puja.fecha_oferta).toLocaleDateString(
+                                'es-AR',
+                              )}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Tu oferta actual */}
-                        <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl p-4 mb-4 text-center border-2 border-yellow-500/40">
-                          <p className="text-yellow-200 text-sm font-medium mb-2">
-                            Tu Oferta Actual
+                        {/* Oferta actual */}
+                        <div className="flex-shrink-0 text-right mr-1">
+                          <p className="text-yellow-400 font-bold text-lg leading-tight">
+                            {montoDisplay}
                           </p>
-                          <p className="text-yellow-400 font-black text-3xl tracking-tight">
-                            $
-                            {Math.floor(montoEnMillones).toLocaleString(
-                              'es-AR'
-                            )}
-                            M
-                          </p>
-                          <p className="text-yellow-300/70 text-xs mt-2">
-                            {new Date(puja.fecha_oferta).toLocaleDateString(
-                              'es-AR'
-                            )}
-                          </p>
+                          <p className="text-white/40 text-[10px]">Tu oferta</p>
                         </div>
+
+                        {/* Botón estadísticas */}
+                        <button
+                          onClick={() =>
+                            setStatsJugador({
+                              id: jugador.id,
+                              nombre:
+                                jugador.nombreCompleto ||
+                                jugador.nombre ||
+                                'Jugador',
+                              foto: jugador.foto,
+                              posicion: jugador.posicion,
+                              club: jugador.club,
+                            })
+                          }
+                          className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 transition-all"
+                          title="Ver estadísticas y precios"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
+                          </svg>
+                        </button>
 
                         {/* Actualizar oferta */}
-                        <div className="space-y-3 mb-4">
-                          <label className="block text-white/70 text-sm">
-                            Nueva oferta (mínimo:{' '}
-                            {puja.monto.toLocaleString('es-AR')})
-                          </label>
-                          <input
-                            type="number"
-                            step="100000"
-                            min={puja.monto}
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                          <MoneyInput
                             value={montoNuevoPuja[puja.id] || ''}
-                            onChange={(e) =>
+                            onChange={(raw) =>
                               setMontoNuevoPuja({
                                 ...montoNuevoPuja,
-                                [puja.id]: e.target.value,
+                                [puja.id]: raw,
                               })
                             }
-                            placeholder={puja.monto.toLocaleString('es-AR')}
-                            className="w-full bg-white/10 border-2 border-white/30 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 transition-colors"
+                            placeholder={puja.monto.toString()}
+                            min={puja.monto}
+                            step={100000}
+                            focusColor="yellow"
+                            className="w-36"
                           />
-                        </div>
-
-                        {/* Botones de acción */}
-                        <div className="space-y-2">
-                          {!itemMercadoId && (
-                            <div className="bg-red-500/20 border-2 border-red-500/50 rounded-lg p-2 mb-2 text-center">
-                              <p className="text-red-300 text-xs">
-                                No se puede actualizar: jugador no está en el
-                                mercado actual
-                              </p>
-                            </div>
-                          )}
-
                           <button
                             onClick={() =>
                               itemMercadoId &&
@@ -1249,108 +1260,108 @@ const MercadoUsuario = () => {
                             disabled={
                               editandoPuja === puja.id || !itemMercadoId
                             }
-                            className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg disabled:cursor-not-allowed"
+                            className="flex-shrink-0 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-2 px-3 rounded-lg text-xs transition-all disabled:cursor-not-allowed whitespace-nowrap"
+                            title="Actualizar oferta"
                           >
                             {editandoPuja === puja.id ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <svg
-                                  className="animate-spin h-5 w-5"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    fill="none"
-                                  />
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  />
-                                </svg>
-                                Actualizando...
-                              </span>
+                              <svg
+                                className="animate-spin h-4 w-4"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
                             ) : (
-                              'Actualizar Oferta'
+                              'Actualizar'
                             )}
                           </button>
-
                           <button
                             onClick={() => handleCancelarPuja(puja.id)}
                             disabled={cancelandoPuja === puja.id}
-                            className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg disabled:cursor-not-allowed"
+                            className="flex-shrink-0 bg-red-500/80 hover:bg-red-600 disabled:bg-gray-500 text-white font-semibold py-2 px-3 rounded-lg text-xs transition-all disabled:cursor-not-allowed"
+                            title="Cancelar oferta"
                           >
                             {cancelandoPuja === puja.id ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <svg
-                                  className="animate-spin h-5 w-5"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                    fill="none"
-                                  />
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  />
-                                </svg>
-                                Cancelando...
-                              </span>
+                              <svg
+                                className="animate-spin h-4 w-4"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
                             ) : (
-                              'Cancelar Oferta'
+                              'Cancelar'
                             )}
                           </button>
                         </div>
                       </div>
+
+                      {/* Warning si no está en el mercado */}
+                      {!itemMercadoId && (
+                        <div className="mt-2 bg-red-500/15 border border-red-500/30 rounded-lg px-3 py-1.5 text-center">
+                          <p className="text-red-300 text-xs">
+                            No se puede actualizar: jugador no está en el
+                            mercado actual
+                          </p>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border-2 border-white/20 text-center">
-                <p className="text-white/80 text-lg">No tienes pujas activas</p>
+              <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20 text-center">
+                <p className="text-white/70">No tienes pujas activas</p>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Modal de confirmación */}
-      {showConfirmModal && confirmAction && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 max-w-md w-full border-2 border-white/20 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">
-              {confirmAction.title}
-            </h2>
-            <p className="text-gray-300 mb-6">{confirmAction.message}</p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleConfirm}
-                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all"
-              >
-                Confirmar
-              </button>
-              <button
-                onClick={handleCancelConfirm}
-                className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-all"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Modal de estadísticas del jugador */}
+      {statsJugador && (
+        <PlayerStatsModal
+          jugadorId={statsJugador.id}
+          jugadorNombre={statsJugador.nombre}
+          jugadorFoto={statsJugador.foto}
+          jugadorPosicion={statsJugador.posicion}
+          jugadorClub={statsJugador.club}
+          onClose={() => setStatsJugador(null)}
+        />
       )}
+
+      {/* Modal de confirmación */}
+      <ConfirmModal
+        open={showConfirmModal && confirmAction !== null}
+        title={confirmAction?.title ?? ''}
+        message={confirmAction?.message ?? ''}
+        onConfirm={handleConfirm}
+        onCancel={handleCancelConfirm}
+      />
     </div>
   );
 };

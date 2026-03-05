@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { obtenerMisTorneos } from '../../services/torneosService';
 import type { TorneoListItem } from '../../services/torneosService';
 import {
@@ -7,136 +7,123 @@ import {
   useMiEquipoId,
 } from '../../hooks/useSessionData';
 
+/** Rutas que usan :torneoId como path param */
+const PATH_PARAM_ROUTES = ['/mercado/', '/leaderboard/', '/torneos/'];
+
+/** Selector de torneos en la barra de navegación. */
 const SelectorTorneos = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const [torneos, setTorneos] = useState<TorneoListItem[]>([]);
-  const [torneoActual, setTorneoActual] = useState<TorneoListItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const initializedRef = useRef(false);
 
-  // ✅ Usar hooks en lugar de localStorage directamente
+  // Fuente única de verdad
   const [torneoGuardadoId, setTorneoGuardadoId] = useTorneoSeleccionado();
   const [, setMiEquipoId] = useMiEquipoId();
 
-  useEffect(() => {
-    const fetchTorneos = async () => {
-      try {
-        const response = await obtenerMisTorneos();
-        const torneosData = response.data || [];
-        setTorneos(torneosData);
+  // Cargar lista de torneos (sin lógica de selección)
+  const fetchTorneos = useCallback(async () => {
+    try {
+      const response = await obtenerMisTorneos();
+      const torneosData: TorneoListItem[] = response.data || [];
+      setTorneos(torneosData);
 
-        if (torneosData.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        // PRIORIDAD 1: Verificar si hay un torneo guardado en el hook (selección del usuario)
-        if (torneoGuardadoId) {
-          const torneoGuardado = torneosData.find(
-            (t: TorneoListItem) => t.torneo_id === parseInt(torneoGuardadoId)
-          );
-          if (torneoGuardado) {
-            setTorneoActual(torneoGuardado);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // PRIORIDAD 2: Si NO hay selección guardada, buscar el primer torneo ACTIVO y guardarlo
-        const torneoActivo = torneosData.find(
-          (t: TorneoListItem) => t.estado === 'ACTIVO'
+      // Si el torneo seleccionado ya no está en la lista (abandono/expulsión),
+      // limpiar selección y permitir que el auto-select elija otro
+      if (torneoGuardadoId) {
+        const sigueExistiendo = torneosData.some(
+          (t) => t.torneo_id === parseInt(torneoGuardadoId),
         );
-        if (torneoActivo) {
-          setTorneoActual(torneoActivo);
-          setTorneoGuardadoId(torneoActivo.torneo_id.toString());
-          setLoading(false);
-          return;
+        if (!sigueExistiendo) {
+          setTorneoGuardadoId(null);
+          setMiEquipoId(null);
+          initializedRef.current = false;
         }
-
-        // PRIORIDAD 3: Si no hay torneo activo, usar el primero disponible
-        let torneoIdActual: number | null = null;
-
-        // Intentar extraer de la URL (para rutas como /mercado/4, /leaderboard/3, /torneos/2)
-        const pathMatch = location.pathname.match(
-          /\/(mercado|leaderboard|torneos)\/(\d+)/
-        );
-        if (pathMatch) {
-          torneoIdActual = parseInt(pathMatch[2]);
-        }
-
-        // Si no está en la URL, buscar en query params
-        if (!torneoIdActual) {
-          const torneoIdParam = searchParams.get('torneoId');
-          if (torneoIdParam) {
-            torneoIdActual = parseInt(torneoIdParam);
-          }
-        }
-
-        // Como fallback, usar el torneo de la URL o el primero disponible
-        if (torneoIdActual) {
-          const torneoSeleccionado = torneosData.find(
-            (t: TorneoListItem) => t.torneo_id === torneoIdActual
-          );
-          if (torneoSeleccionado) {
-            setTorneoActual(torneoSeleccionado);
-            setTorneoGuardadoId(torneoSeleccionado.torneo_id.toString());
-          } else {
-            setTorneoActual(torneosData[0]);
-            setTorneoGuardadoId(torneosData[0].torneo_id.toString());
-          }
-        } else {
-          // Último fallback: usar el primero y guardarlo
-          setTorneoActual(torneosData[0]);
-          setTorneoGuardadoId(torneosData[0].torneo_id.toString());
-        }
-      } catch (error) {
-        console.error('Error al cargar torneos:', error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch {
+      // error silenciado
+    } finally {
+      setLoading(false);
+    }
+  }, [torneoGuardadoId, setTorneoGuardadoId, setMiEquipoId]);
 
+  // Cargar torneos al montar
+  useEffect(() => {
     fetchTorneos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo ejecutar UNA VEZ al montar el componente
+  }, [fetchTorneos]);
+
+  // Recargar la lista cuando el usuario navega a /torneos o /LoggedMenu (viene de crear/unirse)
+  useEffect(() => {
+    if (
+      location.pathname === '/torneos' ||
+      location.pathname === '/LoggedMenu'
+    ) {
+      fetchTorneos();
+    }
+  }, [location.pathname, fetchTorneos]);
+
+  // Auto-seleccionar torneo cuando se carga la lista y no hay uno guardado
+  useEffect(() => {
+    if (torneos.length === 0 || initializedRef.current) return;
+
+    // Si ya hay uno guardado y existe en la lista, no hacer nada
+    if (torneoGuardadoId) {
+      const existe = torneos.find(
+        (t) => t.torneo_id === parseInt(torneoGuardadoId),
+      );
+      if (existe) {
+        // Sincronizar equipoId por si cambió
+        if (existe.mi_equipo?.id) {
+          setMiEquipoId(existe.mi_equipo.id.toString());
+        }
+        initializedRef.current = true;
+        return;
+      }
+    }
+
+    // Auto-seleccionar: primer torneo ACTIVO, o el primero disponible
+    const torneoActivo = torneos.find((t) => t.estado === 'ACTIVO');
+    const torneoDefault = torneoActivo || torneos[0];
+
+    setTorneoGuardadoId(torneoDefault.torneo_id.toString());
+    if (torneoDefault.mi_equipo?.id) {
+      setMiEquipoId(torneoDefault.mi_equipo.id.toString());
+    }
+    initializedRef.current = true;
+  }, [torneos, torneoGuardadoId, setTorneoGuardadoId, setMiEquipoId]);
+
+  // Derivar torneoActual del hook (no estado local separado)
+  const torneoActual = torneos.find(
+    (t) => torneoGuardadoId && t.torneo_id === parseInt(torneoGuardadoId),
+  );
 
   const handleTorneoChange = (torneoId: number) => {
     const torneoSeleccionado = torneos.find((t) => t.torneo_id === torneoId);
-    setTorneoActual(torneoSeleccionado || null);
 
-    // ✅ GUARDAR la selección del usuario usando el hook (actualiza el estado global)
+    // Actualizar la fuente única de verdad
     setTorneoGuardadoId(torneoId.toString());
 
-    // Obtener el equipoId del torneo seleccionado y guardarlo también
+    // Guardar equipoId del nuevo torneo
     const equipoId = torneoSeleccionado?.mi_equipo?.id;
     if (equipoId) {
       setMiEquipoId(equipoId.toString());
+    } else {
+      setMiEquipoId(null);
     }
 
-    // Manejar rutas específicas que usan torneoId en la URL (no en query params)
+    // Solo navegar si estamos en una ruta con :torneoId en el path
     const currentPath = location.pathname;
+    const isPathParamRoute = PATH_PARAM_ROUTES.some((r) =>
+      currentPath.includes(r),
+    );
 
-    if (
-      currentPath.includes('/mercado/') ||
-      currentPath.includes('/leaderboard/') ||
-      currentPath.includes('/torneos/')
-    ) {
-      // Para rutas que usan torneoId en el path, reemplazar el ID
-      const newPath = currentPath.replace(/\/(\d+)$/, `/${torneoId}`);
-      navigate(newPath, { replace: false });
-      return;
+    if (isPathParamRoute) {
+      const newPath = currentPath.replace(/\/(\d+)(\/.*)?$/, `/${torneoId}$2`);
+      navigate(newPath, { replace: true });
     }
-
-    // Para otras rutas, construir nuevos parámetros manteniendo la ruta actual
-    const params = new URLSearchParams();
-    params.append('torneoId', torneoId.toString());
-    if (equipoId) {
-      params.append('equipoId', equipoId.toString());
-    }
-
-    // Navegar sin forzar recarga - los componentes reaccionarán al cambio
-    navigate(`${currentPath}?${params.toString()}`, { replace: false });
+    // Para todas las demás páginas: no navegar, los componentes reaccionan
+    // automáticamente al cambio del hook useTorneoSeleccionado()
   };
 
   if (loading || torneos.length === 0) {

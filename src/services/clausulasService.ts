@@ -4,6 +4,7 @@ export interface BlindajeRequest {
   monto_incremento: number;
 }
 
+/** Servicio para blindar jugadores y ejecutar cláusulas de rescisión. */
 export const clausulasService = {
   // Blindar un jugador (incrementar su cláusula)
   blindarJugador: async (

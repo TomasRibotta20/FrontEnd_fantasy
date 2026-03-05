@@ -2,7 +2,7 @@
 
 Aplicación web de Fantasy Football desarrollada con React, TypeScript y Vite.
 
-## 🚀 Tecnologías
+## Tecnologías
 
 - **React 19** - Framework UI
 - **TypeScript** - Tipado estático
@@ -12,12 +12,12 @@ Aplicación web de Fantasy Football desarrollada con React, TypeScript y Vite.
 - **Axios** - Cliente HTTP
 - **React Hook Form + Zod** - Formularios y validación
 
-## 📋 Requisitos Previos
+## Requisitos Previos
 
 - Node.js 18+
 - pnpm (recomendado) o npm
 
-## 🛠️ Instalación
+## Instalación
 
 ```bash
 # Clonar el repositorio
@@ -32,7 +32,7 @@ cp .env.example .env
 # Editar .env con la URL del backend
 ```
 
-## 🏃 Ejecución
+## Ejecución
 
 ```bash
 # Modo desarrollo
@@ -45,7 +45,7 @@ pnpm build
 pnpm preview
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Tests unitarios con Vitest
@@ -56,7 +56,7 @@ pnpm cypress        # Modo interactivo
 pnpm cypress:run    # Modo headless
 ```
 
-## 📁 Estructura del Proyecto
+##  Estructura del Proyecto
 
 ```
 src/
@@ -72,13 +72,13 @@ src/
 └── utils/          # Utilidades
 ```
 
-## 🔗 Variables de Entorno
+## Variables de Entorno
 
 ```env
 VITE_API_URL=http://localhost:3000
 ```
 
-## 📝 Scripts Disponibles
+## Scripts Disponibles
 
 | Comando      | Descripción            |
 | ------------ | ---------------------- |

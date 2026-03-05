@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import authService from '../../../services/authService';
 import { CustoFormHookForm } from '../../forms';
+import PasswordRequirements from '../../common/PasswordRequirements';
 
+/** Pagina para restablecer la contrasena usando el token del email. */
 function NewPassword() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const { resetToken: token } = useParams<{ resetToken: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
@@ -18,12 +20,14 @@ function NewPassword() {
     label: string;
     type: 'number' | 'text' | 'email' | 'password' | 'tel';
     required: boolean;
+    hint?: ReactNode;
   }[] = [
     {
       name: 'newPassword',
       label: 'Nueva Contraseña',
       type: 'password',
       required: true,
+      hint: <PasswordRequirements />,
     },
     {
       name: 'confirmPassword',
@@ -69,10 +73,21 @@ function NewPassword() {
         navigate('/login');
       }, 2000);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as {
+        response?: {
+          data?: {
+            message?: string;
+            errors?: { field: string; message: string }[];
+          };
+        };
+      };
+      const detalles = err.response?.data?.errors
+        ?.map((e) => e.message)
+        .join('. ');
       setMessage({
         type: 'error',
         text:
+          detalles ||
           err.response?.data?.message ||
           'Error al actualizar la contraseña. El token puede haber expirado.',
       });

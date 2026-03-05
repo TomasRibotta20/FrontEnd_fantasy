@@ -68,6 +68,13 @@ const AdminPage = () => {
       route: '/admin/mercado',
       color: 'from-cyan-500 to-blue-500',
     },
+    {
+      title: 'Automatización',
+      description: 'Control de procesamiento automático de jornadas',
+      icon: '⚙️',
+      route: '/admin/automation',
+      color: 'from-gray-500 to-slate-600',
+    },
   ];
 
   return (

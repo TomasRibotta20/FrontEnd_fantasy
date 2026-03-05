@@ -96,6 +96,7 @@ export interface HistorialEquipo {
 }
 
 
+/** Servicio para gestionar jornadas, puntuaciones e historial de equipos. */
 export const jornadasService = {
   // Obtener todas las jornadas
   async getJornadas(temporada?: string): Promise<Jornada[]> {
@@ -151,9 +152,25 @@ export const adminService = {
       
       const response = await apiClient.get('/api/admin/config');
       const data = response.data?.data || response.data;
+
+      // El backend devuelve snake_case: jornada_activa, modificaciones_habilitadas
+      const jornadaRaw = data.jornada_activa ?? data.jornadaActiva ?? null;
+      let jornadaId: number | null = null;
+      if (jornadaRaw !== null && jornadaRaw !== undefined) {
+        if (typeof jornadaRaw === 'object' && 'id' in jornadaRaw) {
+          jornadaId = jornadaRaw.id;
+        } else if (typeof jornadaRaw === 'number') {
+          jornadaId = jornadaRaw;
+        } else if (typeof jornadaRaw === 'string') {
+          jornadaId = parseInt(jornadaRaw);
+        }
+      }
+
+      const modsRaw = data.modificaciones_habilitadas ?? data.modificacionesHabilitadas;
+
       return {
-        jornadaActiva: data.jornadaActiva !== undefined ? data.jornadaActiva : null,
-        modificacionesHabilitadas: data.modificacionesHabilitadas !== undefined ? data.modificacionesHabilitadas : false
+        jornadaActiva: jornadaId,
+        modificacionesHabilitadas: modsRaw !== undefined ? modsRaw : false
       };
     } catch {
       const [jornadaActivaRes, estadoModsRes] = await Promise.all([
@@ -221,7 +238,6 @@ export const estadisticasService = {
             const data = response.data?.data || response.data;
       
       if (!Array.isArray(data)) {
-        console.warn(`⚠️ Datos no son array para jornada ${jornadaId}:`, data);
         return [];
       }
       
@@ -250,18 +266,8 @@ export const estadisticasService = {
             jerseyNumber: jugador.numero_camiseta ?? jugador.jerseyNumber ?? null,
           } : undefined,
         };
-      });
-    } catch (error) {
-      console.error(`❌ Error al obtener estadísticas de jornada ${jornadaId}:`, error);
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number; data?: unknown }; config?: { url?: string }; message?: string };
-        console.error('Detalles del error:', {
-          message: axiosError.message,
-          status: axiosError.response?.status,
-          url: axiosError.config?.url,
-          data: axiosError.response?.data
-        });
-      }
+      }) as EstadisticaJugador[];
+    } catch {
       return [];
     }
   },

@@ -32,7 +32,7 @@ const GestionJornadasAdmin = () => {
     try {
       setLoading(true);
       const data = await jornadasService.getJornadas(
-        selectedTemporada || undefined
+        selectedTemporada || undefined,
       );
       // Asegurarnos que data sea un array
       setJornadas(Array.isArray(data) ? data : []);
@@ -70,34 +70,8 @@ const GestionJornadasAdmin = () => {
 
       // Verificar si recibimos datos válidos
       if (data && typeof data === 'object') {
-        // Extraer jornadaActiva - puede venir como número o como objeto con id
-        let jornadaActivaId: number | null = null;
-        if (data.jornadaActiva !== undefined && data.jornadaActiva !== null) {
-          if (
-            typeof data.jornadaActiva === 'object' &&
-            'id' in data.jornadaActiva
-          ) {
-            // Si es un objeto, extraer el id
-            jornadaActivaId = (data.jornadaActiva as { id: number }).id;
-          } else if (typeof data.jornadaActiva === 'number') {
-            // Si es un número, usarlo directamente
-            jornadaActivaId = data.jornadaActiva;
-          } else if (typeof data.jornadaActiva === 'string') {
-            // Si es un string, convertir a número
-            jornadaActivaId = parseInt(data.jornadaActiva);
-          }
-        }
-
-        // Actualizar con los datos del servidor
-        const newConfig: ConfiguracionSistema = {
-          jornadaActiva: jornadaActivaId,
-          modificacionesHabilitadas:
-            data.modificacionesHabilitadas !== undefined
-              ? data.modificacionesHabilitadas
-              : false,
-        };
-
-        setConfig(newConfig);
+        // El servicio ya mapea snake_case a camelCase y extrae el id de jornada
+        setConfig(data);
       }
     } catch {
       // Mantener valores por defecto si no podemos cargar del servidor
@@ -168,7 +142,7 @@ const GestionJornadasAdmin = () => {
       await adminService.deshabilitarModificaciones();
 
       setSuccess(
-        'Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos'
+        'Modificaciones BLOQUEADAS - Los usuarios no pueden cambiar sus equipos',
       );
 
       setTimeout(() => setSuccess(null), 5000);
@@ -204,7 +178,7 @@ const GestionJornadasAdmin = () => {
       await adminService.habilitarModificaciones();
 
       setSuccess(
-        'Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos'
+        'Modificaciones HABILITADAS - Los usuarios pueden cambiar sus equipos',
       );
 
       setTimeout(() => setSuccess(null), 5000);

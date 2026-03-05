@@ -16,6 +16,7 @@ export interface AuthContextType {
   isLoading: boolean;
 }
 
+/** Contexto React para compartir el estado de autenticación. */
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export type { User };

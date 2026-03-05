@@ -12,11 +12,13 @@ import type {
   Player,
   BackendPlayerResponse,
 } from '../../../types/player.types';
+import PlayerStatsModal from '../../common/PlayerStatsModal';
 import {
   useMiEquipoId,
   useTorneoSeleccionado,
 } from '../../../hooks/useSessionData';
 
+/** Vista del equipo de otro jugador con opciones de oferta y cláusula. */
 const VerEquipoOtroJugador = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -24,6 +26,18 @@ const VerEquipoOtroJugador = () => {
   // Hooks de sesión para obtener mi equipo y torneo
   const [miEquipoIdGuardado] = useMiEquipoId();
   const [torneoGuardadoId] = useTorneoSeleccionado();
+
+  // Guard: si el usuario intenta ver su propio equipo, redirigir a UpdateTeam
+  useEffect(() => {
+    const equipoIdParam = searchParams.get('equipoId');
+    if (
+      equipoIdParam &&
+      miEquipoIdGuardado &&
+      equipoIdParam === miEquipoIdGuardado
+    ) {
+      navigate('/UpdateTeam', { replace: true });
+    }
+  }, [searchParams, miEquipoIdGuardado, navigate]);
 
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +52,7 @@ const VerEquipoOtroJugador = () => {
 
   // Estados para el modal de ofertas
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState<Player | null>(
-    null
+    null,
   );
   const [montoOferta, setMontoOferta] = useState<string>('');
   const [mensajeOferta, setMensajeOferta] = useState<string>('');
@@ -52,6 +66,22 @@ const VerEquipoOtroJugador = () => {
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning' | 'info';
     text: string;
+  } | null>(null);
+
+  // Estado para el modal de confirmación de cláusula
+  const [confirmClausula, setConfirmClausula] = useState<{
+    player: Player;
+    monto: number;
+    miEquipoId: string;
+  } | null>(null);
+
+  // Estado para el modal de estadísticas del jugador
+  const [statsJugador, setStatsJugador] = useState<{
+    id: number;
+    nombre: string;
+    foto?: string;
+    posicion?: string;
+    club?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -74,7 +104,7 @@ const VerEquipoOtroJugador = () => {
           if (miEquipoIdGuardado) {
             try {
               const miEquipoResponse = await apiClient.get(
-                `/api/equipos/detalle-equipo/${miEquipoIdGuardado}`
+                `/api/equipos/detalle-equipo/${miEquipoIdGuardado}`,
               );
               const miEquipoData =
                 miEquipoResponse.data?.data || miEquipoResponse.data;
@@ -86,11 +116,8 @@ const VerEquipoOtroJugador = () => {
                 setPresupuestoBloqueado(bloqueado);
                 presupuestoCargado = true;
               }
-            } catch (err) {
-              console.error(
-                'Error al obtener presupuesto con equipoId guardado:',
-                err
-              );
+            } catch {
+              // error silenciado
             }
           }
 
@@ -102,7 +129,7 @@ const VerEquipoOtroJugador = () => {
               const torneoData = response.data?.data || response.data;
               if (torneoData?.mi_equipo_id) {
                 const miEquipoResponse = await apiClient.get(
-                  `/api/equipos/detalle-equipo/${torneoData.mi_equipo_id}`
+                  `/api/equipos/detalle-equipo/${torneoData.mi_equipo_id}`,
                 );
                 const miEquipoData =
                   miEquipoResponse.data?.data || miEquipoResponse.data;
@@ -116,13 +143,12 @@ const VerEquipoOtroJugador = () => {
                   presupuestoCargado = true;
                 }
               }
-            } catch (err) {
-              console.error('Error al obtener presupuesto desde torneo:', err);
+            } catch {
+              // error silenciado
             }
           }
           setPresupuestoIntentadoCargar(true);
-        } catch (error) {
-          console.error('Error general al obtener presupuesto:', error);
+        } catch {
           setPresupuestoIntentadoCargar(true);
         }
 
@@ -132,7 +158,7 @@ const VerEquipoOtroJugador = () => {
 
         // Usar el endpoint con el equipoId del otro jugador
         const response = await apiClient.get(
-          `/api/equipos/detalle-equipo/${equipoId}`
+          `/api/equipos/detalle-equipo/${equipoId}`,
         );
         const equipoData = response.data?.data || response.data;
 
@@ -143,7 +169,7 @@ const VerEquipoOtroJugador = () => {
             // ✅ Usar función centralizada del playerMapper
             const mappedPlayers = equipoData.jugadores.map(
               (item: BackendPlayerResponse, index: number) =>
-                mapBackendPlayerToFrontend(item, index)
+                mapBackendPlayerToFrontend(item, index),
             );
 
             // Guardar todos los jugadores (titulares y suplentes)
@@ -152,7 +178,7 @@ const VerEquipoOtroJugador = () => {
             // Intentar obtener puntajes de la última jornada
             try {
               const historialResponse = await apiClient.get(
-                `/api/equipos/${equipoId}/historial`
+                `/api/equipos/${equipoId}/historial`,
               );
               const historialData = Array.isArray(historialResponse.data)
                 ? historialResponse.data
@@ -162,15 +188,15 @@ const VerEquipoOtroJugador = () => {
                 const ordenado = historialData.sort(
                   (
                     a: { jornada?: { id: number } },
-                    b: { jornada?: { id: number } }
-                  ) => (b.jornada?.id || 0) - (a.jornada?.id || 0)
+                    b: { jornada?: { id: number } },
+                  ) => (b.jornada?.id || 0) - (a.jornada?.id || 0),
                 );
                 const ultimaJornada = ordenado[0];
                 const jornadaId = ultimaJornada?.jornada?.id;
 
                 if (jornadaId) {
                   const detalleResponse = await apiClient.get(
-                    `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
+                    `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`,
                   );
                   const detalle =
                     detalleResponse.data?.data || detalleResponse.data;
@@ -192,7 +218,7 @@ const VerEquipoOtroJugador = () => {
                               (j.id && j.id === player.id) ||
                               (j.apiId && j.apiId === player.apiId);
                             return nombreMatch || idMatch;
-                          }
+                          },
                         );
 
                         // Solo incluir puntaje si existe y es mayor a 0
@@ -203,7 +229,7 @@ const VerEquipoOtroJugador = () => {
                             ? { puntaje: puntajeReal }
                             : {}),
                         };
-                      }
+                      },
                     );
 
                     setTeamPlayers(jugadoresConPuntajes);
@@ -215,8 +241,7 @@ const VerEquipoOtroJugador = () => {
             }
           }
         }
-      } catch (err) {
-        console.error('Error al cargar el equipo:', err);
+      } catch {
         setError('Error al cargar el equipo del jugador');
       } finally {
         setLoading(false);
@@ -227,13 +252,28 @@ const VerEquipoOtroJugador = () => {
   }, [searchParams, miEquipoIdGuardado, torneoGuardadoId]);
 
   const handleEjecutarClausula = async (player: Player) => {
-    if (!player.valor_clausula || !player.id) {
+    if (!player.id) {
       setNotification({
         type: 'error',
-        text: 'Este jugador no tiene cláusula de rescisión',
+        text: 'No se pudo identificar al jugador',
       });
       return;
     }
+
+    // Verificar si el jugador está protegido
+    if (player.esta_protegido) {
+      setNotification({
+        type: 'warning',
+        text: `Este jugador está protegido. No se puede ejecutar la cláusula durante ${player.dias_proteccion_restantes ?? 0} día(s) más.`,
+      });
+      return;
+    }
+
+    const clausulaEfectiva =
+      player.valor_clausula_efectiva ||
+      player.valor_clausula ||
+      player.precio ||
+      0;
 
     const miEquipoId = localStorage.getItem('miEquipoId');
     if (!miEquipoId) {
@@ -244,30 +284,29 @@ const VerEquipoOtroJugador = () => {
       return;
     }
 
-    if (presupuestoDisponible < player.valor_clausula) {
+    if (presupuestoDisponible < clausulaEfectiva) {
       setNotification({
         type: 'error',
-        text: `Presupuesto insuficiente. Necesitas $${player.valor_clausula.toLocaleString(
-          'es-AR'
+        text: `Presupuesto insuficiente. Necesitas $${clausulaEfectiva.toLocaleString(
+          'es-AR',
         )} pero solo tienes $${presupuestoDisponible.toLocaleString('es-AR')}`,
       });
       return;
     }
 
-    const confirmar = window.confirm(
-      `¿Estás seguro de ejecutar la cláusula de ${
-        player.name
-      } por $${player.valor_clausula.toLocaleString(
-        'es-AR'
-      )}?\n\nEsto transferirá al jugador a tu equipo automáticamente.`
-    );
+    // Abrir modal de confirmación custom
+    setConfirmClausula({ player, monto: clausulaEfectiva, miEquipoId });
+  };
 
-    if (!confirmar) return;
+  const handleConfirmarEjecutarClausula = async () => {
+    if (!confirmClausula) return;
+    const { player, miEquipoId } = confirmClausula;
+    setConfirmClausula(null);
 
     try {
       setEnviandoOferta(true);
       await apiClient.post(
-        `/api/clausulas/${miEquipoId}/jugadores/${player.id}/ejecutar-clausula`
+        `/api/clausulas/${miEquipoId}/jugadores/${player.id}/ejecutar-clausula`,
       );
 
       setNotification({
@@ -280,7 +319,6 @@ const VerEquipoOtroJugador = () => {
         window.location.reload();
       }, 2000);
     } catch (error) {
-      console.error('Error al ejecutar cláusula:', error);
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as {
           response?: { data?: { message?: string } };
@@ -337,7 +375,7 @@ const VerEquipoOtroJugador = () => {
         type: 'error',
         text: `Presupuesto insuficiente. Disponible: $${presupuestoDisponible.toLocaleString(
           'es-AR',
-          { minimumFractionDigits: 2 }
+          { minimumFractionDigits: 2 },
         )}, Oferta: $${monto.toLocaleString('es-AR', {
           minimumFractionDigits: 2,
         })}`,
@@ -354,14 +392,13 @@ const VerEquipoOtroJugador = () => {
     };
 
     try {
-      const response = await ofertasService.crearOferta(ofertaData);
+      await ofertasService.crearOferta(ofertaData);
       setNotification({
         type: 'success',
         text: `Oferta enviada por ${jugadorSeleccionado.name}`,
       });
       handleCerrarModal();
     } catch (error: unknown) {
-      console.error('Error completo:', error);
       let errorMessage = 'Error al enviar la oferta';
       if (error && typeof error === 'object' && 'response' in error) {
         const response = error.response as {
@@ -389,7 +426,7 @@ const VerEquipoOtroJugador = () => {
   const handleVolver = () => {
     const torneoId = searchParams.get('torneoId');
     if (torneoId) {
-      navigate(`/leaderboard?torneoId=${torneoId}`);
+      navigate(`/leaderboard/${torneoId}`);
     } else {
       navigate('/LoggedMenu');
     }
@@ -535,17 +572,30 @@ const VerEquipoOtroJugador = () => {
                   players={teamPlayers}
                   showSuplentes={true}
                   mostrarPuntajes={teamPlayers.some(
-                    (p) => (p.puntaje || 0) > 0
+                    (p) => (p.puntaje || 0) > 0,
                   )}
                   mostrarPrecios={true}
                   onPlayerClick={handleHacerOferta}
+                  onStatsClick={(player) => {
+                    const fullPlayer = teamPlayers.find(
+                      (p) => p.id === player.id,
+                    );
+                    setStatsJugador({
+                      id: player.id!,
+                      nombre: player.name,
+                      foto: player.photo,
+                      posicion: getPositionDisplayName(player.position),
+                      club:
+                        fullPlayer?.club && typeof fullPlayer.club === 'object'
+                          ? (fullPlayer.club as { nombre?: string })?.nombre
+                          : undefined,
+                    });
+                  }}
                   selectedPlayerId={jugadorSeleccionadoFormacion?.id}
                 />
 
                 {/* Panel flotante con botón de ejecutar cláusula */}
-                {jugadorSeleccionadoFormacion &&
-                jugadorSeleccionadoFormacion.valor_clausula != null &&
-                jugadorSeleccionadoFormacion.valor_clausula > 0 ? (
+                {jugadorSeleccionadoFormacion && (
                   <div className="mt-4 backdrop-blur-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 rounded-xl p-4 border-2 border-red-400/40 shadow-xl">
                     <div className="flex items-center gap-4">
                       <img
@@ -563,28 +613,69 @@ const VerEquipoOtroJugador = () => {
                           {jugadorSeleccionadoFormacion.name}
                         </h4>
                         <p className="text-red-200 text-sm">
-                          Jugador Blindado - Cláusula: $
-                          {jugadorSeleccionadoFormacion.valor_clausula.toLocaleString(
-                            'es-AR'
-                          )}
+                          {jugadorSeleccionadoFormacion.valor_clausula
+                            ? 'Jugador Blindado - '
+                            : ''}
+                          Cláusula: $
+                          {(
+                            jugadorSeleccionadoFormacion.valor_clausula_efectiva ||
+                            jugadorSeleccionadoFormacion.valor_clausula ||
+                            jugadorSeleccionadoFormacion.precio ||
+                            0
+                          ).toLocaleString('es-AR')}
                         </p>
+                        {/* Indicador de protección */}
+                        {jugadorSeleccionadoFormacion.esta_protegido && (
+                          <p className="text-emerald-300 text-sm font-semibold mt-1 flex items-center gap-1">
+                            <svg
+                              className="w-4 h-4 flex-shrink-0"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Protegido —{' '}
+                            {
+                              jugadorSeleccionadoFormacion.dias_proteccion_restantes
+                            }{' '}
+                            día(s) restante(s)
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={() =>
                           handleEjecutarClausula(jugadorSeleccionadoFormacion)
                         }
-                        disabled={enviandoOferta}
-                        className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-2"
+                        disabled={
+                          enviandoOferta ||
+                          jugadorSeleccionadoFormacion.esta_protegido
+                        }
+                        className={`px-6 py-3 font-bold rounded-lg transition-all duration-200 shadow-lg transform flex items-center gap-2 ${
+                          jugadorSeleccionadoFormacion.esta_protegido
+                            ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed border border-gray-400/30'
+                            : 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white hover:shadow-red-500/50 hover:scale-105 disabled:transform-none disabled:cursor-not-allowed'
+                        }`}
+                        title={
+                          jugadorSeleccionadoFormacion.esta_protegido
+                            ? `Protegido por ${jugadorSeleccionadoFormacion.dias_proteccion_restantes} día(s)`
+                            : 'Ejecutar cláusula de rescisión'
+                        }
                       >
                         <span>
                           {enviandoOferta
                             ? 'Procesando...'
-                            : 'Ejecutar Cláusula'}
+                            : jugadorSeleccionadoFormacion.esta_protegido
+                              ? 'Protegido'
+                              : 'Ejecutar Cláusula'}
                         </span>
                       </button>
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
             ) : (
               <div className="text-center py-12">
@@ -599,7 +690,7 @@ const VerEquipoOtroJugador = () => {
         {/* Modal de Oferta - Mejorado */}
         {jugadorSeleccionado && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 py-8 px-4">
-            <div className="backdrop-blur-xl bg-gradient-to-br from-white/20 to-white/5 rounded-2xl border-2 border-white/30 shadow-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/20 shadow-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
               <h3 className="text-xl font-bold mb-4 text-center bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
                 Hacer Oferta
               </h3>
@@ -731,7 +822,7 @@ const VerEquipoOtroJugador = () => {
                         type="button"
                         onClick={() =>
                           setMontoOferta((prev) =>
-                            (parseFloat(prev || '0') + 100000).toString()
+                            (parseFloat(prev || '0') + 100000).toString(),
                           )
                         }
                         className="flex-1 w-10 flex items-center justify-center bg-white/5 hover:bg-white/20 text-white/70 hover:text-white text-sm transition-all rounded-tr-lg border-b border-white/20"
@@ -755,8 +846,8 @@ const VerEquipoOtroJugador = () => {
                           setMontoOferta((prev) =>
                             Math.max(
                               0,
-                              parseFloat(prev || '0') - 100000
-                            ).toString()
+                              parseFloat(prev || '0') - 100000,
+                            ).toString(),
                           )
                         }
                         className="flex-1 w-10 flex items-center justify-center bg-white/5 hover:bg-white/20 text-white/70 hover:text-white text-sm transition-all rounded-br-lg"
@@ -805,6 +896,43 @@ const VerEquipoOtroJugador = () => {
                   Cancelar
                 </button>
                 <button
+                  onClick={() => {
+                    if (jugadorSeleccionado) {
+                      setStatsJugador({
+                        id: jugadorSeleccionado.id!,
+                        nombre: jugadorSeleccionado.name,
+                        foto: jugadorSeleccionado.photo,
+                        posicion: getPositionDisplayName(
+                          jugadorSeleccionado.position,
+                        ),
+                        club:
+                          typeof jugadorSeleccionado.club === 'object' &&
+                          jugadorSeleccionado.club !== null
+                            ? (jugadorSeleccionado.club as { nombre?: string })
+                                ?.nombre
+                            : undefined,
+                      });
+                    }
+                  }}
+                  className="px-4 py-3 rounded-lg bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 font-semibold transition-all flex items-center gap-2"
+                  title="Ver estadísticas y precios"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                  Stats
+                </button>
+                <button
                   onClick={handleEnviarOferta}
                   disabled={enviandoOferta || !montoOferta}
                   className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold transition-all disabled:opacity-50 disabled:from-gray-500 disabled:to-gray-600 shadow-lg"
@@ -839,40 +967,82 @@ const VerEquipoOtroJugador = () => {
                 </button>
               </div>
 
-              {/* Botón de ejecutar cláusula si el jugador está blindado */}
-              {jugadorSeleccionado &&
-              jugadorSeleccionado.valor_clausula != null &&
-              jugadorSeleccionado.valor_clausula > 0 ? (
+              {/* Botón de ejecutar cláusula */}
+              {jugadorSeleccionado && (
                 <div className="mt-4 pt-4 border-t border-white/20">
                   <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-lg p-4 border border-red-400/40 mb-3">
                     <div className="flex items-center gap-2 mb-2">
                       <p className="text-white font-semibold text-sm">
-                        Jugador Blindado
+                        {jugadorSeleccionado.valor_clausula
+                          ? 'Jugador Blindado'
+                          : 'Cláusula de Rescisión'}
                       </p>
                     </div>
                     <p className="text-white/80 text-xs">
-                      Este jugador tiene una cláusula de rescisión. Puedes
-                      adquirirlo automáticamente por:
+                      {jugadorSeleccionado.valor_clausula
+                        ? 'Este jugador tiene una cláusula de rescisión elevada. Puedes adquirirlo automáticamente por:'
+                        : 'Puedes adquirir a este jugador pagando su cláusula de rescisión:'}
                     </p>
                     <p className="text-red-300 font-bold text-xl mt-2">
                       $
-                      {jugadorSeleccionado.valor_clausula.toLocaleString(
-                        'es-AR'
-                      )}
+                      {(
+                        jugadorSeleccionado.valor_clausula_efectiva ||
+                        jugadorSeleccionado.valor_clausula ||
+                        jugadorSeleccionado.precio ||
+                        0
+                      ).toLocaleString('es-AR')}
                     </p>
+                    {/* Estado de protección en modal de oferta */}
+                    {jugadorSeleccionado.esta_protegido && (
+                      <div className="mt-3 bg-emerald-500/20 border border-emerald-400/40 rounded-lg p-3 flex items-center gap-2">
+                        <svg
+                          className="w-5 h-5 text-emerald-400 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-emerald-200 text-xs font-bold">
+                            Jugador Protegido
+                          </p>
+                          <p className="text-emerald-300/80 text-[11px]">
+                            No se puede ejecutar la cláusula durante{' '}
+                            <strong>
+                              {jugadorSeleccionado.dias_proteccion_restantes}
+                            </strong>{' '}
+                            día(s) más.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => {
                       handleCerrarModal();
                       handleEjecutarClausula(jugadorSeleccionado);
                     }}
-                    disabled={enviandoOferta}
-                    className="w-full px-6 py-4 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold transition-all shadow-xl hover:shadow-red-500/50 transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    disabled={
+                      enviandoOferta || jugadorSeleccionado.esta_protegido
+                    }
+                    className={`w-full px-6 py-4 rounded-lg font-bold transition-all shadow-xl transform flex items-center justify-center gap-2 ${
+                      jugadorSeleccionado.esta_protegido
+                        ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed border border-gray-400/30'
+                        : 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white hover:shadow-red-500/50 hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed'
+                    }`}
                   >
-                    <span>Ejecutar Cláusula</span>
+                    <span>
+                      {jugadorSeleccionado.esta_protegido
+                        ? 'Jugador Protegido'
+                        : 'Ejecutar Cláusula'}
+                    </span>
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
         )}
@@ -882,6 +1052,79 @@ const VerEquipoOtroJugador = () => {
           <Notification
             message={notification}
             onClose={() => setNotification(null)}
+          />
+        )}
+
+        {/* Modal de confirmación de cláusula */}
+        {confirmClausula && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/20 shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header */}
+              <div className="p-5 border-b border-white/10 flex items-center gap-4">
+                <img
+                  src={confirmClausula.player.photo}
+                  alt={confirmClausula.player.name}
+                  className="w-14 h-14 rounded-full border-2 border-red-400/50 shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src =
+                      'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=?';
+                  }}
+                />
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Ejecutar Cláusula
+                  </h3>
+                  <p className="text-white/70 text-sm">
+                    {confirmClausula.player.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                <p className="text-white/90 text-sm">
+                  ¿Estás seguro de ejecutar la cláusula de{' '}
+                  <strong>{confirmClausula.player.name}</strong> por:
+                </p>
+                <div className="text-center">
+                  <p className="text-red-400 font-bold text-2xl">
+                    ${confirmClausula.monto.toLocaleString('es-AR')}
+                  </p>
+                </div>
+                <p className="text-white/60 text-xs text-center">
+                  Esto transferirá al jugador a tu equipo automáticamente.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 border-t border-white/10 flex gap-3">
+                <button
+                  onClick={() => setConfirmClausula(null)}
+                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmarEjecutarClausula}
+                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 transform hover:scale-[1.02]"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de estadísticas del jugador */}
+        {statsJugador && (
+          <PlayerStatsModal
+            jugadorId={statsJugador.id}
+            jugadorNombre={statsJugador.nombre}
+            jugadorFoto={statsJugador.foto}
+            jugadorPosicion={statsJugador.posicion}
+            jugadorClub={statsJugador.club}
+            onClose={() => setStatsJugador(null)}
           />
         )}
       </div>

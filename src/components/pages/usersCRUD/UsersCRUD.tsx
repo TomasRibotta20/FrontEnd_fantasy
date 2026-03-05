@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface User {
   id: number;
@@ -30,6 +31,7 @@ const UsersCRUD = () => {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -90,18 +92,23 @@ const UsersCRUD = () => {
     setEditingId(user.id);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
-      try {
-        await apiClient.delete(`/api/users/${id}`);
-        setNotification({
-          type: 'success',
-          text: 'Usuario eliminado exitosamente',
-        });
-        fetchUsers();
-      } catch {
-        setNotification({ type: 'error', text: 'Error al eliminar usuario' });
-      }
+  const handleDelete = (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    try {
+      await apiClient.delete(`/api/users/${confirmDeleteId}`);
+      setNotification({
+        type: 'success',
+        text: 'Usuario eliminado exitosamente',
+      });
+      fetchUsers();
+    } catch {
+      setNotification({ type: 'error', text: 'Error al eliminar usuario' });
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -118,7 +125,7 @@ const UsersCRUD = () => {
   const filteredUsers = users.filter(
     (user) =>
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -459,6 +466,15 @@ const UsersCRUD = () => {
             }
           `,
         }}
+      />
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar usuario"
+        message="¿Estás seguro de eliminar este usuario?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import {
 } from '../../../services/mercadoService';
 import type { Mercado } from '../../../services/mercadoService';
 import { obtenerTodosLosTorneos } from '../../../services/torneosService';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface TorneoAdmin {
   id: number;
@@ -16,15 +17,17 @@ interface TorneoAdmin {
   codigo_acceso?: string;
 }
 
+/** Panel de administración de mercados por torneo. */
 const GestionMercadoAdmin = () => {
   const [torneos, setTorneos] = useState<TorneoAdmin[]>([]);
   const [torneoSeleccionado, setTorneoSeleccionado] = useState<number | null>(
-    null
+    null,
   );
   const [mercados, setMercados] = useState<Mercado[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [confirmCerrarId, setConfirmCerrarId] = useState<number | null>(null);
 
   useEffect(() => {
     cargarTorneos();
@@ -52,10 +55,8 @@ const GestionMercadoAdmin = () => {
       const error = err as {
         response?: { data?: { message?: string }; status?: number };
       };
-      // Si es 404, es probable que no exista el endpoint o no haya mercados
       if (error.response?.status === 404) {
         setMercados([]);
-        // No mostrar error si simplemente no hay mercados
       } else {
         setError(error.response?.data?.message || 'Error al cargar mercados');
         setMercados([]);
@@ -77,7 +78,7 @@ const GestionMercadoAdmin = () => {
     // Verificar si ya hay un mercado activo
     if (mercadoActivo) {
       setError(
-        'Ya existe un mercado activo para este torneo. Ciérralo antes de abrir uno nuevo.'
+        'Ya existe un mercado activo para este torneo. Ciérralo antes de abrir uno nuevo.',
       );
       return;
     }
@@ -86,11 +87,10 @@ const GestionMercadoAdmin = () => {
     setError(null);
     setSuccess(null);
     try {
-            const result = await habilitarMercado(torneoSeleccionado);
-            setSuccess('Mercado habilitado exitosamente');
+      await habilitarMercado(torneoSeleccionado);
+      setSuccess('Mercado habilitado exitosamente');
       await cargarMercados(torneoSeleccionado);
     } catch (err) {
-      console.error('Error completo:', err);
       const error = err as {
         response?: {
           status?: number;
@@ -98,7 +98,6 @@ const GestionMercadoAdmin = () => {
         };
         message?: string;
       };
-      console.error('Error response:', error.response);
 
       let errorMessage = 'Error al habilitar mercado';
 
@@ -115,27 +114,30 @@ const GestionMercadoAdmin = () => {
       }
 
       setError(
-        `${errorMessage} (Código: ${error.response?.status || 'desconocido'})`
+        `${errorMessage} (Código: ${error.response?.status || 'desconocido'})`,
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCerrarMercado = async (mercadoId: number) => {
-    if (!confirm('¿Estás seguro de cerrar este mercado?')) return;
+  const handleCerrarMercado = (mercadoId: number) => {
+    setConfirmCerrarId(mercadoId);
+  };
 
-        setLoading(true);
+  const confirmCerrar = async () => {
+    if (confirmCerrarId === null) return;
+
+    setLoading(true);
     setError(null);
     setSuccess(null);
     try {
-      await cerrarMercado(mercadoId);
-            setSuccess('Mercado cerrado exitosamente');
+      await cerrarMercado(confirmCerrarId);
+      setSuccess('Mercado cerrado exitosamente');
       if (torneoSeleccionado) {
         await cargarMercados(torneoSeleccionado);
       }
     } catch (err) {
-      console.error('❌ Error al cerrar mercado:', err);
       const error = err as {
         response?: {
           data?: { message?: string; error?: string };
@@ -149,6 +151,7 @@ const GestionMercadoAdmin = () => {
       setError(`${errorMsg} (Status: ${error.response?.status || 'unknown'})`);
     } finally {
       setLoading(false);
+      setConfirmCerrarId(null);
     }
   };
 
@@ -163,7 +166,7 @@ const GestionMercadoAdmin = () => {
   };
 
   const mercadoActivo = mercados.find(
-    (m) => m.estado === 'ACTIVO' || m.estado === 'ABIERTO'
+    (m) => m.estado === 'ACTIVO' || m.estado === 'ABIERTO',
   );
   const torneoInfo = torneos.find((t) => t.id === torneoSeleccionado);
 
@@ -213,9 +216,9 @@ const GestionMercadoAdmin = () => {
             onChange={(e) => setTorneoSeleccionado(Number(e.target.value))}
             className="w-full bg-white/10 border-2 border-white/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-white/60"
           >
-            <option value="">-- Selecciona un torneo --</option>
+            <option value="" className="bg-gray-800 text-white">-- Selecciona un torneo --</option>
             {torneos.map((torneo) => (
-              <option key={torneo.id} value={torneo.id}>
+              <option key={torneo.id} value={torneo.id} className="bg-gray-800 text-white">
                 {torneo.nombre} ({torneo.estado})
               </option>
             ))}
@@ -363,9 +366,17 @@ const GestionMercadoAdmin = () => {
           </div>
         )}
       </div>
+      <ConfirmModal
+        open={confirmCerrarId !== null}
+        title="Cerrar mercado"
+        message="¿Estás seguro de cerrar este mercado?"
+        confirmLabel="Cerrar mercado"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmCerrar}
+        onCancel={() => setConfirmCerrarId(null)}
+      />
     </div>
   );
 };
 
 export default GestionMercadoAdmin;
-

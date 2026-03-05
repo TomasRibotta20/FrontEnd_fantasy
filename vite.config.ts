@@ -6,6 +6,15 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(),
     tailwindcss()],
+    server: {
+      allowedHosts: ['ce43-2803-9800-98cf-1369-a8ed-a294-43bd-54d4.ngrok-free.app'],
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+      },
+    },
     test:{
       globals: true,
       environment: 'jsdom',

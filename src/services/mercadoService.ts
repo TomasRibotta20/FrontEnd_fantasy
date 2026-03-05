@@ -35,7 +35,7 @@ export interface Mercado {
   fecha_fin?: string;
 }
 
-// Servicios para Usuario
+/** Servicio del mercado de jugadores: pujas, compras y gestión de equipo. */
 export const obtenerMercadoActivo = async (torneoId: number): Promise<MercadoActivo> => {
   const response = await apiClient.get(`/api/mercado/activo/torneo/${torneoId}`);
   // La respuesta viene envuelta en { data: {...} }
@@ -48,8 +48,8 @@ export const listarMercadosPorTorneo = async (torneoId: number): Promise<Mercado
     // Intentar primero con el endpoint de mercado activo
     const response = await apiClient.get(`/api/mercado/activo/torneo/${torneoId}`);
     const mercadoActivo = response.data?.data || response.data;
-    
-        // Si hay mercado activo, mapearlo a la interfaz Mercado
+
+    // Si hay mercado activo, mapearlo a la interfaz Mercado
     if (mercadoActivo && mercadoActivo.id) {
       const mercado: Mercado = {
         id: mercadoActivo.id,
@@ -58,14 +58,13 @@ export const listarMercadosPorTorneo = async (torneoId: number): Promise<Mercado
         fecha_inicio: mercadoActivo.fecha_apertura || mercadoActivo.fecha_inicio,
         fecha_fin: mercadoActivo.fecha_cierre || mercadoActivo.fecha_fin
       };
-      
-            return [mercado];
+      return [mercado];
     }
-    
+
     return [];
   } catch (error) {
     const err = error as { response?: { status?: number } };
-        // Si no hay mercado activo, devolver array vacío
+    // Si no hay mercado activo, devolver array vacío
     if (err.response?.status === 404) {
       return [];
     }
@@ -200,7 +199,7 @@ export interface MiPuja {
   estado: string;
   precio_referencia: number;
   jugador?: Jugador;
-  mercado?: any;
+  mercado?: MercadoActivo;
   item_mercado?: {
     id: number;
     jugador: Jugador;

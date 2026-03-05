@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import {
   jornadasService,
   equiposService,
@@ -8,12 +9,18 @@ import {
   type HistorialEquipo,
 } from '../../../services/jornadasService';
 import EndpointNoDisponible from '../../common/EndpointNoDisponible';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../../hooks/useSessionData';
 
+/** Página de jornadas del usuario. */
 const JornadasUsuario = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const torneoId = searchParams.get('torneoId');
-  const equipoIdFromUrl = searchParams.get('equipoId');
+
+  // Fuente única de verdad: hooks de sesión
+  const [torneoId] = useTorneoSeleccionado();
+  const [miEquipoId] = useMiEquipoId();
 
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [historial, setHistorial] = useState<HistorialEquipo | null>(null);
@@ -29,7 +36,7 @@ const JornadasUsuario = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTemporada, torneoId]);
+  }, [selectedTemporada, torneoId, miEquipoId]);
 
   const loadData = async () => {
     try {
@@ -37,7 +44,7 @@ const JornadasUsuario = () => {
 
       // Cargar jornadas
       const jornadasData = await jornadasService.getJornadas(
-        selectedTemporada || undefined
+        selectedTemporada || undefined,
       );
       // Asegurarnos que sea un array
       const jornadasArray = Array.isArray(jornadasData) ? jornadasData : [];
@@ -49,32 +56,28 @@ const JornadasUsuario = () => {
         jornadasArray.map(async (jornada) => {
           try {
             const estadisticas = await estadisticasService.getPuntajesJornada(
-              jornada.id
+              jornada.id,
             );
             if (estadisticas && estadisticas.length > 0) {
               jornadasConStats.add(jornada.id);
             }
-          } catch (error) {
-            console.warn(
-              `⚠️ Error al obtener estadísticas de jornada ${jornada.id}:`,
-              error
-            );
+          } catch {
+            // error silenciado
           }
-        })
+        }),
       );
       setJornadasConEstadisticas(jornadasConStats);
 
-      // Obtener el equipoId de la URL (igual que UpdateTeam)
-      if (equipoIdFromUrl) {
-        const id = Number(equipoIdFromUrl);
+      // Obtener el equipoId desde el hook de sesión
+      if (miEquipoId) {
+        const id = Number(miEquipoId);
         setEquipoId(id);
 
         // Cargar historial del equipo
         try {
           const historialData = await equiposService.getHistorialEquipo(id);
           setHistorial(historialData);
-        } catch (error) {
-          console.error('❌ Error al cargar historial:', error);
+        } catch {
           setHistorial({ jornadas: [] });
         }
       } else {
@@ -99,7 +102,7 @@ const JornadasUsuario = () => {
         }
       }
       setError(
-        'Error al cargar jornadas. Verifica que el backend esté corriendo.'
+        'Error al cargar jornadas. Verifica que el backend esté corriendo.',
       );
     } finally {
       setLoading(false);
@@ -238,10 +241,7 @@ const JornadasUsuario = () => {
           </h2>
 
           {loading && jornadas.length === 0 ? (
-            <div className="text-center text-white py-12">
-              <div className="animate-spin text-6xl mb-4">●</div>
-              <p>Cargando jornadas...</p>
-            </div>
+            <LoadingSpinner variant="section" message="Cargando jornadas..." />
           ) : jornadas.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
               No hay jornadas disponibles
@@ -255,7 +255,7 @@ const JornadasUsuario = () => {
 
                   // Verificar si hay estadísticas calculadas para esta jornada
                   const hayPuntosCalculados = jornadasConEstadisticas.has(
-                    jornada.id
+                    jornada.id,
                   );
 
                   // El usuario participó si:
@@ -267,7 +267,7 @@ const JornadasUsuario = () => {
                       (j) =>
                         (j.jornada?.id ||
                           (j as { jornadaId?: number }).jornadaId) ===
-                        jornada.id
+                        jornada.id,
                     ) || false;
 
                   const participe =
@@ -282,8 +282,8 @@ const JornadasUsuario = () => {
                         jornada.activa
                           ? 'border-green-500 shadow-lg shadow-green-500/30'
                           : participe
-                          ? 'border-blue-500/50'
-                          : 'border-white/20'
+                            ? 'border-blue-500/50'
+                            : 'border-white/20'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-4">
@@ -343,7 +343,7 @@ const JornadasUsuario = () => {
                         <button
                           onClick={() =>
                             navigate(
-                              `/equipos/${equipoId}/jornadas/${jornada.id}`
+                              `/equipos/${equipoId}/jornadas/${jornada.id}`,
                             )
                           }
                           className="w-full mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"

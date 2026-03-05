@@ -22,6 +22,7 @@ interface NewPasswordResponse {
   };
 }
 
+/** Servicio de autenticación con recuperación y restablecimiento de contraseña. */
 export const authService = {
   /**
    * Envía un email para recuperar la contraseña (POST)
@@ -40,10 +41,10 @@ export const authService = {
    * @param resetToken - Token de recuperación recibido por email
    * @param newPassword - Nueva contraseña
    */
-  async newPassword(resetToken: string, newPassword: string): Promise<NewPasswordResponse> {
+  async newPassword(resetToken: string, password: string): Promise<NewPasswordResponse> {
     const response = await apiClient.post<NewPasswordResponse>(
       `/api/auth/new-password/${resetToken}`,
-      { newPassword }
+      { password }
     );
     return response.data;
   },

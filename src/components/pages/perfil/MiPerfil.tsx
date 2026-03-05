@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import { useAuth } from '../../../hooks/useAuth';
 import apiClient from '../../../services/apiClient';
 
@@ -10,6 +11,7 @@ interface UserProfile {
   rol: string;
 }
 
+/** Página de perfil del usuario. */
 const MiPerfil = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -31,8 +33,7 @@ const MiPerfil = () => {
         const profileData = response.data?.data || response.data;
         setProfile(profileData);
         setNewUsername(profileData.username);
-      } catch (err) {
-        console.error('Error al cargar perfil:', err);
+      } catch {
         setError('No se pudo cargar el perfil');
       } finally {
         setLoading(false);
@@ -60,7 +61,6 @@ const MiPerfil = () => {
       setSuccessMessage('Nombre de usuario actualizado correctamente');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: unknown) {
-      console.error('Error al actualizar perfil:', err);
       const errorMessage =
         err instanceof Error ? err.message : 'Error al actualizar el perfil';
       setError(errorMessage);
@@ -75,22 +75,7 @@ const MiPerfil = () => {
   };
 
   if (loading) {
-    return (
-      <div
-        className="min-h-screen pt-24 pb-8 px-8 flex items-center justify-center relative"
-        style={{
-          backgroundImage: "url('/Background_LandingPage.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div className="absolute inset-0 bg-black opacity-40"></div>
-        <div className="text-center text-white relative z-10">
-          <div className="animate-spin text-6xl mb-4">●</div>
-          <p className="text-xl">Cargando perfil...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner variant="fullpage" message="Cargando perfil..." />;
   }
 
   return (

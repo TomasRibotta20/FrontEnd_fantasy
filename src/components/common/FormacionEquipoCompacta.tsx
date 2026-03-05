@@ -23,6 +23,8 @@ interface Player {
   puntaje?: number; // ✅ Nuevo: puntaje del jugador
   precio?: number; // ✅ Precio actual del jugador
   valor_clausula?: number; // ✅ Cláusula de rescisión (si está blindado)
+  dias_proteccion_restantes?: number; // Días de protección restantes
+  esta_protegido?: boolean; // Si el jugador está protegido
 }
 
 interface FormacionEquipoCompactaProps {
@@ -30,6 +32,7 @@ interface FormacionEquipoCompactaProps {
   showSuplentes?: boolean;
   onPlayerClick?: (player: Player) => void;
   onPlayerSecondaryClick?: (player: Player) => void; // Para intercambio con jugador externo
+  onStatsClick?: (player: Player) => void; // Para abrir modal de estadísticas
   selectedPlayerId?: number | null;
   mostrarPuntajes?: boolean; // ✅ Nuevo: flag para mostrar/ocultar puntajes
   mostrarPrecios?: boolean; // ✅ Flag para mostrar/ocultar precios
@@ -43,7 +46,7 @@ const PlayerCard = memo(
     isSelected,
     hasOnClick,
     onPlayerClick,
-    onPlayerSecondaryClick: _onPlayerSecondaryClick,
+    onStatsClick,
     mostrarPuntaje,
     mostrarPrecio,
   }: {
@@ -52,7 +55,7 @@ const PlayerCard = memo(
     isSelected: boolean;
     hasOnClick: boolean;
     onPlayerClick?: (player: Player) => void;
-    onPlayerSecondaryClick?: (player: Player) => void;
+    onStatsClick?: (player: Player) => void;
     mostrarPuntaje?: boolean;
     mostrarPrecio?: boolean;
   }) => {
@@ -102,8 +105,11 @@ const PlayerCard = memo(
                         incremento: clausulaTotal - precioBase,
                         clausulaTotal: clausulaTotal,
                         foto: player.photo,
+                        esta_protegido: player.esta_protegido ?? false,
+                        dias_proteccion_restantes:
+                          player.dias_proteccion_restantes ?? 0,
                       },
-                    })
+                    }),
                   );
                 }}
                 className="absolute -top-2 -left-2 cursor-pointer hover:scale-110 transition-transform z-20"
@@ -113,6 +119,32 @@ const PlayerCard = memo(
                   B
                 </div>
               </button>
+            )}
+            {/* Escudo verde de protección con tooltip on hover */}
+            {player.esta_protegido && (
+              <div className="absolute -bottom-1 -left-2 z-20 group/prot">
+                <div className="bg-gradient-to-br from-green-400 to-emerald-600 text-white text-[10px] font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-xl border-2 border-white">
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 1a1 1 0 01.894.553l1.618 3.236 3.573.52a1 1 0 01.554 1.706L14.06 9.507l.607 3.54a1 1 0 01-1.45 1.054L10 12.347l-3.217 1.754a1 1 0 01-1.45-1.054l.607-3.54L3.361 7.015a1 1 0 01.554-1.706l3.573-.52L9.106 1.553A1 1 0 0110 1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                {/* Tooltip popup on hover */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/prot:flex flex-col items-center z-50 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-[10px] font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap shadow-xl border border-emerald-400/40">
+                    Protegido: {player.dias_proteccion_restantes ?? 0} día(s)
+                    restante(s)
+                  </div>
+                  <div className="w-2 h-2 bg-gray-900 rotate-45 -mt-1 border-b border-r border-emerald-400/40"></div>
+                </div>
+              </div>
             )}
             {isSelected && (
               <div className="absolute -top-1 -right-1 bg-gradient-to-br from-yellow-400 to-orange-400 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white">
@@ -138,8 +170,8 @@ const PlayerCard = memo(
                   player.puntaje > 0
                     ? 'bg-gradient-to-br from-green-400 to-green-600'
                     : player.puntaje < 0
-                    ? 'bg-gradient-to-br from-red-400 to-red-600'
-                    : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                      ? 'bg-gradient-to-br from-red-400 to-red-600'
+                      : 'bg-gradient-to-br from-gray-400 to-gray-500'
                 }`}
                 title={`Puntaje: ${player.puntaje}`}
               >
@@ -150,7 +182,7 @@ const PlayerCard = memo(
           </div>
 
           {/* Nombre del jugador */}
-          <div className="text-center bg-white/95 rounded-md px-3 py-1.5 shadow-md min-w-[75px]">
+          <div className="relative text-center bg-white/95 rounded-md px-3 py-1.5 shadow-md min-w-[75px]">
             <p className="text-xs font-bold text-gray-800 leading-tight whitespace-nowrap">
               {shortName}
             </p>
@@ -167,10 +199,35 @@ const PlayerCard = memo(
                 >
                   $
                   {(player.valor_clausula || player.precio || 0).toLocaleString(
-                    'es-AR'
+                    'es-AR',
                   )}
                 </p>
               )}
+            {/* Ícono de stats integrado en la tarjeta */}
+            {onStatsClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatsClick(player);
+                }}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md border border-white transition-transform hover:scale-110 z-20"
+                title="Ver estadísticas"
+              >
+                <svg
+                  className="w-2.5 h-2.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -188,7 +245,7 @@ const PlayerCard = memo(
       prevProps.mostrarPuntaje === nextProps.mostrarPuntaje &&
       prevProps.mostrarPrecio === nextProps.mostrarPrecio
     );
-  }
+  },
 );
 
 PlayerCard.displayName = 'PlayerCard';
@@ -197,7 +254,7 @@ const FormacionEquipoCompacta = ({
   players,
   showSuplentes = false,
   onPlayerClick,
-  onPlayerSecondaryClick,
+  onStatsClick,
   selectedPlayerId,
   mostrarPuntajes = false,
   mostrarPrecios = false,
@@ -278,16 +335,16 @@ const FormacionEquipoCompacta = ({
 
     // Clasificar jugadores titulares por posición
     const delanteros = titulares.filter(
-      (p) => normalizePosition(p.position) === 'delantero'
+      (p) => normalizePosition(p.position) === 'delantero',
     );
     const mediocampistas = titulares.filter(
-      (p) => normalizePosition(p.position) === 'mediocampista'
+      (p) => normalizePosition(p.position) === 'mediocampista',
     );
     const defensores = titulares.filter(
-      (p) => normalizePosition(p.position) === 'defensor'
+      (p) => normalizePosition(p.position) === 'defensor',
     );
     const porteros = titulares.filter(
-      (p) => normalizePosition(p.position) === 'portero'
+      (p) => normalizePosition(p.position) === 'portero',
     );
 
     return {
@@ -341,7 +398,7 @@ const FormacionEquipoCompacta = ({
                   }
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
-                  onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  onStatsClick={onStatsClick}
                   mostrarPuntaje={mostrarPuntajes}
                   mostrarPrecio={mostrarPrecios}
                 />
@@ -368,7 +425,7 @@ const FormacionEquipoCompacta = ({
                   }
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
-                  onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  onStatsClick={onStatsClick}
                   mostrarPuntaje={mostrarPuntajes}
                   mostrarPrecio={mostrarPrecios}
                 />
@@ -395,7 +452,7 @@ const FormacionEquipoCompacta = ({
                   }
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
-                  onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  onStatsClick={onStatsClick}
                   mostrarPuntaje={mostrarPuntajes}
                   mostrarPrecio={mostrarPrecios}
                 />
@@ -421,7 +478,7 @@ const FormacionEquipoCompacta = ({
                 }
                 hasOnClick={!!onPlayerClick}
                 onPlayerClick={onPlayerClick}
-                onPlayerSecondaryClick={onPlayerSecondaryClick}
+                onStatsClick={onStatsClick}
                 mostrarPuntaje={mostrarPuntajes}
                 mostrarPrecio={mostrarPrecios}
               />
@@ -444,7 +501,7 @@ const FormacionEquipoCompacta = ({
                   isSelected={selectedPlayerId === player.apiId}
                   hasOnClick={!!onPlayerClick}
                   onPlayerClick={onPlayerClick}
-                  onPlayerSecondaryClick={onPlayerSecondaryClick}
+                  onStatsClick={onStatsClick}
                   mostrarPuntaje={mostrarPuntajes}
                   mostrarPrecio={mostrarPrecios}
                 />
@@ -460,7 +517,7 @@ const FormacionEquipoCompacta = ({
 // ✅ Comparación personalizada para evitar re-renders innecesarios
 const arePropsEqual = (
   prevProps: FormacionEquipoCompactaProps,
-  nextProps: FormacionEquipoCompactaProps
+  nextProps: FormacionEquipoCompactaProps,
 ) => {
   // Solo re-renderizar si cambian los jugadores, el ID seleccionado o las funciones de callback
   return (
@@ -469,13 +526,14 @@ const arePropsEqual = (
     prevProps.showSuplentes === nextProps.showSuplentes &&
     prevProps.mostrarPuntajes === nextProps.mostrarPuntajes &&
     prevProps.onPlayerClick === nextProps.onPlayerClick &&
-    prevProps.onPlayerSecondaryClick === nextProps.onPlayerSecondaryClick
+    prevProps.onPlayerSecondaryClick === nextProps.onPlayerSecondaryClick &&
+    prevProps.onStatsClick === nextProps.onStatsClick
   );
 };
 
 const MemoizedFormacionEquipoCompacta = memo(
   FormacionEquipoCompacta,
-  arePropsEqual
+  arePropsEqual,
 );
 MemoizedFormacionEquipoCompacta.displayName = 'FormacionEquipoCompacta';
 

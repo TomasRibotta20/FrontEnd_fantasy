@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmModal from '../../common/ConfirmModal';
 import {
   obtenerTodosLosTorneos,
   obtenerTorneoAdmin,
   crearTorneo,
-  actualizarTorneoAdmin,
   actualizarTorneoParcialAdmin,
   eliminarTorneo,
   type FiltrosTorneos,
@@ -60,8 +60,9 @@ interface ParticipanteBackend {
   };
 }
 
-type ModalMode = 'create' | 'edit' | 'view' | 'editPartial' | null;
+type ModalMode = 'create' | 'edit' | 'view' | null;
 
+/** Panel de administración de torneos. */
 const GestionTorneosAdmin = () => {
   const navigate = useNavigate();
   const [torneos, setTorneos] = useState<Torneo[]>([]);
@@ -77,7 +78,7 @@ const GestionTorneosAdmin = () => {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedTorneo, setSelectedTorneo] = useState<Torneo | null>(null);
   const [torneoDetalle, setTorneoDetalle] = useState<TorneoDetalleAdmin | null>(
-    null
+    null,
   );
 
   // Estados para dropdown de participantes
@@ -96,6 +97,7 @@ const GestionTorneosAdmin = () => {
 
   const [formDataParcial, setFormDataParcial] =
     useState<ActualizacionParcialTorneo>({});
+  const [confirmEliminar, setConfirmEliminar] = useState<Torneo | null>(null);
 
   useEffect(() => {
     loadTorneos();
@@ -106,7 +108,7 @@ const GestionTorneosAdmin = () => {
       setLoading(true);
       setError(null);
       const data = await obtenerTodosLosTorneos(filtrosAplicados);
-            // Intentar extraer los torneos de diferentes estructuras posibles
+      // Intentar extraer los torneos de diferentes estructuras posibles
       let torneosData: Torneo[] = [];
 
       if (Array.isArray(data)) {
@@ -122,11 +124,10 @@ const GestionTorneosAdmin = () => {
         }
       }
 
-            setTorneos(torneosData);
+      setTorneos(torneosData);
     } catch (err) {
       setError('Error al cargar los torneos');
       setTorneos([]);
-      console.error('❌ Error al cargar torneos:', err);
     } finally {
       setLoading(false);
     }
@@ -152,7 +153,7 @@ const GestionTorneosAdmin = () => {
       if (!participantesCache[torneoId]) {
         try {
           const response = await obtenerTorneoAdmin(torneoId);
-                    // Extraer participantes de la estructura del backend
+          // Extraer participantes de la estructura del backend
           let participantesData: Participante[] = [];
 
           if (response?.data?.participantes) {
@@ -167,17 +168,16 @@ const GestionTorneosAdmin = () => {
                 puntos: p.equipo.puntos,
                 es_mi_equipo: false,
                 es_admin: p.usuario.rol === 'creador',
-              })
+              }),
             );
           }
 
-                    setParticipantesCache((prev) => ({
+          setParticipantesCache((prev) => ({
             ...prev,
             [torneoId]: participantesData,
           }));
         } catch (err) {
           setError('Error al cargar participantes');
-          console.error('❌ Error al cargar participantes:', err);
           return;
         }
       }
@@ -188,13 +188,38 @@ const GestionTorneosAdmin = () => {
   const handleVerDetalle = async (torneo: Torneo) => {
     try {
       setLoading(true);
-      const detalle = await obtenerTorneoAdmin(torneo.id);
+      const response = await obtenerTorneoAdmin(torneo.id);
+      // El backend devuelve { data: { info_basica, participantes, responsable, fechas } }
+      const rawData = response?.data || response;
+      const infoBasica = rawData?.info_basica || rawData;
+      const participantesRaw = rawData?.participantes || [];
+
+      const detalle: TorneoDetalleAdmin = {
+        id: infoBasica?.id || torneo.id,
+        nombre: infoBasica?.nombre || torneo.nombre,
+        descripcion: torneo.descripcion,
+        estado: infoBasica?.estado || torneo.estado,
+        codigo: infoBasica?.codigo_acceso || torneo.codigo_acceso,
+        participantes: participantesRaw.map(
+          (p: ParticipanteBackend, index: number) => ({
+            pos: index + 1,
+            usuario_id: p.usuario?.id,
+            usuario: p.usuario?.username || 'Desconocido',
+            equipo_id: p.equipo?.id,
+            nombre_equipo: p.equipo?.nombre || 'Sin equipo',
+            puntos: p.equipo?.puntos || 0,
+            es_mi_equipo: false,
+            es_admin:
+              p.usuario?.rol === 'creador' || p.usuario?.rol === 'CREADOR',
+          }),
+        ),
+      };
+
       setTorneoDetalle(detalle);
       setSelectedTorneo(torneo);
       setModalMode('view');
     } catch (err) {
       setError('Error al cargar detalles del torneo');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -215,30 +240,12 @@ const GestionTorneosAdmin = () => {
       loadTorneos();
     } catch (err) {
       setError('Error al crear el torneo');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditarCompleto = async () => {
-    if (!selectedTorneo) return;
-    try {
-      setLoading(true);
-      await actualizarTorneoAdmin(selectedTorneo.id, formData);
-      setSuccess('Torneo actualizado exitosamente');
-      setModalMode(null);
-      setSelectedTorneo(null);
-      loadTorneos();
-    } catch (err) {
-      setError('Error al actualizar el torneo');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditarParcial = async () => {
+  const handleEditar = async () => {
     if (!selectedTorneo) return;
     try {
       setLoading(true);
@@ -250,28 +257,27 @@ const GestionTorneosAdmin = () => {
       loadTorneos();
     } catch (err) {
       setError('Error al actualizar el torneo');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEliminar = async (torneo: Torneo) => {
-    if (
-      !window.confirm(`¿Estás seguro de eliminar el torneo "${torneo.nombre}"?`)
-    ) {
-      return;
-    }
+  const handleEliminar = (torneo: Torneo) => {
+    setConfirmEliminar(torneo);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmEliminar) return;
     try {
       setLoading(true);
-      await eliminarTorneo(torneo.id);
+      await eliminarTorneo(confirmEliminar.id);
       setSuccess('Torneo eliminado exitosamente');
       loadTorneos();
     } catch (err) {
       setError('Error al eliminar el torneo');
-      console.error(err);
     } finally {
       setLoading(false);
+      setConfirmEliminar(null);
     }
   };
 
@@ -287,18 +293,8 @@ const GestionTorneosAdmin = () => {
 
   const abrirModalEditar = (torneo: Torneo) => {
     setSelectedTorneo(torneo);
-    setFormData({
-      nombre: torneo.nombre,
-      descripcion: torneo.descripcion,
-      cupoMaximo: torneo.cupo_maximo,
-    });
-    setModalMode('edit');
-  };
-
-  const abrirModalEditarParcial = (torneo: Torneo) => {
-    setSelectedTorneo(torneo);
     setFormDataParcial({});
-    setModalMode('editPartial');
+    setModalMode('edit');
   };
 
   const cerrarModal = () => {
@@ -409,10 +405,10 @@ const GestionTorneosAdmin = () => {
                   }
                   className="w-full px-3 py-2 rounded-lg bg-white/20 text-white border border-white/30"
                 >
-                  <option value="">Todos</option>
-                  <option value="EN_ESPERA">En Espera</option>
-                  <option value="ACTIVO">Activo</option>
-                  <option value="FINALIZADO">Finalizado</option>
+                  <option value="" className="bg-gray-800 text-white">Todos</option>
+                  <option value="EN_ESPERA" className="bg-gray-800 text-white">En Espera</option>
+                  <option value="ACTIVO" className="bg-gray-800 text-white">Activo</option>
+                  <option value="FINALIZADO" className="bg-gray-800 text-white">Finalizado</option>
                 </select>
               </div>
               <div>
@@ -447,42 +443,6 @@ const GestionTorneosAdmin = () => {
                   }
                   className="w-full px-3 py-2 rounded-lg bg-white/20 text-white border border-white/30"
                   placeholder="100"
-                />
-              </div>
-              <div>
-                <label className="text-white font-bold block mb-2">
-                  Fecha Desde
-                </label>
-                <input
-                  type="datetime-local"
-                  value={filtros.fecha_creacion_desde || ''}
-                  onChange={(e) =>
-                    setFiltros({
-                      ...filtros,
-                      fecha_creacion_desde: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : undefined,
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-lg bg-white/20 text-white border border-white/30"
-                />
-              </div>
-              <div>
-                <label className="text-white font-bold block mb-2">
-                  Fecha Hasta
-                </label>
-                <input
-                  type="datetime-local"
-                  value={filtros.fecha_creacion_hasta || ''}
-                  onChange={(e) =>
-                    setFiltros({
-                      ...filtros,
-                      fecha_creacion_hasta: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : undefined,
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-lg bg-white/20 text-white border border-white/30"
                 />
               </div>
               <div>
@@ -581,7 +541,7 @@ const GestionTorneosAdmin = () => {
                           <td className="px-6 py-4">
                             <span
                               className={`${getEstadoBadge(
-                                torneo.estado
+                                torneo.estado,
                               )} text-white px-3 py-1 rounded-full text-sm font-bold`}
                             >
                               {torneo.estado}
@@ -644,16 +604,9 @@ const GestionTorneosAdmin = () => {
                               <button
                                 onClick={() => abrirModalEditar(torneo)}
                                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm font-bold"
-                                title="Editar completo (PUT)"
+                                title="Editar torneo"
                               >
                                 Editar
-                              </button>
-                              <button
-                                onClick={() => abrirModalEditarParcial(torneo)}
-                                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm font-bold"
-                                title="Editar parcial (PATCH)"
-                              >
-                                Parcial
                               </button>
                               <button
                                 onClick={() => handleEliminar(torneo)}
@@ -725,7 +678,7 @@ const GestionTorneosAdmin = () => {
                                                 )}
                                               </td>
                                             </tr>
-                                          )
+                                          ),
                                         )}
                                       </tbody>
                                     </table>
@@ -830,77 +783,11 @@ const GestionTorneosAdmin = () => {
         </div>
       )}
 
-      {/* Modal para Editar Completo (PUT) */}
+      {/* Modal para Editar Torneo */}
       {modalMode === 'edit' && selectedTorneo && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Editar Torneo (PUT)</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Actualización completa del torneo
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block font-bold mb-1">Nombre *</label>
-                <input
-                  type="text"
-                  value={formData.nombre || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block font-bold mb-1">Descripción</label>
-                <textarea
-                  value={formData.descripcion || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block font-bold mb-1">Cupo Máximo</label>
-                <input
-                  type="number"
-                  value={formData.cupoMaximo || 10}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      cupoMaximo: parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-lg"
-                  min="2"
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={handleEditarCompleto}
-                disabled={loading}
-                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
-              >
-                Actualizar
-              </button>
-              <button
-                onClick={cerrarModal}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal para Editar Parcial (PATCH) */}
-      {modalMode === 'editPartial' && selectedTorneo && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Editar Parcial (PATCH)</h2>
+            <h2 className="text-2xl font-bold mb-4">Editar Torneo</h2>
             <p className="text-sm text-gray-600 mb-4">
               Solo se actualizarán los campos que modifiques
             </p>
@@ -982,18 +869,18 @@ const GestionTorneosAdmin = () => {
                   }
                   className="w-full px-3 py-2 border rounded-lg"
                 >
-                  <option value="">No cambiar ({selectedTorneo.estado})</option>
-                  <option value="EN_ESPERA">EN_ESPERA</option>
-                  <option value="ACTIVO">ACTIVO</option>
-                  <option value="FINALIZADO">FINALIZADO</option>
+                  <option value="" className="bg-gray-800 text-white">No cambiar ({selectedTorneo.estado})</option>
+                  <option value="EN_ESPERA" className="bg-gray-800 text-white">EN_ESPERA</option>
+                  <option value="ACTIVO" className="bg-gray-800 text-white">ACTIVO</option>
+                  <option value="FINALIZADO" className="bg-gray-800 text-white">FINALIZADO</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-4 mt-6">
               <button
-                onClick={handleEditarParcial}
+                onClick={handleEditar}
                 disabled={loading}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
+                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
               >
                 Actualizar
               </button>
@@ -1023,7 +910,7 @@ const GestionTorneosAdmin = () => {
                   <p className="font-bold text-gray-600">Estado:</p>
                   <span
                     className={`${getEstadoBadge(
-                      torneoDetalle.estado
+                      torneoDetalle.estado,
                     )} text-white px-3 py-1 rounded-full text-sm font-bold`}
                   >
                     {torneoDetalle.estado}
@@ -1074,7 +961,7 @@ const GestionTorneosAdmin = () => {
                                   {p.puntos}
                                 </td>
                               </tr>
-                            )
+                            ),
                           )}
                         </tbody>
                       </table>
@@ -1093,9 +980,17 @@ const GestionTorneosAdmin = () => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={confirmEliminar !== null}
+        title="Eliminar torneo"
+        message={`¿Estás seguro de eliminar el torneo "${confirmEliminar?.nombre ?? ''}"?`}
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmEliminar(null)}
+      />
     </div>
   );
 };
 
 export default GestionTorneosAdmin;
-

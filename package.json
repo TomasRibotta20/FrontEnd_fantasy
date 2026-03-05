@@ -15,7 +15,9 @@
     "cypress:run": "cypress run",
     "cypress:headless": "cypress run --headless --browser chrome",
     "test:e2e": "start-server-and-test dev http://localhost:5173 cypress:run",
-    "test:e2e:ui": "start-server-and-test dev http://localhost:5173 cypress"
+    "test:e2e:ui": "start-server-and-test dev http://localhost:5173 cypress",
+    "docs:build": "typedoc --out docs src --entryPointStrategy expand",
+    "docs:watch": "typedoc --watch --out docs src --entryPointStrategy expand"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
@@ -29,6 +31,7 @@
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.60.0",
     "react-router-dom": "^7.6.3",
+    "recharts": "^3.7.0",
     "tailwindcss": "^4.1.11",
     "zod": "^4.0.5"
   },
@@ -50,6 +53,7 @@
     "jsdom": "^27.2.0",
     "postcss": "^8.5.6",
     "start-server-and-test": "^2.1.3",
+    "typedoc": "^0.28.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4",

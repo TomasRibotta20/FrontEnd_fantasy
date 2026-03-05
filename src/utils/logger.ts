@@ -35,5 +35,4 @@ const createLogger = (): Logger => {
 
 export const logger = createLogger();
 
-// Alias para facilitar migración desde console.log
 export default logger;

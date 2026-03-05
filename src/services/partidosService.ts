@@ -30,6 +30,7 @@ export interface PartidoUpdate {
   estado_detalle?: string;
 }
 
+/** Servicio CRUD para consultar y gestionar partidos. */
 export const partidosService = {
   // Obtener todos los partidos con filtros opcionales
   async getPartidos(params?: {

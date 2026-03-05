@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import FormacionEquipoCompacta from '../common/FormacionEquipoCompacta';
 import WidgetPuntos from '../common/WidgetPuntos';
@@ -20,65 +20,81 @@ interface MenuCard {
   enabled: boolean;
 }
 
+/** Menú principal del usuario autenticado. */
 const LoggedMenu = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [equipoIdDelTorneo, setEquipoIdDelTorneo] = useState<number | null>(
-    null
+    null,
   );
+  const [torneoEstado, setTorneoEstado] = useState<string | null>(null);
 
-  // ✅ Usar los hooks en lugar de localStorage
+  // Fuente única de verdad: hooks de sesión
   const [torneoGuardadoId, setTorneoGuardadoId] = useTorneoSeleccionado();
-  const [, setMiEquipoId] = useMiEquipoId();
+  const [miEquipoId, setMiEquipoId] = useMiEquipoId();
 
   useEffect(() => {
     const fetchTeamPlayers = async () => {
       try {
-        let torneoId = torneoGuardadoId || searchParams.get('torneoId');
-        let equipoId: number | null = null;
+        let torneoId = torneoGuardadoId;
+        let equipoId: number | null = miEquipoId ? parseInt(miEquipoId) : null;
 
-        // Si no hay torneoId guardado ni en URL, obtener el primer torneo activo
+        // Si ya tenemos equipoId del hook, sincronizar con el estado local
+        if (equipoId) {
+          setEquipoIdDelTorneo(equipoId);
+        }
+
+        // Si no hay torneoId guardado, obtener el primer torneo activo
         if (!torneoId) {
           try {
             const torneosResponse = await apiClient.post(
               '/api/torneos/mis-torneos',
-              {}
+              {},
             );
             const torneos = torneosResponse.data?.data || torneosResponse.data;
 
             // Buscar el primer torneo activo
             const torneoActivo = torneos.find(
-              (t: { estado: string }) => t.estado === 'ACTIVO'
+              (t: { estado: string }) => t.estado === 'ACTIVO',
             );
 
             if (torneoActivo) {
               const torneoIdStr = torneoActivo.torneo_id.toString();
               torneoId = torneoIdStr;
-              // ✅ Guardar en sessionStorage
               setTorneoGuardadoId(torneoIdStr);
+              setTorneoEstado(torneoActivo.estado);
 
               if (torneoActivo.mi_equipo?.id) {
                 equipoId = torneoActivo.mi_equipo.id;
                 setEquipoIdDelTorneo(equipoId);
+                setMiEquipoId(equipoId.toString());
               }
             }
-          } catch (err) {
-            console.error('Error al obtener torneos:', err);
+          } catch {
+            // error silenciado
           }
         } else {
-          // Si hay torneoId, obtener el equipoId del torneo
-          const torneoResponse = await obtenerDetalleTorneo(parseInt(torneoId));
-          equipoId = torneoResponse.data.mi_equipo_id;
+          // Siempre obtener el estado actual del torneo
+          try {
+            const torneoResponse = await obtenerDetalleTorneo(
+              parseInt(torneoId),
+            );
+            setTorneoEstado(torneoResponse.data.estado);
 
-          if (!equipoId) {
-            // Si no tiene equipo en este torneo, redirigir al detalle del torneo
-            navigate(`/torneos/${torneoId}`);
-            return;
+            if (!equipoId) {
+              equipoId = torneoResponse.data.mi_equipo_id;
+
+              if (!equipoId) {
+                navigate(`/torneos/${torneoId}`);
+                return;
+              }
+
+              setEquipoIdDelTorneo(equipoId);
+              setMiEquipoId(equipoId.toString());
+            }
+          } catch {
+            // error silenciado
           }
-
-          // Guardar el equipoId del torneo en el estado
-          setEquipoIdDelTorneo(equipoId);
         }
 
         // Si no hay equipoId, no podemos cargar nada
@@ -101,19 +117,19 @@ const LoggedMenu = () => {
           // ✅ Usar función centralizada del playerMapper
           const mappedPlayers = equipoData.jugadores.map(
             (item: BackendPlayerResponse, index: number) =>
-              mapBackendPlayerToFrontend(item, index)
+              mapBackendPlayerToFrontend(item, index),
           );
 
           // ✅ Filtrar solo los titulares para mostrar en la formación
           const titulares = mappedPlayers.filter(
-            (p: Player) => p.esTitular === true
+            (p: Player) => p.esTitular === true,
           );
           setTeamPlayers(titulares);
 
           // ✅ Intentar obtener puntajes de la última jornada
           try {
             const historialResponse = await apiClient.get(
-              `/api/equipos/${equipoId}/historial`
+              `/api/equipos/${equipoId}/historial`,
             );
 
             // Obtener la última jornada con puntos
@@ -126,8 +142,8 @@ const LoggedMenu = () => {
               const ordenado = historialData.sort(
                 (
                   a: { jornada?: { id: number } },
-                  b: { jornada?: { id: number } }
-                ) => (b.jornada?.id || 0) - (a.jornada?.id || 0)
+                  b: { jornada?: { id: number } },
+                ) => (b.jornada?.id || 0) - (a.jornada?.id || 0),
               );
               const ultimaJornada = ordenado[0];
               const jornadaId = ultimaJornada?.jornada?.id;
@@ -157,7 +173,7 @@ const LoggedMenu = () => {
                         (j.jugadorId && j.jugadorId === player.id) ||
                         (j.id && j.id === player.id);
                       return nombreMatch || idMatch;
-                    }
+                    },
                   );
 
                   const puntajeReal =
@@ -176,7 +192,7 @@ const LoggedMenu = () => {
                 // Fallback: Intentar obtener detalles de esa jornada
                 try {
                   const detalleResponse = await apiClient.get(
-                    `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
+                    `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`,
                   );
                   const detalle =
                     detalleResponse.data?.data || detalleResponse.data;
@@ -207,7 +223,7 @@ const LoggedMenu = () => {
                               (j.id && j.id === player.id) ||
                               (j.apiId && j.apiId === player.apiId);
                             return nombreMatch || idMatch;
-                          }
+                          },
                         );
 
                         const puntajeReal = jugadorConPuntaje?.puntaje;
@@ -218,7 +234,7 @@ const LoggedMenu = () => {
                             ? { puntaje: puntajeReal }
                             : {}),
                         };
-                      }
+                      },
                     );
 
                     setTeamPlayers(jugadoresConPuntajes);
@@ -233,27 +249,31 @@ const LoggedMenu = () => {
           }
         }
       } catch {
-        // Si el usuario no tiene equipo (404), redirigir a torneos para que se una a uno
-        navigate('/torneos');
+        // Si el usuario no tiene equipo (404), continuar sin equipo
       }
     };
     fetchTeamPlayers();
   }, [
     navigate,
-    searchParams,
     torneoGuardadoId,
+    miEquipoId,
     setTorneoGuardadoId,
     setMiEquipoId,
   ]);
 
+  const torneoActivo = torneoEstado === 'ACTIVO';
+
   const menuCards: MenuCard[] = [
     {
       title: 'Mi Equipo',
-      description: 'Gestiona tu equipo y alineación',
+      description:
+        torneoGuardadoId && !torneoActivo
+          ? 'El torneo aún no ha iniciado'
+          : 'Gestiona tu equipo y alineación',
       icon: '⚽',
       route: '/UpdateTeam',
       color: 'from-blue-500 to-cyan-500',
-      enabled: true,
+      enabled: !!torneoGuardadoId && torneoActivo,
     },
     {
       title: 'Jornadas y Puntos',
@@ -281,11 +301,14 @@ const LoggedMenu = () => {
     },
     {
       title: 'Mercado',
-      description: 'Explorar jugadores disponibles',
+      description:
+        torneoGuardadoId && !torneoActivo
+          ? 'El torneo aún no ha iniciado'
+          : 'Explorar jugadores disponibles',
       icon: '🛒',
       route: '/mercado',
       color: 'from-purple-500 to-pink-500',
-      enabled: !!torneoGuardadoId,
+      enabled: !!torneoGuardadoId && torneoActivo,
     },
     {
       title: 'Mi Perfil',
@@ -330,24 +353,14 @@ const LoggedMenu = () => {
                 key={index}
                 onClick={() => {
                   if (card.enabled) {
-                    // Si estamos en modo torneo, agregar torneoId a las rutas
-                    const torneoId = searchParams.get('torneoId');
                     let route = card.route;
 
-                    if (torneoId) {
+                    if (torneoGuardadoId) {
                       if (
                         card.route === '/leaderboard' ||
                         card.route === '/mercado'
                       ) {
-                        route = `${card.route}/${torneoId}`;
-                      } else if (
-                        card.route === '/jornadas' &&
-                        equipoIdDelTorneo
-                      ) {
-                        // Para jornadas, pasar tanto torneoId como equipoId
-                        route = `${card.route}?torneoId=${torneoId}&equipoId=${equipoIdDelTorneo}`;
-                      } else if (equipoIdDelTorneo) {
-                        route = `${card.route}?equipoId=${equipoIdDelTorneo}`;
+                        route = `${card.route}/${torneoGuardadoId}`;
                       }
                     }
 
@@ -408,7 +421,9 @@ const LoggedMenu = () => {
                       </svg>
                     ) : (
                       <span className="text-white/70 text-xs flex-shrink-0 font-bold drop-shadow bg-white/10 px-3 py-1 rounded-full">
-                        Pronto
+                        {torneoGuardadoId && !torneoActivo
+                          ? 'Torneo no iniciado'
+                          : 'Seleccioná un torneo'}
                       </span>
                     )}
                   </div>
@@ -442,21 +457,15 @@ const LoggedMenu = () => {
                         players={teamPlayers}
                         showSuplentes={false}
                         mostrarPuntajes={teamPlayers.some(
-                          (p) => p.puntaje !== undefined
+                          (p) => p.puntaje !== undefined,
                         )}
                       />
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-white text-base mb-4 font-semibold drop-shadow">
-                        Aún no tienes un equipo creado
+                      <p className="text-white text-base font-semibold drop-shadow">
+                        Unite a un torneo para tener tu equipo
                       </p>
-                      <button
-                        onClick={() => navigate('/UpdateTeam')}
-                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-2.5 px-8 rounded-xl font-bold text-sm transition-colors duration-300 shadow-xl hover:shadow-2xl border-2 border-white/30"
-                      >
-                        Crear Mi Equipo
-                      </button>
                     </div>
                   )}
                 </div>

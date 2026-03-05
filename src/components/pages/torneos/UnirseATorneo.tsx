@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   validarCodigoTorneo,
   unirseATorneo,
@@ -14,7 +15,7 @@ function UnirseATorneo() {
   const [isLoading, setIsLoading] = useState(false);
   const [paso, setPaso] = useState<'codigo' | 'equipo'>('codigo');
   const [torneoValidado, setTorneoValidado] = useState<TorneoListItem | null>(
-    null
+    null,
   );
   const [message, setMessage] = useState<{
     type: 'success' | 'error' | 'info';
@@ -47,8 +48,9 @@ function UnirseATorneo() {
         text: `¡Código válido! Torneo encontrado: ${torneoData.nombre}`,
       });
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error
           ? error.message
           : 'Código inválido o torneo no disponible';
       setMessage({
@@ -87,8 +89,9 @@ function UnirseATorneo() {
         navigate('/torneos');
       }, 2000);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error
           ? error.message
           : 'Error al unirse al torneo. Inténtalo de nuevo.';
       setMessage({
@@ -129,29 +132,29 @@ function UnirseATorneo() {
               message.type === 'success'
                 ? 'bg-green-500/90 border-green-400/50'
                 : message.type === 'error'
-                ? 'bg-red-500/90 border-red-400/50'
-                : 'bg-blue-500/90 border-blue-400/50'
+                  ? 'bg-red-500/90 border-red-400/50'
+                  : 'bg-blue-500/90 border-blue-400/50'
             } text-white font-bold min-w-[300px] text-center drop-shadow-xl`}
           >
             {message.text}
           </div>
         )}
 
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
+            Unirse a Torneo
+          </h1>
+          <p className="text-xl text-white/90 drop-shadow-md">
+            {paso === 'codigo'
+              ? 'Ingresa el código de acceso del torneo'
+              : 'Completa los datos para unirte'}
+          </p>
+        </div>
+
         {/* Formulario */}
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                Unirse a Torneo
-              </h1>
-              <p className="text-gray-600">
-                {paso === 'codigo'
-                  ? 'Ingresa el código de acceso del torneo'
-                  : 'Completa los datos para unirte'}
-              </p>
-            </div>
-
+          <div className="backdrop-blur-lg bg-white/10 rounded-2xl p-8 border-2 border-white/20 shadow-2xl">
             {/* Indicador de pasos */}
             <div className="flex items-center justify-center mb-8">
               <div
@@ -159,21 +162,21 @@ function UnirseATorneo() {
                   paso === 'codigo'
                     ? 'bg-blue-500 text-white'
                     : 'bg-green-500 text-white'
-                } font-bold`}
+                } font-bold shadow-lg`}
               >
                 1
               </div>
               <div
                 className={`w-16 h-1 ${
-                  paso === 'equipo' ? 'bg-green-500' : 'bg-gray-300'
+                  paso === 'equipo' ? 'bg-green-500' : 'bg-white/30'
                 }`}
               ></div>
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full ${
                   paso === 'equipo'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-300 text-gray-600'
-                } font-bold`}
+                    : 'bg-white/20 text-white/60'
+                } font-bold shadow-lg`}
               >
                 2
               </div>
@@ -183,7 +186,7 @@ function UnirseATorneo() {
             {paso === 'codigo' && (
               <form onSubmit={handleValidarCodigo} className="space-y-6">
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2">
+                  <label className="block text-white font-semibold mb-2 drop-shadow">
                     Código de Acceso *
                   </label>
                   <input
@@ -195,10 +198,10 @@ function UnirseATorneo() {
                     required
                     maxLength={6}
                     placeholder="Ej: ABC123"
-                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:outline-none transition-colors text-center text-2xl font-mono font-bold tracking-widest uppercase"
+                    className="w-full px-4 py-3 rounded-lg bg-white/10 border-2 border-white/30 focus:border-blue-400 focus:outline-none transition-colors text-center text-2xl font-mono font-bold tracking-widest uppercase text-white placeholder-white/40"
                     disabled={isLoading}
                   />
-                  <p className="text-sm text-gray-500 mt-2 text-center">
+                  <p className="text-sm text-white/60 mt-2 text-center">
                     El código debe tener 6 caracteres
                   </p>
                 </div>
@@ -208,7 +211,7 @@ function UnirseATorneo() {
                     type="button"
                     onClick={() => navigate('/torneos')}
                     disabled={isLoading}
-                    className="flex-1 bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-white/15 border-2 border-white/30 text-white py-3 rounded-lg font-semibold hover:bg-white/25 hover:border-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
@@ -227,30 +230,34 @@ function UnirseATorneo() {
             {paso === 'equipo' && torneoValidado && (
               <div className="space-y-6">
                 {/* Información del torneo */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-3">
+                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-6 rounded-xl border-2 border-blue-400/30">
+                  <h3 className="text-xl font-bold text-white mb-3 drop-shadow">
                     Información del Torneo
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-white/90">
                     <p>
-                      <span className="font-semibold">Nombre:</span>{' '}
+                      <span className="font-semibold text-white">Nombre:</span>{' '}
                       {torneoValidado.nombre}
                     </p>
                     <p>
-                      <span className="font-semibold">Participantes:</span>{' '}
+                      <span className="font-semibold text-white">
+                        Participantes:
+                      </span>{' '}
                       {torneoValidado.cant_participantes} /{' '}
                       {torneoValidado.cupo_maximo}
                     </p>
                     {torneoValidado.estado && (
                       <p>
-                        <span className="font-semibold">Estado:</span>{' '}
+                        <span className="font-semibold text-white">
+                          Estado:
+                        </span>{' '}
                         <span
                           className={`px-2 py-1 rounded text-sm font-bold ${
                             torneoValidado.estado === 'EN_ESPERA'
-                              ? 'bg-yellow-200 text-yellow-800'
+                              ? 'bg-yellow-500/30 text-yellow-300'
                               : torneoValidado.estado === 'ACTIVO'
-                              ? 'bg-green-200 text-green-800'
-                              : 'bg-gray-200 text-gray-800'
+                                ? 'bg-green-500/30 text-green-300'
+                                : 'bg-gray-500/30 text-gray-300'
                           }`}
                         >
                           {torneoValidado.estado.replace('_', ' ')}
@@ -263,7 +270,7 @@ function UnirseATorneo() {
                 {/* Formulario para nombre de equipo */}
                 <form onSubmit={handleUnirse} className="space-y-6">
                   <div>
-                    <label className="block text-gray-700 font-semibold mb-2">
+                    <label className="block text-white font-semibold mb-2 drop-shadow">
                       Nombre de tu Equipo *
                     </label>
                     <input
@@ -273,10 +280,10 @@ function UnirseATorneo() {
                       required
                       maxLength={50}
                       placeholder="Ej: Los Galácticos"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
+                      className="w-full px-4 py-3 rounded-lg bg-white/10 border-2 border-white/30 focus:border-blue-400 focus:outline-none transition-colors text-white placeholder-white/40"
                       disabled={isLoading}
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-white/60 mt-1">
                       Este será el nombre de tu equipo en este torneo
                     </p>
                   </div>
@@ -286,7 +293,7 @@ function UnirseATorneo() {
                       type="button"
                       onClick={handleVolver}
                       disabled={isLoading}
-                      className="flex-1 bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-white/15 border-2 border-white/30 text-white py-3 rounded-lg font-semibold hover:bg-white/25 hover:border-white/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Volver
                     </button>

@@ -11,10 +11,18 @@ import type {
   TorneoDetalle,
   ActualizarTorneoData,
 } from '../../../services/torneosService';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../../hooks/useSessionData';
 
+/** Detalle y gestión de un torneo. */
 function DetalleTorneo() {
   const navigate = useNavigate();
   const { torneoId } = useParams<{ torneoId: string }>();
+  const [torneoGuardadoId, setTorneoGuardadoId] = useTorneoSeleccionado();
+  const [, setMiEquipoId] = useMiEquipoId();
   const [torneo, setTorneo] = useState<TorneoDetalle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAbandonarModal, setShowAbandonarModal] = useState(false);
@@ -42,8 +50,7 @@ function DetalleTorneo() {
 
       // Guardar la selección del torneo en localStorage cuando accedes a su detalle
       localStorage.setItem('torneoSeleccionadoId', torneoId);
-    } catch (error) {
-      console.error('Error al cargar detalle del torneo:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al cargar los detalles del torneo',
@@ -63,6 +70,13 @@ function DetalleTorneo() {
 
     try {
       await abandonarTorneo(parseInt(torneoId));
+
+      // Si el torneo abandonado era el seleccionado, limpiar la sesión
+      if (torneoGuardadoId === torneoId) {
+        setTorneoGuardadoId(null);
+        setMiEquipoId(null);
+      }
+
       setMessage({
         type: 'success',
         text: 'Has abandonado el torneo exitosamente',
@@ -70,8 +84,7 @@ function DetalleTorneo() {
       setTimeout(() => {
         navigate('/torneos');
       }, 2000);
-    } catch (error) {
-      console.error('Error al abandonar torneo:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al abandonar el torneo',
@@ -91,8 +104,7 @@ function DetalleTorneo() {
       });
       // Recargar los detalles del torneo
       await cargarDetalleTorneo();
-    } catch (error) {
-      console.error('Error al iniciar torneo:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al iniciar el torneo',
@@ -142,7 +154,6 @@ function DetalleTorneo() {
       });
       await cargarDetalleTorneo();
     } catch (error: unknown) {
-      console.error('Error al actualizar torneo:', error);
       const axiosError = error as {
         response?: { data?: { message?: string } };
       };
@@ -168,7 +179,7 @@ function DetalleTorneo() {
     try {
       await expulsarParticipante(
         parseInt(torneoId),
-        participanteAExpulsar.userId
+        participanteAExpulsar.userId,
       );
       setMessage({
         type: 'success',
@@ -176,7 +187,6 @@ function DetalleTorneo() {
       });
       await cargarDetalleTorneo();
     } catch (error: unknown) {
-      console.error('Error al expulsar participante:', error);
       const axiosError = error as {
         response?: { data?: { message?: string } };
       };
@@ -204,23 +214,10 @@ function DetalleTorneo() {
 
   if (isLoading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          backgroundImage: `url('/Background_LandingPage.png')`,
-          backgroundSize: 'cover',
-          backgroundAttachment: 'fixed',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-        className="relative z-0 flex items-center justify-center"
-      >
-        <div className="absolute inset-0 bg-black opacity-40 z-10"></div>
-        <div className="relative z-20 text-center text-white text-2xl">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
-          <p className="mt-4">Cargando detalles del torneo...</p>
-        </div>
-      </div>
+      <LoadingSpinner
+        variant="fullpage"
+        message="Cargando detalles del torneo..."
+      />
     );
   }
 
@@ -299,7 +296,7 @@ function DetalleTorneo() {
                 </h1>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-bold ${getEstadoBadge(
-                    torneo.estado
+                    torneo.estado,
                   )}`}
                 >
                   {torneo.estado.replace('_', ' ')}
@@ -354,7 +351,7 @@ function DetalleTorneo() {
                   onClick={handleOpenEditar}
                   className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
                 >
-                  ✏️ Editar Torneo
+                  Editar Torneo
                 </button>
               </>
             )}
@@ -374,7 +371,7 @@ function DetalleTorneo() {
                 </button>
               </>
             )}
-            {!esCreador && torneo.estado === 'EN_ESPERA' && (
+            {(torneo.estado === 'EN_ESPERA' || torneo.estado === 'ACTIVO') && (
               <button
                 onClick={() => setShowAbandonarModal(true)}
                 className="bg-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors"
@@ -389,48 +386,65 @@ function DetalleTorneo() {
         {torneo.participantes && torneo.participantes.length > 0 && (
           <div className="backdrop-blur-lg bg-white/20 rounded-2xl p-8 shadow-2xl border-2 border-white/30">
             <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-6">
-              Participantes ({torneo.participantes.length})
+              Participantes (
+              {torneo.participantes.filter((p) => !p.expulsado).length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {torneo.participantes.map((participante) => (
                 <div
                   key={participante.equipo_id}
-                  className="backdrop-blur-md bg-white/15 p-4 rounded-xl border-2 border-white/20 hover:border-white/40 hover:bg-white/25 transition-all"
+                  className={`backdrop-blur-md p-4 rounded-xl border-2 transition-all ${
+                    participante.expulsado
+                      ? 'bg-red-900/20 border-red-400/30 opacity-60'
+                      : 'bg-white/15 border-white/20 hover:border-white/40 hover:bg-white/25'
+                  }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-lg font-bold text-white drop-shadow-md">
+                      <p
+                        className={`text-lg font-bold drop-shadow-md ${participante.expulsado ? 'text-white/50 line-through' : 'text-white'}`}
+                      >
                         {participante.nombre_equipo}
                       </p>
-                      <p className="text-sm text-white/80">
+                      <p
+                        className={`text-sm ${participante.expulsado ? 'text-white/40 line-through' : 'text-white/80'}`}
+                      >
                         {participante.usuario}
                       </p>
-                      <p className="text-xs text-white/60 mt-1">
+                      <p
+                        className={`text-xs mt-1 ${participante.expulsado ? 'text-white/30' : 'text-white/60'}`}
+                      >
                         Puntos: {participante.puntos}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="flex gap-1">
-                        {participante.es_mi_equipo && (
-                          <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full font-bold">
-                            TÚ
+                        {participante.expulsado && (
+                          <span className="px-2 py-1 bg-red-500/80 text-white text-xs rounded-full font-bold">
+                            EXPULSADO
                           </span>
                         )}
-                        {participante.es_admin && (
+                        {!participante.expulsado &&
+                          participante.es_mi_equipo && (
+                            <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full font-bold">
+                              TÚ
+                            </span>
+                          )}
+                        {!participante.expulsado && participante.es_admin && (
                           <span className="px-2 py-1 bg-purple-500 text-white text-xs rounded-full font-bold">
                             ADMIN
                           </span>
                         )}
                       </div>
-                      {/* Botón expulsar - solo para creador y no a sí mismo */}
+                      {/* Botón expulsar - solo para creador, no a sí mismo, no ya expulsados */}
                       {esCreador &&
                         !participante.es_mi_equipo &&
-                        torneo.estado === 'EN_ESPERA' && (
+                        !participante.expulsado && (
                           <button
                             onClick={() =>
                               handleOpenExpulsar(
                                 participante.usuario_id,
-                                participante.usuario
+                                participante.usuario,
                               )
                             }
                             className="px-2 py-1 bg-red-500/80 hover:bg-red-600 text-white text-xs rounded font-semibold transition-colors"
@@ -458,6 +472,20 @@ function DetalleTorneo() {
             <p className="text-white/80 mb-6">
               ¿Estás seguro de que quieres abandonar el torneo "{torneo.nombre}
               "? Esta acción no se puede deshacer.
+              {torneo.estado === 'ACTIVO' && (
+                <span className="block mt-2 text-yellow-300 text-sm font-semibold">
+                  ⚠️ El torneo está activo. Tu equipo será eliminado y quedarás
+                  como expulsado.
+                  {esCreador &&
+                    ' El rol de creador se transferirá a otro participante.'}
+                </span>
+              )}
+              {esCreador && torneo.estado === 'EN_ESPERA' && (
+                <span className="block mt-2 text-yellow-300 text-sm font-semibold">
+                  ⚠️ Eres el creador. El rol se transferirá al participante más
+                  antiguo.
+                </span>
+              )}
             </p>
             <div className="flex gap-4">
               <button

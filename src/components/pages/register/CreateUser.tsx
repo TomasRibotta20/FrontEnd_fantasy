@@ -4,6 +4,8 @@ import apiClient from '../../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { AxiosError } from 'axios';
+import PasswordRequirements from '../../common/PasswordRequirements';
+import type { ReactNode } from 'react';
 
 interface ErrorResponse {
   message?: string;
@@ -19,10 +21,17 @@ function CreateUser() {
     label: string;
     type: 'number' | 'text' | 'email' | 'password' | 'tel';
     required: boolean;
+    hint?: ReactNode;
   }[] = [
     { name: 'name', label: 'Nombre', type: 'text', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
-    { name: 'password', label: 'Contraseña', type: 'password', required: true },
+    {
+      name: 'password',
+      label: 'Contraseña',
+      type: 'password',
+      required: true,
+      hint: <PasswordRequirements />,
+    },
   ];
 
   const [message, setMessage] = useState<{
@@ -31,7 +40,7 @@ function CreateUser() {
   } | null>(null);
 
   const handleRegistrationSubmit = async (
-    formValues: Record<string, string>
+    formValues: Record<string, string>,
   ) => {
     setIsLoading(true);
     setMessage(null);
@@ -53,7 +62,7 @@ function CreateUser() {
 
       const loginResponse = await apiClient.post(
         '/api/auth/login',
-        loginValues
+        loginValues,
       );
 
       // Extraer los datos del usuario de la respuesta del login

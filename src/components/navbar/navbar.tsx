@@ -8,6 +8,7 @@ import {
   MenuItems,
 } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import ballLogo from '../../assets/Ball_Logo.png';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -34,7 +35,7 @@ const navigationBase: NavigationItem[] = [
     name: 'Mis Ofertas',
     href: '/mis-ofertas',
     current: false,
-    requiresTorneo: false,
+    requiresTorneo: true,
   },
 ];
 
@@ -46,45 +47,34 @@ export default function NavBar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [torneoIdState] = useState<string | null>(null);
-  const [equipoIdState, setEquipoIdState] = useState<string | null>(null);
+  const [showTorneoWarning, setShowTorneoWarning] = useState(false);
 
-  // ✅ Usar el hook en lugar de localStorage directamente
-  const [torneoGuardadoId] = useTorneoSeleccionado();
-  const [miEquipoId, setMiEquipoId] = useMiEquipoId();
+  // Fuente única de verdad: hooks de sesión
+  const [torneoId] = useTorneoSeleccionado();
+  const [equipoId, setMiEquipoId] = useMiEquipoId();
 
-  const searchParams = new URLSearchParams(location.search);
-  const torneoId =
-    torneoGuardadoId || searchParams.get('torneoId') || torneoIdState;
-  const equipoId = equipoIdState || searchParams.get('equipoId') || miEquipoId;
-
-  // Obtener el equipoId del torneo seleccionado
+  // Obtener el equipoId cuando cambia el torneo seleccionado y no tenemos equipoId
   useEffect(() => {
     const fetchEquipoDelTorneo = async () => {
-      if (!torneoId || !isAuthenticated) {
-        setEquipoIdState(null);
-        return;
-      }
+      if (!torneoId || !isAuthenticated || equipoId) return;
 
       try {
         const response = await apiClient.post('/api/torneos/mis-torneos', {});
         const torneos = response.data?.data || response.data || [];
         const torneoActual = torneos.find(
-          (t: { torneo_id: number }) => t.torneo_id.toString() === torneoId
+          (t: { torneo_id: number }) => t.torneo_id.toString() === torneoId,
         );
 
         if (torneoActual?.mi_equipo?.id) {
-          const equipoIdStr = torneoActual.mi_equipo.id.toString();
-          setEquipoIdState(equipoIdStr);
-          setMiEquipoId(equipoIdStr); // ✅ Guardar en sessionStorage
+          setMiEquipoId(torneoActual.mi_equipo.id.toString());
         }
       } catch {
-        setEquipoIdState(null);
+        // error silenciado
       }
     };
 
     fetchEquipoDelTorneo();
-  }, [torneoId, isAuthenticated, setMiEquipoId]);
+  }, [torneoId, isAuthenticated, equipoId, setMiEquipoId]);
 
   // Generar navegación dinámica con torneoId y equipoId
   const navigation = navigationBase.map((item) => {
@@ -116,6 +106,11 @@ export default function NavBar() {
       as="nav"
       className="fixed top-0 left-0 right-0 z-50 w-full backdrop-blur-lg bg-white/25 border-b-2 border-white/40 shadow-2xl"
     >
+      {showTorneoWarning && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] bg-yellow-500 text-white px-6 py-2 rounded-lg shadow-lg font-semibold text-sm animate-fade-in whitespace-nowrap">
+          ⚠️ Primero seleccioná un torneo para acceder a esta sección
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
           {/* Mobile menu button - Solo mostrar si NO es admin */}
@@ -144,10 +139,7 @@ export default function NavBar() {
                     if (user?.role === 'admin' || user?.rol === 'admin') {
                       destination = '/admin';
                     } else {
-                      // Redirigir al LoggedMenu con torneoId si existe
-                      destination = torneoId
-                        ? `/LoggedMenu?torneoId=${torneoId}`
-                        : '/LoggedMenu';
+                      destination = '/LoggedMenu';
                     }
                   }
                   navigate(destination);
@@ -157,7 +149,7 @@ export default function NavBar() {
               >
                 <img
                   alt="Logo - Ir a inicio"
-                  src="./src/assets/Ball_logo.png"
+                  src={ballLogo}
                   className="h-12 w-auto drop-shadow-lg"
                 />
               </button>
@@ -169,13 +161,22 @@ export default function NavBar() {
                   {navigation.map((item) => (
                     <button
                       key={item.name}
-                      onClick={() => navigate(item.href)}
+                      onClick={() => {
+                        if (item.requiresTorneo && !torneoId) {
+                          setShowTorneoWarning(true);
+                          setTimeout(() => setShowTorneoWarning(false), 3000);
+                          return;
+                        }
+                        navigate(item.href);
+                      }}
                       aria-current={item.current ? 'page' : undefined}
                       className={classNames(
                         item.current
                           ? 'bg-white/30 text-white shadow-xl border-white/50'
-                          : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                        'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2'
+                          : item.requiresTorneo && !torneoId
+                            ? 'text-white/50 border-white/20 cursor-not-allowed'
+                            : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                        'rounded-xl px-5 py-2 text-sm font-bold transition-all duration-200 drop-shadow-md border-2',
                       )}
                     >
                       {item.name}
@@ -289,13 +290,22 @@ export default function NavBar() {
               <DisclosureButton
                 key={item.name}
                 as="button"
-                onClick={() => navigate(item.href)}
+                onClick={() => {
+                  if (item.requiresTorneo && !torneoId) {
+                    setShowTorneoWarning(true);
+                    setTimeout(() => setShowTorneoWarning(false), 3000);
+                    return;
+                  }
+                  navigate(item.href);
+                }}
                 aria-current={item.current ? 'page' : undefined}
                 className={classNames(
                   item.current
                     ? 'bg-white/30 text-white shadow-xl border-white/50'
-                    : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                  'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2'
+                    : item.requiresTorneo && !torneoId
+                      ? 'text-white/50 border-white/20'
+                      : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                  'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2',
                 )}
               >
                 {item.name}

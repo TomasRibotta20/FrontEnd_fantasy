@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface Player {
   id: number;
@@ -96,6 +97,11 @@ const PlayersCRUD = () => {
   });
 
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
+  // Estado para traer precios
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [confirmPrices, setConfirmPrices] = useState(false);
 
   // Debounce para la búsqueda
   useEffect(() => {
@@ -257,18 +263,23 @@ const PlayersCRUD = () => {
     setEditingId(player.id);
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de eliminar este jugador?')) {
-      try {
-        await apiClient.delete(`/api/players/${id}`);
-        setNotification({
-          type: 'success',
-          text: 'Jugador eliminado exitosamente',
-        });
-        fetchPlayers();
-      } catch {
-        setNotification({ type: 'error', text: 'Error al eliminar jugador' });
-      }
+  const handleDelete = (id: number) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    try {
+      await apiClient.delete(`/api/players/${confirmDeleteId}`);
+      setNotification({
+        type: 'success',
+        text: 'Jugador eliminado exitosamente',
+      });
+      fetchPlayers();
+    } catch {
+      setNotification({ type: 'error', text: 'Error al eliminar jugador' });
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -314,6 +325,43 @@ const PlayersCRUD = () => {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
+  // Traer precios de jugadores
+  const handleTraerPrecios = async () => {
+    setConfirmPrices(false);
+    setIsLoadingPrices(true);
+    try {
+      if (selectedClub) {
+        // Calcular precios solo del club seleccionado
+        const response = await apiClient.post(
+          `/api/precios/calcular/${selectedClub}`,
+        );
+        const data = response.data?.data;
+        const guardado = data?.resultado_guardado;
+        setNotification({
+          type: 'success',
+          text: `Precios calculados para ${data?.club?.nombre || 'el club'}. Creados: ${guardado?.precios_creados || 0}, Actualizados: ${guardado?.precios_actualizados || 0}`,
+        });
+      } else {
+        // Calcular precios de TODOS los clubes
+        const response = await apiClient.post('/api/precios/calcular-todos');
+        const data = response.data?.data;
+        setNotification({
+          type: 'success',
+          text: `Precios calculados para todos los clubes. Exitosos: ${data?.exitosos || 0}, Errores: ${data?.errores || 0}`,
+        });
+      }
+      // Recargar jugadores para ver precios actualizados
+      fetchPlayers();
+    } catch {
+      setNotification({
+        type: 'error',
+        text: 'Error al calcular precios de jugadores',
+      });
+    } finally {
+      setIsLoadingPrices(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-20 pb-10">
       <Notification
@@ -355,9 +403,61 @@ const PlayersCRUD = () => {
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-white text-center mb-8">
-          Gestión de Jugadores
-        </h1>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+          <h1 className="text-4xl font-bold text-white text-center">
+            Gestión de Jugadores
+          </h1>
+          <button
+            onClick={() => setConfirmPrices(true)}
+            disabled={isLoadingPrices}
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-lg"
+          >
+            {isLoadingPrices ? (
+              <>
+                <svg
+                  className="animate-spin h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  ></path>
+                </svg>
+                Calculando...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {selectedClub
+                  ? 'Traer Precios (Club)'
+                  : 'Traer Precios (Todos)'}
+              </>
+            )}
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Formulario */}
@@ -762,7 +862,7 @@ const PlayersCRUD = () => {
                                   <span className="px-2 py-1 rounded-full text-xs bg-blue-500/30">
                                     {player.positionName ||
                                       positions.find(
-                                        (p) => p.id === player.position
+                                        (p) => p.id === player.position,
                                       )?.descripcion ||
                                       player.position}
                                   </span>
@@ -853,7 +953,7 @@ const PlayersCRUD = () => {
                               {pageNum}
                             </button>
                           );
-                        }
+                        },
                       )}
 
                       <button
@@ -904,6 +1004,28 @@ const PlayersCRUD = () => {
             }
           `,
         }}
+      />
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar jugador"
+        message="¿Estás seguro de eliminar este jugador?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+      <ConfirmModal
+        open={confirmPrices}
+        title="Calcular Precios"
+        message={
+          selectedClub
+            ? `¿Calcular precios con IA para el club "${clubs.find((c) => c.id === Number(selectedClub))?.nombre || selectedClub}"? Esto puede tardar unos segundos.`
+            : '¿Calcular precios con IA para TODOS los clubes? Este proceso puede tardar varios minutos.'
+        }
+        confirmLabel={selectedClub ? 'Calcular Club' : 'Calcular Todos'}
+        confirmClassName="bg-green-600 hover:bg-green-700"
+        onConfirm={handleTraerPrecios}
+        onCancel={() => setConfirmPrices(false)}
       />
     </div>
   );

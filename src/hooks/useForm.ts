@@ -2,6 +2,7 @@ import { useState } from "react";
 
 type InputElements = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
+/** Hook para manejar estado y cambios de formularios genéricos. */
 export const useForm = <T extends Record<string, string>>(initialValues: T) => {
   const [formValues, setFormValues] = useState<T>(initialValues);
 

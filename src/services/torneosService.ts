@@ -4,6 +4,7 @@ import apiClient from './apiClient';
 export interface TorneoListItem {
   torneo_id: number;
   nombre: string;
+  descripcion?: string;
   estado: 'EN_ESPERA' | 'ACTIVO' | 'FINALIZADO';
   codigo_acceso: string;
   mi_rol: 'creador' | 'participante';
@@ -35,6 +36,7 @@ export interface TorneoDetalle {
     puntos: number;
     es_mi_equipo: boolean;
     es_admin: boolean;
+    expulsado?: boolean;
   }>;
 }
 
@@ -85,8 +87,8 @@ export const unirseATorneo = async (data: UnirseATorneoData) => {
  * Obtener todos los torneos del usuario
  */
 export const obtenerMisTorneos = async (estado?: string) => {
-  const body = estado ? { estado } : {};
-  const response = await apiClient.post('/api/torneos/mis-torneos', body);
+  const queryString = estado ? `?estado=${estado}` : '';
+  const response = await apiClient.post(`/api/torneos/mis-torneos${queryString}`, {});
   return response.data;
 };
 

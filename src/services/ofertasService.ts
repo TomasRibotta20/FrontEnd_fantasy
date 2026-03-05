@@ -43,6 +43,7 @@ export interface CrearOfertaRequest {
   mensaje_oferente?: string;
 }
 
+/** Servicio para crear, consultar y gestionar ofertas de compraventa. */
 export const ofertasService = {
   // Crear o actualizar oferta
   crearOferta: async (data: CrearOfertaRequest) => {

@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-  const navigate = useNavigate();
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import FormacionEquipoCompacta from '../../common/FormacionEquipoCompacta';
 import { Notification } from '../../common/Notification';
@@ -17,6 +16,9 @@ import {
   useTorneoSeleccionado,
   useMiEquipoId,
 } from '../../../hooks/useSessionData';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import MoneyInput from '../../common/MoneyInput';
+import PlayerStatsModal from '../../common/PlayerStatsModal';
 
 interface Player {
   id?: number; // ID de la relación equipo-jugador
@@ -38,6 +40,8 @@ interface Player {
   clubLogo?: string; // Logo del club
   precio?: number; // Precio actual del jugador
   valor_clausula?: number; // Cláusula de rescisión (si está blindado)
+  dias_proteccion_restantes?: number; // Días de protección restantes
+  esta_protegido?: boolean; // Si el jugador está protegido
 }
 
 interface Club {
@@ -49,59 +53,79 @@ interface Club {
 
 interface Torneo {
   torneo_id: number;
+  estado?: string;
   mi_equipo?: {
     id: number;
   };
 }
 
+/** Página de gestión y actualización del equipo. */
 const UpdateTeam = () => {
+  const navigate = useNavigate();
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [presupuesto, setPresupuesto] = useState<number>(0);
   const [presupuestoBloqueado, setPresupuestoBloqueado] = useState<number>(0);
   const [equipoIdResuelto, setEquipoIdResuelto] = useState<string | null>(null);
-
-  // Obtener equipoId de los query params si existe usando useSearchParams para reactividad
-  const [searchParams] = useSearchParams();
-  const equipoIdFromUrl = searchParams.get('equipoId');
+  const [validandoAcceso, setValidandoAcceso] = useState(true);
 
   // ✅ Usar hooks reactivos para obtener torneoId y equipoId guardados
   const [torneoGuardadoId] = useTorneoSeleccionado();
   const [miEquipoId] = useMiEquipoId();
 
-  // Si no hay equipoId en URL, obtenerlo del torneo guardado
+  // Validar acceso: debe haber un torneo ACTIVO con equipo
   useEffect(() => {
     const obtenerEquipoId = async () => {
-      // Primero verificar si ya tenemos un equipoId
-      if (equipoIdFromUrl) {
-        setEquipoIdResuelto(equipoIdFromUrl);
-        return;
-      }
+      setValidandoAcceso(true);
 
-      // Segundo, verificar el hook miEquipoId
+      // Si hay miEquipoId guardado, usarlo (es el equipo propio verificado)
       if (miEquipoId) {
         setEquipoIdResuelto(miEquipoId);
+        setValidandoAcceso(false);
         return;
       }
 
-      // Tercero, obtenerlo del torneo guardado
-      if (torneoGuardadoId) {
-        try {
-          const response = await apiClient.post('/api/torneos/mis-torneos', {});
-          const torneos = response.data?.data || response.data;
-          const torneoActual = torneos.find(
-            (t: Torneo) => t.torneo_id === parseInt(torneoGuardadoId)
-          );
-          if (torneoActual?.mi_equipo?.id) {
-            setEquipoIdResuelto(torneoActual.mi_equipo.id.toString());
-          }
-        } catch (error) {
-          console.error('Error al obtener equipoId:', error);
-        }
+      // Si no hay torneo seleccionado, redirigir
+      if (!torneoGuardadoId) {
+        navigate('/torneos', { replace: true });
+        return;
       }
+
+      // Verificar que el torneo esté ACTIVO y tenga equipo
+      try {
+        const response = await apiClient.post('/api/torneos/mis-torneos', {});
+        const torneos = response.data?.data || response.data;
+        const torneoActual = torneos.find(
+          (t: Torneo) => t.torneo_id === parseInt(torneoGuardadoId),
+        );
+
+        if (!torneoActual) {
+          navigate('/torneos', { replace: true });
+          return;
+        }
+
+        // Si el torneo no está activo (ej. EN_ESPERA), no hay equipo todavía
+        if (torneoActual.estado && torneoActual.estado !== 'ACTIVO') {
+          navigate(`/torneos/${torneoGuardadoId}`, { replace: true });
+          return;
+        }
+
+        if (torneoActual?.mi_equipo?.id) {
+          setEquipoIdResuelto(torneoActual.mi_equipo.id.toString());
+        } else {
+          // Torneo activo pero sin equipo
+          navigate(`/torneos/${torneoGuardadoId}`, { replace: true });
+          return;
+        }
+      } catch {
+        navigate('/torneos', { replace: true });
+        return;
+      }
+
+      setValidandoAcceso(false);
     };
     obtenerEquipoId();
-  }, [equipoIdFromUrl, torneoGuardadoId, miEquipoId]);
+  }, [torneoGuardadoId, miEquipoId, navigate]);
 
   // Estados para el sistema de intercambio
   const [selectedPlayerForSwap, setSelectedPlayerForSwap] =
@@ -109,8 +133,17 @@ const UpdateTeam = () => {
 
   // Estado para el modal de información del jugador
   const [selectedPlayerInfo, setSelectedPlayerInfo] = useState<Player | null>(
-    null
+    null,
   );
+
+  // Estado para el modal de estadísticas del jugador
+  const [statsJugador, setStatsJugador] = useState<{
+    id: number;
+    nombre: string;
+    foto?: string;
+    posicion?: string;
+    club?: string;
+  } | null>(null);
 
   // Estado para notificaciones
   const [notification, setNotification] = useState<{
@@ -131,6 +164,8 @@ const UpdateTeam = () => {
     incremento: number;
     clausulaTotal: number;
     foto: string;
+    esta_protegido?: boolean;
+    dias_proteccion_restantes?: number;
   } | null>(null);
 
   useEffect(() => {
@@ -152,23 +187,20 @@ const UpdateTeam = () => {
 
   const getPositionName = useCallback(
     (position: unknown): string => getPositionDisplayName(position),
-    []
+    [],
   );
 
   // CARGAR MI EQUIPO (UNA SOLA VEZ AL INICIO)
   useEffect(() => {
     const fetchTeamPlayers = async () => {
       // Esperar a que se resuelva el equipoId
-      if (!equipoIdFromUrl && !equipoIdResuelto) {
+      if (!equipoIdResuelto) {
         return;
       }
 
       try {
-        // Usar el equipoId resuelto (de URL o de localStorage)
-        const equipoIdFinal = equipoIdFromUrl || equipoIdResuelto;
-        const endpoint = equipoIdFinal
-          ? `/api/equipos/detalle-equipo/${equipoIdFinal}`
-          : '/api/equipos/detalle-equipo';
+        // Usar el equipoId resuelto (de sessionStorage o de la API)
+        const endpoint = `/api/equipos/detalle-equipo/${equipoIdResuelto}`;
 
         const response = await apiClient.get(endpoint);
 
@@ -230,12 +262,21 @@ const UpdateTeam = () => {
                   typeof jugador.club === 'object'
                     ? jugador.club?.id
                     : jugador.club,
-                clubName: jugador.club?.nombre,
-                clubLogo: jugador.club?.logo,
+                clubName:
+                  typeof jugador.club === 'object'
+                    ? jugador.club?.nombre
+                    : undefined,
+                clubLogo:
+                  typeof jugador.club === 'object'
+                    ? jugador.club?.logo
+                    : undefined,
                 precio: jugador.precio_actual || 0, // Precio del jugador
                 valor_clausula: item.valor_clausula || undefined, // Cláusula de rescisión
+                dias_proteccion_restantes:
+                  item.dias_proteccion_restantes ?? undefined,
+                esta_protegido: item.esta_protegido ?? false,
               };
-            }
+            },
           );
 
           // Guardar presupuesto del equipo
@@ -247,14 +288,14 @@ const UpdateTeam = () => {
           }
 
           // Guardar equipoId en localStorage para usar en otras páginas
-          if (equipoIdFinal) {
-            localStorage.setItem('miEquipoId', equipoIdFinal.toString());
+          if (equipoIdResuelto) {
+            localStorage.setItem('miEquipoId', equipoIdResuelto.toString());
           }
 
           // Intentar obtener puntajes de la última jornada
           try {
             const historialResponse = await apiClient.get(
-              `/api/equipos/${equipoId}/historial`
+              `/api/equipos/${equipoId}/historial`,
             );
 
             // Obtener la última jornada con puntos
@@ -267,8 +308,8 @@ const UpdateTeam = () => {
               const ordenado = historialData.sort(
                 (
                   a: { jornada?: { id: number } },
-                  b: { jornada?: { id: number } }
-                ) => (b.jornada?.id || 0) - (a.jornada?.id || 0)
+                  b: { jornada?: { id: number } },
+                ) => (b.jornada?.id || 0) - (a.jornada?.id || 0),
               );
               const ultimaJornada = ordenado[0];
               const jornadaId = ultimaJornada?.jornada?.id;
@@ -276,7 +317,7 @@ const UpdateTeam = () => {
               if (jornadaId) {
                 // Obtener detalles de esa jornada para traer los puntajes
                 const detalleResponse = await apiClient.get(
-                  `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
+                  `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`,
                 );
                 const detalle =
                   detalleResponse.data?.data || detalleResponse.data;
@@ -312,7 +353,7 @@ const UpdateTeam = () => {
 
                           const match = nombreMatch || idMatch;
                           return match;
-                        }
+                        },
                       );
 
                       // Incluir puntaje siempre que sea un número (incluyendo 0 y negativos)
@@ -323,7 +364,7 @@ const UpdateTeam = () => {
                           ? { puntaje: puntajeReal }
                           : {}),
                       };
-                    }
+                    },
                   );
 
                   setTeamPlayers(jugadoresConPuntajes);
@@ -342,7 +383,7 @@ const UpdateTeam = () => {
       }
     };
     fetchTeamPlayers();
-  }, [equipoIdFromUrl, equipoIdResuelto]); // Se ejecuta cuando cambia el equipoId
+  }, [equipoIdResuelto]); // Se ejecuta cuando cambia el equipoId
 
   // Listener para evento de mostrar info de blindaje
   useEffect(() => {
@@ -360,7 +401,7 @@ const UpdateTeam = () => {
   // Usar la función auxiliar estable
   const getPlayerName = useCallback(
     (player: Player): string => getPlayerDisplayName(player),
-    []
+    [],
   );
 
   const getShortName = useCallback(
@@ -374,7 +415,7 @@ const UpdateTeam = () => {
 
       return fullName;
     },
-    [getPlayerName]
+    [getPlayerName],
   );
 
   // Función para intercambiar titular con suplente (memoizada)
@@ -386,8 +427,8 @@ const UpdateTeam = () => {
           jugadorSuplenteId: suplenteId,
         };
 
-        const alineacionEndpoint = equipoIdFromUrl
-          ? `/api/equipos/mi-equipo/${equipoIdFromUrl}/alineacion`
+        const alineacionEndpoint = equipoIdResuelto
+          ? `/api/equipos/mi-equipo/${equipoIdResuelto}/alineacion`
           : '/api/equipos/mi-equipo/alineacion';
 
         await apiClient.patch(alineacionEndpoint, payload);
@@ -402,7 +443,7 @@ const UpdateTeam = () => {
               return { ...player, esTitular: true };
             }
             return player;
-          })
+          }),
         );
 
         setNotification({
@@ -426,15 +467,15 @@ const UpdateTeam = () => {
         });
       }
     },
-    [equipoIdFromUrl]
+    [equipoIdResuelto],
   );
 
   // Función para cambiar el estado de un jugador (suplente → titular)
   const cambiarEstadoJugador = useCallback(
     async (jugadorId: number, nuevoEstado: boolean) => {
       try {
-        // Usar equipoIdFromUrl o equipoIdResuelto
-        const equipoId = equipoIdFromUrl || equipoIdResuelto;
+        // Usar equipoIdResuelto
+        const equipoId = equipoIdResuelto;
 
         if (!equipoId) {
           setNotification({
@@ -456,8 +497,8 @@ const UpdateTeam = () => {
           prevPlayers.map((player) =>
             player.id === jugadorId
               ? { ...player, esTitular: nuevoEstado }
-              : player
-          )
+              : player,
+          ),
         );
 
         setNotification({
@@ -483,25 +524,25 @@ const UpdateTeam = () => {
         });
       }
     },
-    [equipoIdFromUrl, equipoIdResuelto]
+    [equipoIdResuelto],
   );
 
   // Función para intercambiar jugador del equipo con uno externo (memoizada)
   const swapTeamPlayer = useCallback(
     async (jugadorSaleId: number, jugadorEntraId: number) => {
       try {
-        const intercambioEndpoint = equipoIdFromUrl
-          ? `/api/equipos/mi-equipo/${equipoIdFromUrl}/intercambio`
+        const intercambioEndpoint = equipoIdResuelto
+          ? `/api/equipos/mi-equipo/${equipoIdResuelto}/intercambio`
           : '/api/equipos/mi-equipo/intercambio';
 
         await apiClient.patch(intercambioEndpoint, {
           jugadorSaleId: jugadorSaleId,
-          jugadorEntraId: jugadorEntraId, // ✅ Ahora envía el ID correcto del jugador en la BD
+          jugadorEntraId: jugadorEntraId,
         });
 
         // Recargar el equipo completo desde el servidor
-        const reloadEndpoint = equipoIdFromUrl
-          ? `/api/equipos/detalle-equipo/${equipoIdFromUrl}`
+        const reloadEndpoint = equipoIdResuelto
+          ? `/api/equipos/detalle-equipo/${equipoIdResuelto}`
           : '/api/equipos/detalle-equipo';
 
         const response = await apiClient.get(reloadEndpoint);
@@ -552,11 +593,17 @@ const UpdateTeam = () => {
                   typeof jugador.club === 'object'
                     ? jugador.club?.id
                     : jugador.club,
-                clubName: jugador.club?.nombre,
-                clubLogo: jugador.club?.logo,
+                clubName:
+                  typeof jugador.club === 'object'
+                    ? jugador.club?.nombre
+                    : undefined,
+                clubLogo:
+                  typeof jugador.club === 'object'
+                    ? jugador.club?.logo
+                    : undefined,
                 precio: jugador.precio_actual || 0,
               };
-            }
+            },
           );
           setTeamPlayers(mappedPlayers);
         }
@@ -581,7 +628,7 @@ const UpdateTeam = () => {
         });
       }
     },
-    [equipoIdFromUrl]
+    [equipoIdResuelto],
   );
 
   //Manejador para seleccionar jugador para intercambio
@@ -614,7 +661,7 @@ const UpdateTeam = () => {
 
       // Detectar si el jugador objetivo está en mi equipo o no
       const targetIsInMyTeam = teamPlayers.some(
-        (p) => p.id === targetPlayer.id
+        (p) => p.id === targetPlayer.id,
       );
 
       if (targetIsInMyTeam) {
@@ -660,7 +707,7 @@ const UpdateTeam = () => {
 
       setSelectedPlayerForSwap(null);
     },
-    [teamPlayers, swapLineup, swapTeamPlayer, getPositionName]
+    [teamPlayers, swapLineup, swapTeamPlayer, getPositionName],
   );
 
   // Manejador para abrir modal de blindar jugador
@@ -692,13 +739,13 @@ const UpdateTeam = () => {
       await clausulasService.blindarJugador(
         parseInt(equipoIdResuelto),
         selectedPlayerToBlindar.id,
-        { monto_incremento: montoIncremento }
+        { monto_incremento: montoIncremento },
       );
 
       setNotification({
         type: 'success',
         text: `¡Jugador blindado exitosamente! Cláusula incrementada en $${montoIncremento.toLocaleString(
-          'es-AR'
+          'es-AR',
         )}`,
       });
 
@@ -709,7 +756,6 @@ const UpdateTeam = () => {
       // Recargar el equipo para actualizar precios
       window.location.reload();
     } catch (error: unknown) {
-      console.error('Error al blindar jugador:', error);
       const axiosError = error as {
         response?: { data?: { message?: string } };
       };
@@ -725,12 +771,17 @@ const UpdateTeam = () => {
   // Separar titulares y suplentes usando el flag es_titular del backend
   const titulares = useMemo(
     () => teamPlayers.filter((p) => p.esTitular === true),
-    [teamPlayers]
+    [teamPlayers],
   );
   const suplentes = useMemo(
     () => teamPlayers.filter((p) => p.esTitular === false),
-    [teamPlayers]
+    [teamPlayers],
   );
+
+  // Mostrar loading mientras se valida el acceso
+  if (validandoAcceso) {
+    return <LoadingSpinner variant="fullpage" message="Cargando equipo..." />;
+  }
 
   return (
     <div>
@@ -777,7 +828,7 @@ const UpdateTeam = () => {
             {(() => {
               // Filtrar jugadores que tienen puntaje definido (incluyendo 0)
               const jugadoresConPuntos = teamPlayers.filter(
-                (p) => p.puntaje !== undefined
+                (p) => p.puntaje !== undefined,
               );
 
               if (jugadoresConPuntos.length === 0) {
@@ -792,14 +843,14 @@ const UpdateTeam = () => {
 
               const puntajeTotal = jugadoresConPuntos.reduce(
                 (sum, p) => sum + (p.puntaje || 0),
-                0
+                0,
               );
               const promedio = puntajeTotal / jugadoresConPuntos.length;
               const maxPuntaje = Math.max(
-                ...jugadoresConPuntos.map((p) => p.puntaje || 0)
+                ...jugadoresConPuntos.map((p) => p.puntaje || 0),
               );
               const minPuntaje = Math.min(
-                ...jugadoresConPuntos.map((p) => p.puntaje || 0)
+                ...jugadoresConPuntos.map((p) => p.puntaje || 0),
               );
 
               // Mejores jugadores
@@ -930,7 +981,7 @@ const UpdateTeam = () => {
                     players={titulares}
                     showSuplentes={false}
                     mostrarPuntajes={titulares.some(
-                      (p) => (p.puntaje || 0) > 0
+                      (p) => (p.puntaje || 0) > 0,
                     )}
                     mostrarPrecios={true}
                     onPlayerClick={(player) => {
@@ -944,6 +995,18 @@ const UpdateTeam = () => {
                         // Si no hay selección o es el mismo jugador, alternar selección
                         handlePlayerSelect(player);
                       }
+                    }}
+                    onStatsClick={(player) => {
+                      const fullPlayer = teamPlayers.find(
+                        (p) => p.id === player.id,
+                      );
+                      setStatsJugador({
+                        id: player.id!,
+                        nombre: getPlayerDisplayName(player),
+                        foto: player.photo,
+                        posicion: getPositionDisplayName(player.position),
+                        club: fullPlayer?.clubName,
+                      });
                     }}
                     selectedPlayerId={selectedPlayerForSwap?.id}
                   />
@@ -987,8 +1050,8 @@ const UpdateTeam = () => {
                               selectedPlayerForSwap?.id === player.id
                                 ? 'ring-4 ring-yellow-400'
                                 : canSwap
-                                ? 'ring-2 ring-green-400 hover:ring-4'
-                                : ''
+                                  ? 'ring-2 ring-green-400 hover:ring-4'
+                                  : ''
                             }`}
                             onClick={() => {
                               if (
@@ -1044,6 +1107,20 @@ const UpdateTeam = () => {
                               <p className="text-[10px] text-green-400 font-semibold mt-0.5">
                                 ${(player.precio || 0).toLocaleString('es-AR')}
                               </p>
+                              {player.esta_protegido && (
+                                <div className="relative group/spprot mt-0.5">
+                                  <p className="text-[10px] text-emerald-300 font-semibold cursor-default">
+                                    Protegido
+                                  </p>
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/spprot:flex flex-col items-center z-50 pointer-events-none">
+                                    <div className="bg-gray-900 text-white text-[10px] font-semibold rounded-lg px-3 py-1.5 whitespace-nowrap shadow-xl border border-emerald-400/40">
+                                      {player.dias_proteccion_restantes ?? 0}{' '}
+                                      día(s) de protección restante(s)
+                                    </div>
+                                    <div className="w-2 h-2 bg-gray-900 rotate-45 -mt-1 border-b border-r border-emerald-400/40"></div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1071,6 +1148,39 @@ const UpdateTeam = () => {
                               Alinear
                             </button>
                           )}
+
+                          {/* Botón de estadísticas */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStatsJugador({
+                                id: player.id!,
+                                nombre: getPlayerDisplayName(player),
+                                foto: player.photo,
+                                posicion: getPositionDisplayName(
+                                  player.position,
+                                ),
+                                club: player.clubName,
+                              });
+                            }}
+                            className="mt-1 w-full bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/30 text-blue-400 hover:text-blue-300 text-[10px] font-bold py-1.5 px-2 rounded-lg transition-all duration-200 flex items-center justify-center gap-1"
+                            title="Ver estadísticas y precios"
+                          >
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                              />
+                            </svg>
+                            Stats
+                          </button>
                         </div>
                       );
                     })}
@@ -1282,11 +1392,42 @@ const UpdateTeam = () => {
               </div>
             </div>
 
-            {/* Footer con botón de cerrar */}
-            <div className="p-4 bg-white/5 border-t border-white/10">
+            {/* Footer con botones */}
+            <div className="p-4 bg-white/5 border-t border-white/10 flex gap-3">
+              <button
+                onClick={() => {
+                  const p = selectedPlayerInfo;
+                  if (p) {
+                    setSelectedPlayerInfo(null);
+                    setStatsJugador({
+                      id: p.id!,
+                      nombre: getPlayerDisplayName(p),
+                      foto: p.photo,
+                      posicion: getPositionDisplayName(p.position),
+                      club: p.clubName,
+                    });
+                  }
+                }}
+                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Estadísticas
+              </button>
               <button
                 onClick={() => setSelectedPlayerInfo(null)}
-                className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
+                className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
               >
                 Cerrar
               </button>
@@ -1298,16 +1439,7 @@ const UpdateTeam = () => {
       {/* Modal para Blindar Jugador */}
       {showBlindarModal && selectedPlayerToBlindar && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div
-            className="rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-            style={{
-              backdropFilter: 'blur(16px)',
-              background:
-                'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-            }}
-          >
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/20 shadow-2xl max-w-md w-full overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center gap-4">
@@ -1357,7 +1489,7 @@ const UpdateTeam = () => {
                   <span className="text-white text-lg font-bold">
                     $
                     {(selectedPlayerToBlindar.precio || 0).toLocaleString(
-                      'es-AR'
+                      'es-AR',
                     )}
                   </span>
                 </div>
@@ -1367,22 +1499,14 @@ const UpdateTeam = () => {
                   <label className="block text-white font-semibold text-sm">
                     + Incremento
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 text-lg font-semibold">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100000"
-                      value={montoIncremento || ''}
-                      onChange={(e) =>
-                        setMontoIncremento(parseInt(e.target.value) || 0)
-                      }
-                      placeholder="1000000"
-                      className="w-full pl-8 pr-4 py-3 bg-white/15 border-2 border-white/30 rounded-lg text-white text-lg font-semibold placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition-all"
-                    />
-                  </div>
+                  <MoneyInput
+                    value={montoIncremento}
+                    onChange={(raw) => setMontoIncremento(parseInt(raw) || 0)}
+                    placeholder="1000000"
+                    min={0}
+                    step={100000}
+                    focusColor="yellow"
+                  />
                   <p className="text-white/60 text-xs">
                     Mínimo recomendado: $1.000.000
                   </p>
@@ -1408,7 +1532,7 @@ const UpdateTeam = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-white/5 backdrop-blur-sm border-t border-white/20 flex gap-3">
+            <div className="p-6 border-t border-white/10 flex gap-3">
               <button
                 onClick={() => setShowBlindarModal(false)}
                 className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20"
@@ -1438,15 +1562,8 @@ const UpdateTeam = () => {
           onClick={() => setInfoBlindaje(null)}
         >
           <div
-            className="rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-white/20 shadow-2xl max-w-md w-full overflow-hidden"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backdropFilter: 'blur(16px)',
-              background:
-                'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-            }}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/10">
@@ -1488,6 +1605,33 @@ const UpdateTeam = () => {
                 </p>
               </div>
 
+              {/* Estado de protección */}
+              {infoBlindaje.esta_protegido && (
+                <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-lg p-4 backdrop-blur-sm flex items-center gap-3">
+                  <svg
+                    className="w-6 h-6 text-emerald-400 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div>
+                    <p className="text-emerald-200 text-sm font-bold">
+                      Jugador Protegido
+                    </p>
+                    <p className="text-emerald-300/80 text-xs">
+                      No puede ser comprado por cláusula durante{' '}
+                      <strong>{infoBlindaje.dias_proteccion_restantes}</strong>{' '}
+                      día(s) más.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Tarjeta unificada con cálculo */}
               <div className="bg-gradient-to-br from-yellow-500/15 to-orange-500/15 rounded-xl p-5 border-2 border-yellow-400/30 backdrop-blur-sm space-y-4">
                 {/* Precio actual */}
@@ -1524,7 +1668,7 @@ const UpdateTeam = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-6 bg-white/5 backdrop-blur-sm border-t border-white/20 flex gap-3">
+            <div className="p-6 border-t border-white/10 flex gap-3">
               <button
                 onClick={() => setInfoBlindaje(null)}
                 className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg"
@@ -1534,6 +1678,18 @@ const UpdateTeam = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de estadísticas del jugador */}
+      {statsJugador && (
+        <PlayerStatsModal
+          jugadorId={statsJugador.id}
+          jugadorNombre={statsJugador.nombre}
+          jugadorFoto={statsJugador.foto}
+          jugadorPosicion={statsJugador.posicion}
+          jugadorClub={statsJugador.club}
+          onClose={() => setStatsJugador(null)}
+        />
       )}
     </div>
   );

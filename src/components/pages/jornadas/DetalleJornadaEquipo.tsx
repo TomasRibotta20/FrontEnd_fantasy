@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import FormacionEquipoCompacta from '../../common/FormacionEquipoCompacta';
 import apiClient from '../../../services/apiClient';
+import { useMiEquipoId } from '../../../hooks/useSessionData';
 
 interface Estadisticas {
   minutos: number;
@@ -54,16 +56,25 @@ interface JornadaEquipo {
 const DetalleJornadaEquipo = () => {
   const { equipoId, jornadaId } = useParams();
   const navigate = useNavigate();
+  const [miEquipoIdHook] = useMiEquipoId();
   const [data, setData] = useState<JornadaEquipo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Si el usuario cambia de torneo y su equipoId actual difiere del de la URL,
+  // redirigir a jornadas para evitar mostrar datos del equipo anterior.
+  useEffect(() => {
+    if (miEquipoIdHook && equipoId && miEquipoIdHook !== equipoId) {
+      navigate('/jornadas', { replace: true });
+    }
+  }, [miEquipoIdHook, equipoId, navigate]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         const response = await apiClient.get(
-          `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`
+          `/api/equipos/${equipoId}/puntos/jornadas/${jornadaId}`,
         );
         const jsonData = response.data;
 
@@ -72,7 +83,7 @@ const DetalleJornadaEquipo = () => {
         setData(extractedData);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Error al cargar detalle'
+          err instanceof Error ? err.message : 'Error al cargar detalle',
         );
       } finally {
         setLoading(false);
@@ -85,10 +96,7 @@ const DetalleJornadaEquipo = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">●</div>
-          <p className="text-xl">Cargando detalle...</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando detalle..." />
       </div>
     );
   }
@@ -130,7 +138,7 @@ const DetalleJornadaEquipo = () => {
   // Calcular el total sumando los puntos de los jugadores como verificación
   const totalCalculado = jugadores.reduce(
     (sum: number, j: Jugador) => sum + (j.puntaje || 0),
-    0
+    0,
   );
 
   // Separar titulares y suplentes
@@ -202,7 +210,7 @@ const DetalleJornadaEquipo = () => {
                   <p className="text-gray-400 text-sm">Fecha Inicio</p>
                   <p className="text-white text-lg font-semibold">
                     {new Date(data.jornada.fecha_inicio).toLocaleDateString(
-                      'es-ES'
+                      'es-ES',
                     )}
                   </p>
                 </div>
@@ -212,7 +220,7 @@ const DetalleJornadaEquipo = () => {
                   <p className="text-gray-400 text-sm">Fecha Fin</p>
                   <p className="text-white text-lg font-semibold">
                     {new Date(data.jornada.fecha_fin).toLocaleDateString(
-                      'es-ES'
+                      'es-ES',
                     )}
                   </p>
                 </div>
@@ -289,7 +297,7 @@ const DetalleJornadaEquipo = () => {
               <p className="text-white text-3xl font-bold">
                 {jugadores.reduce(
                   (sum, j) => sum + (j.estadisticas?.goles || 0),
-                  0
+                  0,
                 )}
               </p>
             </div>
@@ -298,7 +306,7 @@ const DetalleJornadaEquipo = () => {
               <p className="text-white text-3xl font-bold">
                 {jugadores.reduce(
                   (sum, j) => sum + (j.estadisticas?.asistencias || 0),
-                  0
+                  0,
                 )}
               </p>
             </div>
@@ -307,7 +315,7 @@ const DetalleJornadaEquipo = () => {
               <p className="text-yellow-400 text-3xl font-bold">
                 {jugadores.reduce(
                   (sum, j) => sum + (j.estadisticas?.tarjetasAmarillas || 0),
-                  0
+                  0,
                 )}
               </p>
             </div>
@@ -316,7 +324,7 @@ const DetalleJornadaEquipo = () => {
               <p className="text-red-400 text-3xl font-bold">
                 {jugadores.reduce(
                   (sum, j) => sum + (j.estadisticas?.tarjetasRojas || 0),
-                  0
+                  0,
                 )}
               </p>
             </div>

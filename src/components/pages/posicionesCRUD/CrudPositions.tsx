@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import { Notification } from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 
 interface Position {
   id: number;
   descripcion: string;
 }
 
+/** CRUD de posiciones de jugadores. */
 function CrudPositions() {
   const navigate = useNavigate();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -19,6 +21,7 @@ function CrudPositions() {
     type: 'success' | 'error' | 'warning' | 'info';
     text: string;
   } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const [editData, setEditData] = useState({
     descripcion: '',
@@ -30,7 +33,7 @@ function CrudPositions() {
 
   useEffect(() => {
     const filtered = positions.filter((position) =>
-      position.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+      position.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredPositions(filtered);
   }, [searchTerm, positions]);
@@ -41,12 +44,11 @@ function CrudPositions() {
       const response = await apiClient.get('/api/positions');
       const positionsData = response.data.data || response.data;
       const sortedPositions = positionsData.sort((a: Position, b: Position) =>
-        a.descripcion.localeCompare(b.descripcion)
+        a.descripcion.localeCompare(b.descripcion),
       );
       setPositions(sortedPositions);
       setFilteredPositions(sortedPositions);
     } catch (err) {
-      console.error('Error al obtener posiciones:', err);
       const error = err as {
         response?: { status?: number; data?: { message?: string } };
         message?: string;
@@ -73,26 +75,30 @@ function CrudPositions() {
     }
   };
 
-  const deletePosition = async (positionId: number) => {
-    if (window.confirm('¿Estás seguro de eliminar esta posición?')) {
-      setIsLoading(true);
-      try {
-        await apiClient.delete(`/api/positions/${positionId}`);
-        setPositions((prevPositions) =>
-          prevPositions.filter((position) => position.id !== positionId)
-        );
-        setNotification({
-          type: 'success',
-          text: 'Posición eliminada con éxito',
-        });
-      } catch {
-        setNotification({
-          type: 'error',
-          text: 'Error al eliminar posición',
-        });
-      } finally {
-        setIsLoading(false);
-      }
+  const deletePosition = (positionId: number) => {
+    setConfirmDeleteId(positionId);
+  };
+
+  const confirmDelete = async () => {
+    if (confirmDeleteId === null) return;
+    setIsLoading(true);
+    try {
+      await apiClient.delete(`/api/positions/${confirmDeleteId}`);
+      setPositions((prevPositions) =>
+        prevPositions.filter((position) => position.id !== confirmDeleteId),
+      );
+      setNotification({
+        type: 'success',
+        text: 'Posición eliminada con éxito',
+      });
+    } catch {
+      setNotification({
+        type: 'error',
+        text: 'Error al eliminar posición',
+      });
+    } finally {
+      setIsLoading(false);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -118,8 +124,8 @@ function CrudPositions() {
         prevPositions.map((position) =>
           position.id === editingPosition
             ? { ...position, descripcion: updateData.descripcion }
-            : position
-        )
+            : position,
+        ),
       );
 
       setNotification({
@@ -336,6 +342,15 @@ function CrudPositions() {
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="Eliminar posición"
+        message="¿Estás seguro de eliminar esta posición?"
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

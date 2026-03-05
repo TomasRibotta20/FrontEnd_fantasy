@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ofertasService } from '../../../services/ofertasService';
 import type { Oferta } from '../../../services/ofertasService';
 import { Notification } from '../../common/Notification';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import { useTorneoSeleccionado } from '../../../hooks/useSessionData';
 
 type TabType = 'enviadas' | 'recibidas';
 
+/** Gestión de ofertas enviadas y recibidas. */
 const GestionOfertas = () => {
   const navigate = useNavigate();
   const [torneoId] = useTorneoSeleccionado();
@@ -32,7 +34,7 @@ const GestionOfertas = () => {
     try {
       if (activeTab === 'enviadas') {
         const response = await ofertasService.obtenerMisOfertasEnviadas(
-          parseInt(torneoId)
+          parseInt(torneoId),
         );
         // El backend devuelve { ofertas: [], total, limit, offset }
         const ofertas =
@@ -41,7 +43,7 @@ const GestionOfertas = () => {
         setOfertasEnviadas(Array.isArray(ofertas) ? ofertas : []);
       } else {
         const response = await ofertasService.obtenerMisOfertasRecibidas(
-          parseInt(torneoId)
+          parseInt(torneoId),
         );
         // El backend devuelve { ofertas: [], total, limit, offset }
         const ofertas =
@@ -49,9 +51,7 @@ const GestionOfertas = () => {
 
         setOfertasRecibidas(Array.isArray(ofertas) ? ofertas : []);
       }
-    } catch (error) {
-      console.error('❌ Error al cargar ofertas:', error);
-      console.error('❌ Error completo:', JSON.stringify(error, null, 2));
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cargar las ofertas',
@@ -74,11 +74,9 @@ const GestionOfertas = () => {
       });
       cargarOfertas();
     } catch (error: unknown) {
-      console.error('❌ Error al aceptar oferta:', error);
       const axiosError = error as {
         response?: { data?: { message?: string } };
       };
-      console.error('❌ Respuesta del error:', axiosError.response?.data);
       let errorMsg =
         axiosError.response?.data?.message || 'Error al aceptar la oferta';
 
@@ -103,8 +101,7 @@ const GestionOfertas = () => {
         text: 'Oferta rechazada',
       });
       cargarOfertas();
-    } catch (error) {
-      console.error('❌ Error al rechazar oferta:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al rechazar la oferta',
@@ -120,8 +117,7 @@ const GestionOfertas = () => {
         text: 'Oferta cancelada',
       });
       cargarOfertas();
-    } catch (error) {
-      console.error('❌ Error al cancelar oferta:', error);
+    } catch {
       setNotification({
         type: 'error',
         text: 'Error al cancelar la oferta',
@@ -192,9 +188,7 @@ const GestionOfertas = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="text-white text-xl">Cargando ofertas...</div>
-          </div>
+          <LoadingSpinner variant="section" message="Cargando ofertas..." />
         )}
 
         {/* Lista de Ofertas */}
@@ -212,7 +206,6 @@ const GestionOfertas = () => {
             {ofertas.map((oferta) => {
               // Validar que existe la información necesaria
               if (!oferta.jugador) {
-                console.warn('⚠️ Oferta sin jugador:', oferta);
                 return null;
               }
 
@@ -271,7 +264,7 @@ const GestionOfertas = () => {
                         </div>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold border ${getEstadoBadge(
-                            oferta.estado
+                            oferta.estado,
                           )}`}
                         >
                           {oferta.estado}
@@ -302,7 +295,7 @@ const GestionOfertas = () => {
                               {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
-                              }
+                              },
                             ) || 'N/A'}
                           </p>
                         </div>
@@ -311,7 +304,7 @@ const GestionOfertas = () => {
                       {oferta.horas_restantes !== undefined && (
                         <div className="backdrop-blur-lg bg-blue-500/10 rounded-lg p-2 border border-blue-500/30 mb-3">
                           <p className="text-blue-200 text-xs text-center">
-                            ⏰ Expira en {oferta.horas_restantes} horas
+                            Expira en {oferta.horas_restantes} horas
                           </p>
                         </div>
                       )}

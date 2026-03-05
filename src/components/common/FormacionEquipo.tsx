@@ -25,6 +25,7 @@ interface FormacionEquipoProps {
   showSuplentes?: boolean;
 }
 
+/** Componente visual de formación de equipo con titulares y suplentes. */
 const FormacionEquipo = ({
   players,
   compact = false,

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import apiClient from '../../../services/apiClient';
+import { useMiEquipoId } from '../../../hooks/useSessionData';
 
 interface JornadaHistorial {
   jornada: {
@@ -22,9 +24,7 @@ interface HistorialEquipo {
 
 const MisPuntosHistorial = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const equipoIdFromUrl = searchParams.get('equipoId');
-  const torneoIdFromUrl = searchParams.get('torneoId');
+  const [miEquipoIdHook] = useMiEquipoId();
   const [historial, setHistorial] = useState<HistorialEquipo | null>(null);
   const [miEquipoId, setMiEquipoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,22 +46,14 @@ const MisPuntosHistorial = () => {
       try {
         setLoading(true);
 
-        // Intentar obtener equipoId de la URL o del localStorage
-        let equipoId: number | null = equipoIdFromUrl
-          ? Number(equipoIdFromUrl)
+        // Obtener equipoId desde el hook de sesión
+        let equipoId: number | null = miEquipoIdHook
+          ? Number(miEquipoIdHook)
           : null;
 
         if (!equipoId) {
-          // Fallback: obtener del localStorage
-          const storedEquipoId = localStorage.getItem('miEquipoId');
-          if (storedEquipoId) {
-            equipoId = Number(JSON.parse(storedEquipoId));
-          }
-        }
-
-        if (!equipoId) {
           throw new Error(
-            'No se encontró el ID del equipo. Por favor, selecciona un torneo primero.'
+            'No se encontró el ID del equipo. Por favor, selecciona un torneo primero.',
           );
         }
 
@@ -69,7 +61,7 @@ const MisPuntosHistorial = () => {
 
         // Obtener historial del equipo
         const historialRes = await apiClient.get(
-          `/api/equipos/${equipoId}/historial`
+          `/api/equipos/${equipoId}/historial`,
         );
         const historialData = historialRes.data;
 
@@ -78,12 +70,12 @@ const MisPuntosHistorial = () => {
 
         // Normalizar datos: convertir puntaje_total a puntajeTotal
         const normalizeJornada = (
-          item: Partial<JornadaHistorial> & { puntaje_total?: number }
+          item: Partial<JornadaHistorial> & { puntaje_total?: number },
         ): JornadaHistorial =>
           ({
             ...item,
             puntajeTotal: item.puntajeTotal ?? item.puntaje_total ?? 0,
-          } as JornadaHistorial);
+          }) as JornadaHistorial;
 
         // Si es un array, envolver en objeto con propiedad jornadas
         if (Array.isArray(dataArray)) {
@@ -96,7 +88,7 @@ const MisPuntosHistorial = () => {
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Error al cargar historial'
+          err instanceof Error ? err.message : 'Error al cargar historial',
         );
       } finally {
         setLoading(false);
@@ -104,15 +96,12 @@ const MisPuntosHistorial = () => {
     };
 
     loadHistorial();
-  }, [equipoIdFromUrl]);
+  }, [miEquipoIdHook]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">●</div>
-          <p className="text-xl">Cargando historial...</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando historial..." />
       </div>
     );
   }
@@ -155,7 +144,7 @@ const MisPuntosHistorial = () => {
 
   const puntajeTotal = jornadas.reduce(
     (sum, j) => sum + (j.puntajeTotal || 0),
-    0
+    0,
   );
   const promedio =
     jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
@@ -242,7 +231,7 @@ const MisPuntosHistorial = () => {
                     className="bg-black/30 rounded-lg p-4 border border-white/10 hover:border-white/30 transition-all cursor-pointer"
                     onClick={() =>
                       navigate(
-                        `/equipos/${miEquipoId}/jornadas/${jornadaData.jornada?.id}`
+                        `/equipos/${miEquipoId}/jornadas/${jornadaData.jornada?.id}`,
                       )
                     }
                   >

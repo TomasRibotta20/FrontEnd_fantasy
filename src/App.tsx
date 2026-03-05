@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import NavBar from './components/navbar/navbar';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -7,22 +7,11 @@ import AdminRoute from './components/auth/AdminRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { useAuth } from './hooks/useAuth';
 
+import LoadingSpinner from './components/common/LoadingSpinner';
+
 // Componente de carga para Suspense
 const PageLoader = () => (
-  <div
-    className="min-h-screen flex items-center justify-center"
-    style={{
-      backgroundImage: "url('/Background_LandingPage.png')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
-  >
-    <div className="absolute inset-0 bg-black opacity-40"></div>
-    <div className="relative z-10 text-center text-white">
-      <div className="animate-spin text-6xl mb-4">●</div>
-      <p className="text-xl">Cargando...</p>
-    </div>
-  </div>
+  <LoadingSpinner variant="fullpage" message="Cargando..." />
 );
 
 // Páginas principales (carga inmediata)
@@ -31,94 +20,154 @@ import Login from './components/pages/auth/Login';
 import CreateUser from './components/pages/register/CreateUser';
 import LoggedMenu from './components/pages/LoggedMenu';
 
-// Páginas secundarias (lazy loading)
-const Club = lazy(() => import('./components/pages/clubCRUD/ClubName'));
-const ClubReadUpdateDelete = lazy(
-  () => import('./components/pages/clubCRUD/ClubReadUpdateDelete')
-);
-const ForgotPassword = lazy(
-  () => import('./components/pages/auth/ForgotPassword')
-);
-const NewPassword = lazy(() => import('./components/pages/auth/NewPassword'));
-const CrudPositions = lazy(
-  () => import('./components/pages/posicionesCRUD/CrudPositions')
-);
-const UpdateTeam = lazy(
-  () => import('./components/pages/equipoCRUD/UpdateTeam')
-);
+// ── Import factories (permiten lazy loading + prefetch) ──────────────
 
-// Admin pages (lazy loading)
-const AdminPage = lazy(() => import('./components/pages/admin/AdminPage'));
-const PlayersCRUD = lazy(
-  () => import('./components/pages/playersCRUD/PlayersCRUD')
-);
-const UsersCRUD = lazy(() => import('./components/pages/usersCRUD/UsersCRUD'));
-const GestionJornadasAdmin = lazy(
-  () => import('./components/pages/admin/GestionJornadasAdmin')
-);
-const GestionEquiposAdmin = lazy(
-  () => import('./components/pages/admin/GestionEquiposAdmin')
-);
-const GestionTorneosAdmin = lazy(
-  () => import('./components/pages/admin/GestionTorneosAdmin')
-);
-const GestionMercadoAdmin = lazy(
-  () => import('./components/pages/admin/GestionMercadoAdmin')
-);
+// Páginas secundarias
+const importClub = () => import('./components/pages/clubCRUD/ClubName');
+const importClubRUD = () =>
+  import('./components/pages/clubCRUD/ClubReadUpdateDelete');
+const importForgotPassword = () =>
+  import('./components/pages/auth/ForgotPassword');
+const importNewPassword = () => import('./components/pages/auth/NewPassword');
+const importCrudPositions = () =>
+  import('./components/pages/posicionesCRUD/CrudPositions');
+const importUpdateTeam = () =>
+  import('./components/pages/equipoCRUD/UpdateTeam');
 
-// Jornadas pages (lazy loading)
-const GestionJornadas = lazy(
-  () => import('./components/pages/jornadas/GestionJornadas')
-);
-const DetalleJornada = lazy(
-  () => import('./components/pages/jornadas/DetalleJornada')
-);
-const JornadasUsuario = lazy(
-  () => import('./components/pages/jornadas/JornadasUsuario')
-);
-const MiEquipoJornada = lazy(
-  () => import('./components/pages/jornadas/MiEquipoJornada')
-);
-const MisPuntosHistorial = lazy(
-  () => import('./components/pages/jornadas/MisPuntosHistorial')
-);
-const DetalleJornadaEquipo = lazy(
-  () => import('./components/pages/jornadas/DetalleJornadaEquipo')
-);
-const DebugEndpoints = lazy(
-  () => import('./components/pages/jornadas/DebugEndpoints')
-);
+// Admin
+const importAdminPage = () => import('./components/pages/admin/AdminPage');
+const importPlayersCRUD = () =>
+  import('./components/pages/playersCRUD/PlayersCRUD');
+const importUsersCRUD = () => import('./components/pages/usersCRUD/UsersCRUD');
+const importGestionJornadasAdmin = () =>
+  import('./components/pages/admin/GestionJornadasAdmin');
+const importGestionEquiposAdmin = () =>
+  import('./components/pages/admin/GestionEquiposAdmin');
+const importGestionTorneosAdmin = () =>
+  import('./components/pages/admin/GestionTorneosAdmin');
+const importGestionMercadoAdmin = () =>
+  import('./components/pages/admin/GestionMercadoAdmin');
+const importGestionAutomationAdmin = () =>
+  import('./components/pages/admin/GestionAutomationAdmin');
 
-// Torneos pages (lazy loading)
-const TorneosUsuario = lazy(
-  () => import('./components/pages/torneos/TorneosUsuario')
-);
-const CrearTorneo = lazy(
-  () => import('./components/pages/torneos/CrearTorneo')
-);
-const UnirseATorneo = lazy(
-  () => import('./components/pages/torneos/UnirseATorneo')
-);
-const DetalleTorneo = lazy(
-  () => import('./components/pages/torneos/DetalleTorneo')
-);
-const LeaderboardTorneo = lazy(
-  () => import('./components/pages/torneos/LeaderboardTorneo')
-);
-const MercadoUsuario = lazy(
-  () => import('./components/pages/torneos/MercadoUsuario')
-);
+// Jornadas
+const importGestionJornadas = () =>
+  import('./components/pages/jornadas/GestionJornadas');
+const importDetalleJornada = () =>
+  import('./components/pages/jornadas/DetalleJornada');
+const importJornadasUsuario = () =>
+  import('./components/pages/jornadas/JornadasUsuario');
+const importMiEquipoJornada = () =>
+  import('./components/pages/jornadas/MiEquipoJornada');
+const importMisPuntosHistorial = () =>
+  import('./components/pages/jornadas/MisPuntosHistorial');
+const importDetalleJornadaEquipo = () =>
+  import('./components/pages/jornadas/DetalleJornadaEquipo');
+const importDebugEndpoints = () =>
+  import('./components/pages/jornadas/DebugEndpoints');
 
-// Equipo pages (lazy loading)
-const VerEquipoOtroJugador = lazy(
-  () => import('./components/pages/equipoCRUD/VerEquipoOtroJugador')
-);
-const GestionOfertas = lazy(
-  () => import('./components/pages/equipoCRUD/GestionOfertas')
-);
+// Torneos
+const importTorneosUsuario = () =>
+  import('./components/pages/torneos/TorneosUsuario');
+const importCrearTorneo = () =>
+  import('./components/pages/torneos/CrearTorneo');
+const importUnirseATorneo = () =>
+  import('./components/pages/torneos/UnirseATorneo');
+const importDetalleTorneo = () =>
+  import('./components/pages/torneos/DetalleTorneo');
+const importLeaderboardTorneo = () =>
+  import('./components/pages/torneos/LeaderboardTorneo');
+const importMercadoUsuario = () =>
+  import('./components/pages/torneos/MercadoUsuario');
 
-// Perfil (lazy loading)
-const MiPerfil = lazy(() => import('./components/pages/perfil/MiPerfil'));
+// Equipo
+const importVerEquipoOtroJugador = () =>
+  import('./components/pages/equipoCRUD/VerEquipoOtroJugador');
+const importGestionOfertas = () =>
+  import('./components/pages/equipoCRUD/GestionOfertas');
+
+// Perfil
+const importMiPerfil = () => import('./components/pages/perfil/MiPerfil');
+
+// ── Lazy components ──────────────────────────────────────────────────
+const Club = lazy(importClub);
+const ClubReadUpdateDelete = lazy(importClubRUD);
+const ForgotPassword = lazy(importForgotPassword);
+const NewPassword = lazy(importNewPassword);
+const CrudPositions = lazy(importCrudPositions);
+const UpdateTeam = lazy(importUpdateTeam);
+
+const AdminPage = lazy(importAdminPage);
+const PlayersCRUD = lazy(importPlayersCRUD);
+const UsersCRUD = lazy(importUsersCRUD);
+const GestionJornadasAdmin = lazy(importGestionJornadasAdmin);
+const GestionEquiposAdmin = lazy(importGestionEquiposAdmin);
+const GestionTorneosAdmin = lazy(importGestionTorneosAdmin);
+const GestionMercadoAdmin = lazy(importGestionMercadoAdmin);
+const GestionAutomationAdmin = lazy(importGestionAutomationAdmin);
+
+const GestionJornadas = lazy(importGestionJornadas);
+const DetalleJornada = lazy(importDetalleJornada);
+const JornadasUsuario = lazy(importJornadasUsuario);
+const MiEquipoJornada = lazy(importMiEquipoJornada);
+const MisPuntosHistorial = lazy(importMisPuntosHistorial);
+const DetalleJornadaEquipo = lazy(importDetalleJornadaEquipo);
+const DebugEndpoints = lazy(importDebugEndpoints);
+
+const TorneosUsuario = lazy(importTorneosUsuario);
+const CrearTorneo = lazy(importCrearTorneo);
+const UnirseATorneo = lazy(importUnirseATorneo);
+const DetalleTorneo = lazy(importDetalleTorneo);
+const LeaderboardTorneo = lazy(importLeaderboardTorneo);
+const MercadoUsuario = lazy(importMercadoUsuario);
+
+const VerEquipoOtroJugador = lazy(importVerEquipoOtroJugador);
+const GestionOfertas = lazy(importGestionOfertas);
+
+const MiPerfil = lazy(importMiPerfil);
+
+// ── Prefetch: descarga en segundo plano las páginas más usadas ──────
+function prefetchUserRoutes() {
+  const schedule =
+    typeof requestIdleCallback === 'function'
+      ? requestIdleCallback
+      : (cb: () => void) => setTimeout(cb, 200);
+
+  schedule(() => {
+    // Páginas principales del usuario (alta prioridad)
+    importTorneosUsuario();
+    importMercadoUsuario();
+    importUpdateTeam();
+    importGestionOfertas();
+    importDetalleTorneo();
+    importJornadasUsuario();
+  });
+
+  // Páginas secundarias con un poco más de delay
+  setTimeout(() => {
+    importLeaderboardTorneo();
+    importMiEquipoJornada();
+    importDetalleJornada();
+    importMisPuntosHistorial();
+    importDetalleJornadaEquipo();
+    importMiPerfil();
+    importCrearTorneo();
+    importUnirseATorneo();
+    importVerEquipoOtroJugador();
+  }, 2000);
+}
+
+function prefetchAdminRoutes() {
+  setTimeout(() => {
+    importAdminPage();
+    importPlayersCRUD();
+    importUsersCRUD();
+    importGestionTorneosAdmin();
+    importGestionJornadasAdmin();
+    importGestionEquiposAdmin();
+    importGestionMercadoAdmin();
+  }, 2000);
+}
 
 // Componente interno que usa useAuth (debe estar DENTRO de AuthProvider)
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -135,10 +184,21 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 // Componente que maneja el listener de sesión expirada (DENTRO de AuthProvider)
 function SessionExpirationHandler() {
-  const { logout } = useAuth();
+  const { logout, isAuthenticated, user } = useAuth();
+  const isAuthenticatedRef = useRef(isAuthenticated);
+
+  // Mantener ref actualizada para usarla dentro del event listener
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleSessionExpired = () => {
+      // Solo redirigir si el usuario estaba autenticado
+      // Evita el loop infinito cuando no hay sesión (browser nuevo)
+      if (!isAuthenticatedRef.current) {
+        return;
+      }
       logout();
       window.location.href = '/login';
     };
@@ -149,7 +209,17 @@ function SessionExpirationHandler() {
     };
   }, [logout]);
 
-  return null; // No renderiza nada, solo maneja el evento
+  // Prefetch de rutas cuando el usuario está autenticado
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    const isAdmin = user.role === 'admin' || user.rol === 'admin';
+    if (isAdmin) {
+      prefetchAdminRoutes();
+    }
+    prefetchUserRoutes();
+  }, [isAuthenticated, user]);
+
+  return null;
 }
 
 // Componente con todas las rutas (DENTRO de AuthProvider)
@@ -172,7 +242,7 @@ function AppRoutes() {
             <Route path="/CreateUser" element={<CreateUser />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/new-password" element={<NewPassword />} />
+            <Route path="/new-password/:resetToken" element={<NewPassword />} />
             <Route
               path="/club"
               element={
@@ -309,6 +379,14 @@ function AppRoutes() {
                 </AdminRoute>
               }
             />
+            <Route
+              path="/admin/automation"
+              element={
+                <AdminRoute>
+                  <GestionAutomationAdmin />
+                </AdminRoute>
+              }
+            />
 
             {/* Rutas de Torneos */}
             <Route
@@ -364,6 +442,14 @@ function AppRoutes() {
               element={
                 <ProtectedRoute requireTeam={false}>
                   <GestionOfertas />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mercado"
+              element={
+                <ProtectedRoute requireTeam={false}>
+                  <Navigate to="/torneos" replace />
                 </ProtectedRoute>
               }
             />

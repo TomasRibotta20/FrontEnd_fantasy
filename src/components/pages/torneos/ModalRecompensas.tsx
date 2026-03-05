@@ -101,14 +101,14 @@ const ModalRecompensas = ({
             const ahora = new Date();
             const segundosRestantes = Math.max(
               0,
-              Math.floor((tiempoLimiteDate.getTime() - ahora.getTime()) / 1000)
+              Math.floor((tiempoLimiteDate.getTime() - ahora.getTime()) / 1000),
             );
             setTiempoRestante(segundosRestantes);
           }
 
           setEtapaPlayerPick('seleccionando_jugador');
           setMensaje(
-            pickData.mensaje || 'Tienes un pick pendiente. Elige tu jugador.'
+            pickData.mensaje || 'Tienes un pick pendiente. Elige tu jugador.',
           );
         }
         // Verificar si es PlayerPick en proceso (formato antiguo)
@@ -119,7 +119,7 @@ const ModalRecompensas = ({
         }
         // Opciones normales de premio
         else if ('opciones' in data) {
-          setOpciones(data.opciones);
+          setOpciones(data.opciones as PremioOpcion[]);
         }
       } catch (err) {
         const error = err as { response?: { data?: { message?: string } } };
@@ -161,7 +161,7 @@ const ModalRecompensas = ({
       switch (respuesta.tipo) {
         case 'saldo':
           setMensaje(
-            `¡Felicidades! Has recibido $${respuesta.monto.toLocaleString()}`
+            `¡Felicidades! Has recibido $${respuesta.monto.toLocaleString()}`,
           );
           setEtapaPlayerPick('completado');
           setTimeout(() => {
@@ -200,7 +200,7 @@ const ModalRecompensas = ({
           // Establecer la variable CSS
           document.documentElement.style.setProperty(
             '--final-rotation',
-            `${rotacionFinal}deg`
+            `${rotacionFinal}deg`,
           );
 
           // Mostrar animación de ruleta con los datos correctos
@@ -227,7 +227,7 @@ const ModalRecompensas = ({
           setMensaje(
             `${
               respuesta.mensaje
-            } Te compensamos con $${respuesta.montoCompensacion.toLocaleString()}`
+            } Te compensamos con $${respuesta.montoCompensacion.toLocaleString()}`,
           );
           setEtapaPlayerPick('completado');
           setTimeout(() => {
@@ -240,7 +240,7 @@ const ModalRecompensas = ({
           setMensaje(
             `${
               respuesta.mensaje
-            } Recibiste $${respuesta.montoCompensacion.toLocaleString()}`
+            } Recibiste $${respuesta.montoCompensacion.toLocaleString()}`,
           );
           setEtapaPlayerPick('completado');
           setTimeout(() => {
@@ -256,7 +256,7 @@ const ModalRecompensas = ({
           const ahora = new Date();
           const segundosRestantes = Math.max(
             0,
-            Math.floor((tiempoLimiteDate.getTime() - ahora.getTime()) / 1000)
+            Math.floor((tiempoLimiteDate.getTime() - ahora.getTime()) / 1000),
           );
           setTiempoRestante(segundosRestantes);
           setEtapaPlayerPick('seleccionando_jugador');
@@ -302,15 +302,15 @@ const ModalRecompensas = ({
               const segundosRestantes = Math.max(
                 0,
                 Math.floor(
-                  (tiempoLimiteDate.getTime() - ahora.getTime()) / 1000
-                )
+                  (tiempoLimiteDate.getTime() - ahora.getTime()) / 1000,
+                ),
               );
               setTiempoRestante(segundosRestantes);
             }
 
             setEtapaPlayerPick('seleccionando_jugador');
             setMensaje(
-              pickData.mensaje || 'Tienes un pick pendiente. Elige tu jugador.'
+              pickData.mensaje || 'Tienes un pick pendiente. Elige tu jugador.',
             );
             setError(null); // Limpiar error ya que mostramos el pick
             return;
@@ -333,13 +333,13 @@ const ModalRecompensas = ({
       const recompensaId = recompensa.id_recompensa || recompensa.id;
       const respuesta = await recompensasService.confirmarPick(
         recompensaId,
-        jugadorId
+        jugadorId,
       );
 
       setMensaje(
         `¡Excelente elección! Has fichado a ${
           respuesta.jugador.name
-        } por $${respuesta.jugador.precio_actual.toLocaleString()}`
+        } por $${respuesta.jugador.precio_actual.toLocaleString()}`,
       );
       setEtapaPlayerPick('completado');
       setTimeout(() => {
@@ -372,7 +372,7 @@ const ModalRecompensas = ({
             <div className="flex items-center gap-3">
               <span
                 className={`px-4 py-2 rounded-lg font-bold text-lg border-2 ${getMedallaColor(
-                  tierEfectivo
+                  tierEfectivo,
                 )}`}
               >
                 {tierEfectivo}
@@ -694,16 +694,14 @@ const ModalRecompensas = ({
                       }
                     >
                       <div className="text-center">
-                        <h4 className="text-lg font-bold text-white mb-2">
-                          {premio.tipo === 'SALDO'
-                            ? 'Dinero'
-                            : premio.tipo === 'RULETA'
-                            ? 'Ruleta'
-                            : 'Elige Jugador'}
+                        <h4 className="text-lg font-bold text-white mb-4">
+                          {premio.descripcion ||
+                            (premio.tipo?.toLowerCase() === 'saldo'
+                              ? 'Premio en Efectivo'
+                              : premio.tipo?.toLowerCase() === 'ruleta'
+                                ? 'Ruleta de Cracks'
+                                : 'Elección de Jugador')}
                         </h4>
-                        <p className="text-white/70 text-sm mb-4">
-                          {premio.descripcion}
-                        </p>
                         {premio.monto && (
                           <p className="text-green-400 font-bold text-xl">
                             ${premio.monto.toLocaleString()}

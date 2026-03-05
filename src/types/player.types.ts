@@ -38,6 +38,9 @@ export interface Player {
   puntaje?: number;
   precio?: number;
   valor_clausula?: number; // Cláusula de rescisión
+  valor_clausula_efectiva?: number; // Cláusula efectiva calculada
+  dias_proteccion_restantes?: number; // Días de protección restantes
+  esta_protegido?: boolean; // Si el jugador está protegido
   club?: Club | number;
 }
 
@@ -83,6 +86,9 @@ export interface BackendPlayerResponse {
   jugador: BackendJugador;
   es_titular: boolean;
   valor_clausula?: number;
+  valor_clausula_efectiva?: number;
+  dias_proteccion_restantes?: number;
+  esta_protegido?: boolean;
 }
 
 // Interfaz para jugador en el mercado

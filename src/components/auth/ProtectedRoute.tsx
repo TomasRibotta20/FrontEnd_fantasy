@@ -3,6 +3,10 @@ import { useAuth } from '../../hooks/useAuth';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import apiClient from '../../services/apiClient';
+import {
+  useTorneoSeleccionado,
+  useMiEquipoId,
+} from '../../hooks/useSessionData';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -10,6 +14,7 @@ interface ProtectedRouteProps {
   requireTeam?: boolean;
 }
 
+/** Componente de ruta protegida que requiere autenticación. */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   redirectTo = '/login',
@@ -19,15 +24,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [checkingTeam, setCheckingTeam] = useState(true);
+  const [torneoId] = useTorneoSeleccionado();
+  const [equipoId] = useMiEquipoId();
 
   useEffect(() => {
     const checkUserTeam = async () => {
-      // Si hay equipoId o torneoId en query params, viene de un torneo y no verificamos
-      const searchParams = new URLSearchParams(location.search);
-      const equipoId = searchParams.get('equipoId');
-      const torneoId = searchParams.get('torneoId');
-
-      // Si estamos en páginas de torneos, jornadas, equipos, LoggedMenu, UpdateTeam con equipoId, o no requiere equipo, no verificamos
+      // Si hay torneoId o equipoId en el estado global, el usuario está en un torneo
       if (
         location.pathname.startsWith('/torneos') ||
         location.pathname.startsWith('/jornadas') ||
@@ -36,6 +38,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         location.pathname.startsWith('/LoggedMenu') ||
         location.pathname.startsWith('/leaderboard') ||
         location.pathname.startsWith('/ver-equipo') ||
+        location.pathname.startsWith('/mercado') ||
+        location.pathname.startsWith('/mis-ofertas') ||
         equipoId ||
         torneoId ||
         !requireTeam
@@ -70,7 +74,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isAuthenticated,
     isLoading,
     location.pathname,
-    location.search,
+    torneoId,
+    equipoId,
     requireTeam,
   ]);
 

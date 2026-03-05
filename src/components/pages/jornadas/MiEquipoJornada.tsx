@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LoadingSpinner from '../../common/LoadingSpinner';
 import {
   jornadasService,
   equiposService,
   type Jornada,
   type PuntajeEquipo,
 } from '../../../services/jornadasService';
+import { useMiEquipoId } from '../../../hooks/useSessionData';
 
 const MiEquipoJornada = () => {
   const { jornadaId } = useParams<{ jornadaId: string }>();
   const navigate = useNavigate();
+  const [miEquipoIdHook] = useMiEquipoId();
   const [jornada, setJornada] = useState<Jornada | null>(null);
   const [puntajes, setPuntajes] = useState<PuntajeEquipo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,7 +23,7 @@ const MiEquipoJornada = () => {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jornadaId]);
+  }, [jornadaId, miEquipoIdHook]);
 
   const loadData = async () => {
     if (!jornadaId) return;
@@ -30,20 +33,18 @@ const MiEquipoJornada = () => {
 
       // Cargar información de la jornada
       const jornadaData = await jornadasService.getJornadaById(
-        Number(jornadaId)
+        Number(jornadaId),
       );
       setJornada(jornadaData);
 
-      // Obtener equipoId desde localStorage
-      const equipoIdStr = localStorage.getItem('miEquipoId');
+      // Obtener equipoId desde el hook de sesión
+      const equipoId = miEquipoIdHook ? Number(miEquipoIdHook) : null;
 
-      if (equipoIdStr) {
-        const equipoId = Number(equipoIdStr);
-
+      if (equipoId) {
         // Cargar puntajes del equipo para esta jornada
         const puntajesData = await equiposService.getPuntajesEquipoJornada(
           equipoId,
-          Number(jornadaId)
+          Number(jornadaId),
         );
         setPuntajes(puntajesData);
       }
@@ -59,10 +60,7 @@ const MiEquipoJornada = () => {
   if (loading && !jornada) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="animate-spin text-6xl mb-4">●</div>
-          <p className="text-xl">Cargando información...</p>
-        </div>
+        <LoadingSpinner variant="section" message="Cargando información..." />
       </div>
     );
   }
@@ -201,7 +199,7 @@ const MiEquipoJornada = () => {
                   Promedio:{' '}
                   <span className="font-bold text-yellow-400">
                     {Math.round(
-                      puntajes.puntajeTotal / puntajes.jugadores.length
+                      puntajes.puntajeTotal / puntajes.jugadores.length,
                     )}
                   </span>{' '}
                   puntos por jugador

@@ -8,6 +8,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+/** Proveedor de contexto de autenticación para la aplicación. */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,7 +19,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // El backend usa /api/users/profile para obtener el usuario actual
       // basándose en la cookie HttpOnly
-      const response = await apiClient.get('/api/users/profile');
+      const response = await apiClient.get('/api/users/profile', {
+        _skipAuthRefresh: true,
+      } as any);
       const userData =
         response.data?.data || response.data?.user || response.data;
       if (userData) {
@@ -41,14 +44,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Refrescar token cada 14 minutos (antes de que expire a los 15 min)
-    refreshIntervalRef.current = setInterval(async () => {
-      try {
-        await apiClient.post('/api/auth/refreshToken');
-      } catch {
-        // Si falla el refresh, cerrar sesión
-        setUser(null);
-      }
-    }, 14 * 60 * 1000) as unknown as number;
+    refreshIntervalRef.current = setInterval(
+      async () => {
+        try {
+          await apiClient.post('/api/auth/refreshToken');
+        } catch {
+          // Si falla el refresh, cerrar sesión
+          setUser(null);
+        }
+      },
+      14 * 60 * 1000,
+    ) as unknown as number;
   }, []);
 
   // Verificar sesión al iniciar la app (en lugar de leer localStorage)
@@ -86,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       startRefreshTokenInterval();
     },
-    [startRefreshTokenInterval]
+    [startRefreshTokenInterval],
   );
 
   const logout = useCallback(async () => {

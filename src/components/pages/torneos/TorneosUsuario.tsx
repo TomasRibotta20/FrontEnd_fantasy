@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { obtenerMisTorneos } from '../../../services/torneosService';
 import type { TorneoListItem } from '../../../services/torneosService';
 import { useAuth } from '../../../hooks/useAuth';
+import LoadingSpinner from '../../common/LoadingSpinner';
 
+/** Página de torneos del usuario. */
 function TorneosUsuario() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -20,8 +22,7 @@ function TorneosUsuario() {
       setIsLoading(true);
       const response = await obtenerMisTorneos(estado);
       setTorneos(response.data || []);
-    } catch (error) {
-      console.error('Error al cargar torneos:', error);
+    } catch {
       setMessage({
         type: 'error',
         text: 'Error al cargar los torneos',
@@ -134,24 +135,11 @@ function TorneosUsuario() {
           >
             Activos
           </button>
-          <button
-            onClick={() => handleFiltroChange('FINALIZADO')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 ${
-              filtroEstado === 'FINALIZADO'
-                ? 'bg-gray-500 text-white shadow-lg'
-                : 'bg-white/20 text-white hover:bg-white/30'
-            }`}
-          >
-            Finalizados
-          </button>
         </div>
 
         {/* Lista de torneos */}
         {isLoading ? (
-          <div className="text-center text-white text-2xl py-20">
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
-            <p className="mt-4">Cargando torneos...</p>
-          </div>
+          <LoadingSpinner variant="section" message="Cargando torneos..." />
         ) : torneos.length === 0 ? (
           <div className="backdrop-blur-lg bg-white/10 rounded-2xl border-2 border-white/40 p-12 text-center shadow-2xl">
             <p className="text-2xl text-white mb-4">
@@ -188,7 +176,7 @@ function TorneosUsuario() {
                 <div className="flex justify-between items-start mb-4">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${getEstadoBadge(
-                      torneo.estado
+                      torneo.estado,
                     )}`}
                   >
                     {torneo.estado.replace('_', ' ')}
@@ -204,6 +192,13 @@ function TorneosUsuario() {
                 <h3 className="text-2xl font-bold text-white mb-2">
                   {torneo.nombre}
                 </h3>
+
+                {/* Descripción del torneo */}
+                {torneo.descripcion && (
+                  <p className="text-white/70 text-sm mb-3 line-clamp-2">
+                    {torneo.descripcion}
+                  </p>
+                )}
 
                 {/* Participantes */}
                 <div className="flex items-center gap-2 mb-3">
@@ -254,7 +249,7 @@ function TorneosUsuario() {
                       e.stopPropagation();
                       navigate(`/torneos/${torneo.torneo_id}`);
                     }}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
                   >
                     Ver Detalles →
                   </button>

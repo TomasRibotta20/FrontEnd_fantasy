@@ -145,6 +145,7 @@ export interface RespuestaConfirmarPick {
 // SERVICIO DE RECOMPENSAS
 // ========================================
 
+/** Servicio para gestionar recompensas, premios y player picks. */
 export const recompensasService = {
   /**
    * Obtener recompensas pendientes del usuario
