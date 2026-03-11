@@ -275,7 +275,7 @@ const GestionMercadoAdmin = () => {
 
               {!loading && !mercadoActivo && (
                 <div className="bg-yellow-500/20 border-2 border-yellow-500/50 rounded-lg p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-xl font-bold text-yellow-300 mb-2">
                         No hay mercado activo
@@ -287,7 +287,7 @@ const GestionMercadoAdmin = () => {
                     </div>
                     <button
                       onClick={handleHabilitarMercado}
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-lg transition-all shadow-lg"
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 sm:px-8 rounded-lg transition-all shadow-lg w-full sm:w-auto"
                       disabled={loading}
                     >
                       Habilitar Mercado

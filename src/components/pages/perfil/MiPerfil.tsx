@@ -80,7 +80,7 @@ const MiPerfil = () => {
 
   return (
     <div
-      className="min-h-screen pt-24 pb-8 px-8 relative"
+      className="min-h-screen pt-24 pb-8 px-4 sm:px-8 relative"
       style={{
         backgroundImage: "url('/Background_LandingPage.png')",
         backgroundSize: 'cover',
@@ -97,7 +97,7 @@ const MiPerfil = () => {
           >
             ← Volver al Inicio
           </button>
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white drop-shadow-lg">
             Mi Perfil
           </h1>
         </div>
@@ -116,16 +116,16 @@ const MiPerfil = () => {
         )}
 
         {/* Card del Perfil */}
-        <div className="backdrop-blur-lg bg-white/20 rounded-2xl border-2 border-white/30 p-8 shadow-2xl">
+        <div className="backdrop-blur-lg bg-white/20 rounded-2xl border-2 border-white/30 p-5 sm:p-8 shadow-2xl">
           {/* Avatar y nombre */}
-          <div className="flex items-center gap-6 mb-8 pb-6 border-b border-white/20">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-xl">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-8 pb-6 border-b border-white/20">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold shadow-xl">
               {profile?.username?.charAt(0).toUpperCase() ||
                 user?.username?.charAt(0).toUpperCase() ||
                 '?'}
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">
+            <div className="text-center sm:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
                 {profile?.username || user?.username}
               </h2>
               <span
@@ -147,7 +147,7 @@ const MiPerfil = () => {
                 Nombre de Usuario
               </label>
               {isEditing ? (
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <input
                     type="text"
                     value={newUsername}

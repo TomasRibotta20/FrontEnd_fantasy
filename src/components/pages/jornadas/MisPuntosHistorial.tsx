@@ -150,22 +150,21 @@ const MisPuntosHistorial = () => {
     jornadas.length > 0 ? Math.round(puntajeTotal / jornadas.length) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-4 sm:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => {
               const params = new URLSearchParams();
-              if (equipoIdFromUrl) params.append('equipoId', equipoIdFromUrl);
-              if (torneoIdFromUrl) params.append('torneoId', torneoIdFromUrl);
+              if (miEquipoId) params.append('equipoId', String(miEquipoId));
               navigate(`/jornadas?${params.toString()}`);
             }}
             className="text-white hover:text-gray-300 mb-4 flex items-center gap-2"
           >
             ← Volver a Jornadas
           </button>
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Mi Historial de Puntos
           </h1>
         </div>
@@ -174,17 +173,19 @@ const MisPuntosHistorial = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-yellow-600 to-orange-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Puntos Totales</p>
-            <p className="text-white text-5xl font-bold">
+            <p className="text-white text-3xl sm:text-5xl font-bold">
               {puntajeTotal.toFixed(1)}
             </p>
           </div>
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Jornadas Jugadas</p>
-            <p className="text-white text-5xl font-bold">{jornadas.length}</p>
+            <p className="text-white text-3xl sm:text-5xl font-bold">
+              {jornadas.length}
+            </p>
           </div>
           <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-6 shadow-lg border-2 border-white/20">
             <p className="text-white/80 text-sm mb-2">Promedio</p>
-            <p className="text-white text-5xl font-bold">
+            <p className="text-white text-3xl sm:text-5xl font-bold">
               {promedio.toFixed(1)}
             </p>
           </div>
@@ -210,10 +211,7 @@ const MisPuntosHistorial = () => {
               <button
                 onClick={() => {
                   const params = new URLSearchParams();
-                  if (equipoIdFromUrl)
-                    params.append('equipoId', equipoIdFromUrl);
-                  if (torneoIdFromUrl)
-                    params.append('torneoId', torneoIdFromUrl);
+                  if (miEquipoId) params.append('equipoId', String(miEquipoId));
                   navigate(`/jornadas?${params.toString()}`);
                 }}
                 className="mt-6 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold"
@@ -235,7 +233,7 @@ const MisPuntosHistorial = () => {
                       )
                     }
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div>
                         <div className="text-gray-400 text-xs mb-1">
                           Jornada #{getNumeroJornada(jornadaData)}

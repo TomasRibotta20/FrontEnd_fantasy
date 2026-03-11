@@ -10,7 +10,7 @@ import {
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import ballLogo from '../../assets/Ball_Logo.png';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import apiClient from '../../services/apiClient';
 import SelectorTorneos from './SelectorTorneos';
@@ -46,7 +46,6 @@ function classNames(...classes: (string | undefined | null | false)[]) {
 export default function NavBar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [showTorneoWarning, setShowTorneoWarning] = useState(false);
 
   // Fuente única de verdad: hooks de sesión
@@ -195,18 +194,18 @@ export default function NavBar() {
           )}
 
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-            {/* Mostrar botones de login/register si no está autenticado */}
+            {/* Mostrar botones de login/register si no está autenticado - solo en desktop */}
             {!isAuthenticated ? (
-              <div className="flex space-x-3">
+              <div className="hidden sm:flex space-x-3">
                 <button
                   onClick={() => navigate('/CreateUser')}
-                  className="text-white hover:bg-white/20 hover:text-white px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200 border-2 border-white/30 hover:border-white/50 drop-shadow-md"
+                  className="text-white hover:bg-white/20 hover:text-white px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 border-2 border-white/30 hover:border-white/50 drop-shadow-md"
                 >
                   Registrarse
                 </button>
                 <button
                   onClick={() => navigate('/login')}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200 shadow-xl hover:shadow-2xl border-2 border-white/30 drop-shadow-md"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shadow-xl hover:shadow-2xl border-2 border-white/30 drop-shadow-md"
                 >
                   Iniciar Sesión
                 </button>
@@ -240,37 +239,9 @@ export default function NavBar() {
                     </div>
                   </MenuItem>
                   <MenuItem>
-                    <a
-                      href="#"
-                      className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                    >
-                      Tu Perfil
-                    </a>
-                  </MenuItem>
-                  {user?.role === 'admin' || user?.rol === 'admin' ? (
-                    <>
-                      <MenuItem>
-                        <button
-                          onClick={() => navigate('/admin')}
-                          className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 data-focus:bg-purple-50 data-focus:text-purple-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                        >
-                          Panel de Administración
-                        </button>
-                      </MenuItem>
-                      <MenuItem>
-                        <a
-                          href="#"
-                          className="block px-4 py-2.5 text-sm text-gray-700 data-focus:bg-blue-50 data-focus:text-blue-600 data-focus:outline-hidden transition-colors duration-150 font-medium"
-                        >
-                          Configuración
-                        </a>
-                      </MenuItem>
-                    </>
-                  ) : null}
-                  <MenuItem>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2.5 text-sm text-red-600 data-focus:bg-red-50 data-focus:text-red-700 data-focus:outline-hidden transition-colors duration-150 font-medium border-t border-gray-200"
+                      className="block w-full text-left px-4 py-2.5 text-sm text-red-600 data-focus:bg-red-50 data-focus:text-red-700 data-focus:outline-hidden transition-colors duration-150 font-medium"
                     >
                       Cerrar Sesión
                     </button>
@@ -282,35 +253,62 @@ export default function NavBar() {
         </div>
       </div>
 
-      {/* Solo mostrar panel móvil si NO es admin */}
+      {/* Panel móvil - NO admin */}
       {user?.role !== 'admin' && (
         <DisclosurePanel className="sm:hidden backdrop-blur-lg bg-white/20 border-t-2 border-white/30">
           <div className="space-y-2 px-3 pt-3 pb-4">
-            {navigation.map((item) => (
-              <DisclosureButton
-                key={item.name}
-                as="button"
-                onClick={() => {
-                  if (item.requiresTorneo && !torneoId) {
-                    setShowTorneoWarning(true);
-                    setTimeout(() => setShowTorneoWarning(false), 3000);
-                    return;
-                  }
-                  navigate(item.href);
-                }}
-                aria-current={item.current ? 'page' : undefined}
-                className={classNames(
-                  item.current
-                    ? 'bg-white/30 text-white shadow-xl border-white/50'
-                    : item.requiresTorneo && !torneoId
-                      ? 'text-white/50 border-white/20'
-                      : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
-                  'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2',
-                )}
-              >
-                {item.name}
-              </DisclosureButton>
-            ))}
+            {/* Botones de auth en móvil */}
+            {!isAuthenticated && (
+              <div className="flex gap-2 pb-2 mb-2 border-b border-white/20">
+                <DisclosureButton
+                  as="button"
+                  onClick={() => navigate('/CreateUser')}
+                  className="flex-1 text-white hover:bg-white/20 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 border-2 border-white/30 hover:border-white/50 drop-shadow-md text-center"
+                >
+                  Registrarse
+                </DisclosureButton>
+                <DisclosureButton
+                  as="button"
+                  onClick={() => navigate('/login')}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 shadow-xl border-2 border-white/30 drop-shadow-md text-center"
+                >
+                  Iniciar Sesión
+                </DisclosureButton>
+              </div>
+            )}
+            {/* Selector de torneos y navegación en móvil - solo autenticados */}
+            {isAuthenticated && (
+              <>
+                <div className="pb-2 mb-2 border-b border-white/20">
+                  <SelectorTorneos />
+                </div>
+                {navigation.map((item) => (
+                  <DisclosureButton
+                    key={item.name}
+                    as="button"
+                    onClick={() => {
+                      if (item.requiresTorneo && !torneoId) {
+                        setShowTorneoWarning(true);
+                        setTimeout(() => setShowTorneoWarning(false), 3000);
+                        return;
+                      }
+                      navigate(item.href);
+                    }}
+                    aria-current={item.current ? 'page' : undefined}
+                    className={classNames(
+                      item.current
+                        ? 'bg-white/30 text-white shadow-xl border-white/50'
+                        : item.requiresTorneo && !torneoId
+                          ? 'text-white/50 border-white/20'
+                          : 'text-white hover:bg-white/20 hover:text-white border-white/30 hover:border-white/50',
+                      'block w-full text-left rounded-xl px-4 py-2.5 text-base font-bold transition-all duration-200 drop-shadow-md border-2',
+                    )}
+                  >
+                    {item.name}
+                  </DisclosureButton>
+                ))}
+              </>
+            )}
           </div>
         </DisclosurePanel>
       )}

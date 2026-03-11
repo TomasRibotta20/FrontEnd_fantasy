@@ -150,7 +150,7 @@ const GestionOfertas = () => {
 
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-3">
           <button
             onClick={() => navigate('/LoggedMenu')}
             className="backdrop-blur-lg bg-white/10 hover:bg-white/20 rounded-lg px-4 py-2 text-white border border-white/30 transition-all flex items-center gap-2"
@@ -158,8 +158,10 @@ const GestionOfertas = () => {
             <span>←</span>
             Volver
           </button>
-          <h1 className="text-white text-3xl font-bold">Mis Ofertas</h1>
-          <div className="w-24"></div>
+          <h1 className="text-white text-2xl sm:text-3xl font-bold">
+            Mis Ofertas
+          </h1>
+          <div className="w-24 hidden sm:block"></div>
         </div>
 
         {/* Tabs */}
@@ -214,7 +216,7 @@ const GestionOfertas = () => {
                   key={oferta.id}
                   className="backdrop-blur-lg bg-white/10 rounded-xl border-2 border-white/40 p-6 hover:bg-white/15 transition-all"
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
                     {/* Imagen del jugador */}
                     <img
                       src={
@@ -227,7 +229,7 @@ const GestionOfertas = () => {
                         oferta.jugador?.name ||
                         'Jugador'
                       }
-                      className="w-24 h-24 rounded-full object-cover border-4 border-white/30 shadow-lg"
+                      className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white/30 shadow-lg mx-auto sm:mx-0 flex-shrink-0"
                       loading="lazy"
                       onError={(e) => {
                         e.currentTarget.src = '/default-player.png';
@@ -236,7 +238,7 @@ const GestionOfertas = () => {
 
                     {/* Información del jugador y oferta */}
                     <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row items-start justify-between mb-2 gap-2">
                         <div>
                           <h3 className="text-white text-xl font-bold">
                             {oferta.jugador?.nombre ||

@@ -385,7 +385,7 @@ const DetalleJornada = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-4 sm:px-8 flex items-center justify-center">
         <LoadingSpinner variant="section" message="Cargando jornada..." />
       </div>
     );
@@ -393,10 +393,10 @@ const DetalleJornada = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-4 sm:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-500 text-white p-6 rounded-lg">
-            <h2 className="text-2xl font-bold mb-2">Error</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">Error</h2>
             <p className="mb-4">{error}</p>
             <div className="bg-red-700 p-3 rounded text-sm mb-4">
               <p className="font-mono">Jornada ID: {id}</p>
@@ -438,10 +438,10 @@ const DetalleJornada = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-4 sm:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
             <button
               onClick={() => navigate(-1)}
@@ -449,7 +449,7 @@ const DetalleJornada = () => {
             >
               ← Volver
             </button>
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white">
               {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
             </h1>
             <div className="mt-2 space-y-1">
@@ -471,7 +471,7 @@ const DetalleJornada = () => {
         </div>
 
         {/* Estado de la Jornada */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <p className="text-gray-300 text-sm mb-2">Estado</p>
             <p
@@ -591,13 +591,13 @@ const DetalleJornada = () => {
 
         {/* Partidos de la Jornada */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
             <div>
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
                 Partidos de la Jornada
               </h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={loadJornadaData}
                 disabled={loading}
@@ -724,7 +724,7 @@ const DetalleJornada = () => {
 
         {/* Estadísticas Resumidas */}
         {puntajes && puntajes.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
               <p className="text-gray-300 text-sm mb-1">Total Jugadores</p>
               <p className="text-2xl font-bold text-white">{puntajes.length}</p>

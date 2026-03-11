@@ -65,11 +65,11 @@ function TorneosUsuario() {
 
       <div className="relative z-20 container mx-auto px-4 py-8 pt-32">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-5xl font-bold text-white mb-2 sm:mb-4 drop-shadow-lg">
             Mis Torneos
           </h1>
-          <p className="text-xl text-white/90 drop-shadow-md">
+          <p className="text-base sm:text-xl text-white/90 drop-shadow-md">
             Bienvenido, {user?.username}
           </p>
         </div>
@@ -88,26 +88,26 @@ function TorneosUsuario() {
         )}
 
         {/* Botones de acción */}
-        <div className="flex justify-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <button
             onClick={() => navigate('/torneos/crear')}
-            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 sm:px-8 py-3 rounded-xl font-bold text-base sm:text-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             Crear Torneo
           </button>
           <button
             onClick={() => navigate('/torneos/unirse')}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 sm:px-8 py-3 rounded-xl font-bold text-base sm:text-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             Unirse a Torneo
           </button>
         </div>
 
         {/* Filtros */}
-        <div className="flex justify-center gap-3 mb-8">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
           <button
             onClick={() => handleFiltroChange('')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 ${
+            className={`px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 ${
               filtroEstado === ''
                 ? 'bg-white text-gray-800 shadow-lg'
                 : 'bg-white/20 text-white hover:bg-white/30'
@@ -117,7 +117,7 @@ function TorneosUsuario() {
           </button>
           <button
             onClick={() => handleFiltroChange('EN_ESPERA')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 ${
+            className={`px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 ${
               filtroEstado === 'EN_ESPERA'
                 ? 'bg-yellow-500 text-white shadow-lg'
                 : 'bg-white/20 text-white hover:bg-white/30'
@@ -127,7 +127,7 @@ function TorneosUsuario() {
           </button>
           <button
             onClick={() => handleFiltroChange('ACTIVO')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all duration-200 ${
+            className={`px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm sm:text-base transition-all duration-200 ${
               filtroEstado === 'ACTIVO'
                 ? 'bg-green-500 text-white shadow-lg'
                 : 'bg-white/20 text-white hover:bg-white/30'
@@ -189,7 +189,7 @@ function TorneosUsuario() {
                 </div>
 
                 {/* Nombre del torneo */}
-                <h3 className="text-2xl font-bold text-white mb-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
                   {torneo.nombre}
                 </h3>
 

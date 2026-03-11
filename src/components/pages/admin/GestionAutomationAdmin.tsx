@@ -190,7 +190,7 @@ const GestionAutomationAdmin = () => {
               </div>
 
               {/* Info grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white/5 rounded-xl p-4">
                   <p className="text-white/50 text-xs uppercase tracking-wider mb-1">
                     Estado Automation

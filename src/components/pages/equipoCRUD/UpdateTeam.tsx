@@ -68,6 +68,7 @@ const UpdateTeam = () => {
   const [presupuestoBloqueado, setPresupuestoBloqueado] = useState<number>(0);
   const [equipoIdResuelto, setEquipoIdResuelto] = useState<string | null>(null);
   const [validandoAcceso, setValidandoAcceso] = useState(true);
+  const [loadingEquipo, setLoadingEquipo] = useState(true);
 
   // ✅ Usar hooks reactivos para obtener torneoId y equipoId guardados
   const [torneoGuardadoId] = useTorneoSeleccionado();
@@ -156,6 +157,7 @@ const UpdateTeam = () => {
   const [selectedPlayerToBlindar, setSelectedPlayerToBlindar] =
     useState<Player | null>(null);
   const [montoIncremento, setMontoIncremento] = useState<number>(0);
+  const [blindando, setBlindando] = useState(false);
 
   // Estado para mostrar info de blindaje
   const [infoBlindaje, setInfoBlindaje] = useState<{
@@ -198,6 +200,7 @@ const UpdateTeam = () => {
         return;
       }
 
+      setLoadingEquipo(true);
       try {
         // Usar el equipoId resuelto (de sessionStorage o de la API)
         const endpoint = `/api/equipos/detalle-equipo/${equipoIdResuelto}`;
@@ -380,6 +383,8 @@ const UpdateTeam = () => {
         }
       } catch {
         // Error al obtener mi equipo
+      } finally {
+        setLoadingEquipo(false);
       }
     };
     fetchTeamPlayers();
@@ -735,6 +740,7 @@ const UpdateTeam = () => {
       return;
     }
 
+    setBlindando(true);
     try {
       await clausulasService.blindarJugador(
         parseInt(equipoIdResuelto),
@@ -765,6 +771,8 @@ const UpdateTeam = () => {
         type: 'error',
         text: errorMsg,
       });
+    } finally {
+      setBlindando(false);
     }
   }, [selectedPlayerToBlindar, equipoIdResuelto, montoIncremento]);
 
@@ -802,20 +810,7 @@ const UpdateTeam = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="relative flex px-4 h-screen items-center justify-center gap-3 pt-20 pb-3 overflow-hidden">
-        {/* Botón Volver al Leaderboard */}
-        <button
-          className="absolute left-4 top-4 z-20 bg-white/80 hover:bg-white text-blue-700 font-bold py-2 px-4 rounded-lg shadow transition-all duration-150 border border-blue-200 backdrop-blur"
-          onClick={() => {
-            if (window.history.length > 2) {
-              navigate(-1);
-            } else {
-              navigate('/leaderboard');
-            }
-          }}
-        >
-          ← Volver al Leaderboard
-        </button>
+      <div className="relative flex flex-col lg:flex-row px-2 sm:px-4 min-h-screen lg:h-screen items-start lg:items-center justify-start lg:justify-center gap-3 pt-20 pb-3 overflow-y-auto lg:overflow-hidden">
         {/* Rectángulo Izquierdo - Estadísticas */}
         <div className="hidden lg:flex team-summary-card w-full max-w-[420px] p-3 rounded-xl shadow-2xl h-[calc(100vh-6rem)] flex-col">
           <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
@@ -944,7 +939,7 @@ const UpdateTeam = () => {
         </div>
 
         {/* Tarjeta Central - Mi Equipo */}
-        <div className="team-summary-card w-full max-w-2xl lg:max-w-4xl p-3 rounded-xl shadow-2xl max-h-[calc(100vh-6rem)] flex flex-col">
+        <div className="team-summary-card w-full lg:max-w-4xl p-3 rounded-xl shadow-2xl lg:max-h-[calc(100vh-6rem)] flex flex-col mt-12 lg:mt-0">
           <div className="border-b border-white/20 pb-2 mb-2 flex-shrink-0">
             <h2 className="text-base font-bold text-center text-white">
               Mi Equipo
@@ -971,10 +966,37 @@ const UpdateTeam = () => {
           </div>
 
           {/* Sección de controles de intercambio */}
-          {teamPlayers.length > 0 ? (
-            <div className="flex-1 flex gap-6 overflow-hidden pt-2">
+          {loadingEquipo ? (
+            <div className="flex-1 flex items-center justify-center py-12">
+              <div className="flex flex-col items-center gap-3">
+                <svg
+                  className="animate-spin h-10 w-10 text-white/70"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <p className="text-white/60 text-sm font-medium">
+                  Cargando jugadores...
+                </p>
+              </div>
+            </div>
+          ) : teamPlayers.length > 0 ? (
+            <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-visible lg:overflow-hidden pt-2">
               {/* Contenedor de Titulares - Más grande */}
-              <div className="flex-1 flex flex-col overflow-hidden pr-2 min-h-0">
+              <div className="flex-1 flex flex-col overflow-visible min-h-0">
                 {/* Equipo titular */}
                 <div className="flex-shrink-0 overflow-visible">
                   <FormacionEquipoCompacta
@@ -1015,8 +1037,8 @@ const UpdateTeam = () => {
 
               {/* Suplentes - Columna derecha */}
               {suplentes.length > 0 && (
-                <div className="w-72 flex-shrink-0 border-l border-white/20 pl-8 flex flex-col overflow-hidden">
-                  <div className="flex flex-col items-center gap-2 mb-5 pb-4 border-b border-white/20 flex-shrink-0 pt-4 mt-2">
+                <div className="w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-white/20 pt-4 lg:pt-0 lg:pl-8 flex flex-col overflow-hidden">
+                  <div className="flex flex-col items-center gap-2 mb-3 lg:mb-5 pb-2 lg:pb-4 border-b border-white/20 flex-shrink-0 lg:pt-4 lg:mt-2">
                     <h3 className="text-sm font-bold text-white text-center tracking-wide">
                       SUPLENTES
                     </h3>
@@ -1027,7 +1049,7 @@ const UpdateTeam = () => {
                       </span>
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-3 pl-1 space-y-3 pt-2">
+                  <div className="flex-1 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent pr-1 lg:pr-3 lg:pl-1 flex flex-row lg:flex-col gap-3 pb-2 lg:pb-0 lg:pt-2 lg:space-y-0">
                     {suplentes.map((player, index) => {
                       // Verificar si este jugador puede intercambiarse con el seleccionado
                       const canSwap = selectedPlayerForSwap
@@ -1038,7 +1060,7 @@ const UpdateTeam = () => {
                       return (
                         <div
                           key={`suplente-${player.apiId}`}
-                          className="relative"
+                          className="relative min-w-[140px] lg:min-w-0 flex-shrink-0 lg:flex-shrink"
                           style={{
                             animation: 'fadeIn 0.4s ease-out',
                             animationDelay: `${index * 0.05}s`,
@@ -1535,20 +1557,43 @@ const UpdateTeam = () => {
             <div className="p-6 border-t border-white/10 flex gap-3">
               <button
                 onClick={() => setShowBlindarModal(false)}
-                className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20"
+                disabled={blindando}
+                className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirmarBlindar}
-                disabled={montoIncremento <= 0}
+                disabled={montoIncremento <= 0 || blindando}
                 className={`flex-1 py-3 font-semibold rounded-lg transition-all duration-200 shadow-lg ${
-                  montoIncremento > 0
+                  montoIncremento > 0 && !blindando
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white transform hover:scale-[1.02] hover:shadow-yellow-500/50'
                     : 'bg-white/10 text-white/40 cursor-not-allowed border border-white/20'
                 }`}
               >
-                Blindar
+                {blindando ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Blindando...
+                  </span>
+                ) : (
+                  'Blindar'
+                )}
               </button>
             </div>
           </div>

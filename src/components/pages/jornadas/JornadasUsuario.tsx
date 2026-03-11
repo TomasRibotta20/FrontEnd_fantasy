@@ -159,9 +159,9 @@ const JornadasUsuario = () => {
       : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-24 pb-8 px-4 sm:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-8">
           Mis Jornadas y Puntos
         </h1>
 
@@ -182,7 +182,7 @@ const JornadasUsuario = () => {
               onClick={() => {
                 const params = new URLSearchParams();
                 if (torneoId) params.append('torneoId', torneoId);
-                if (equipoIdFromUrl) params.append('equipoId', equipoIdFromUrl);
+                if (equipoId) params.append('equipoId', String(equipoId));
                 navigate(`/mis-puntos/historial?${params.toString()}`);
               }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold flex items-center gap-2"
@@ -193,19 +193,19 @@ const JornadasUsuario = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-black/30 p-6 rounded-lg text-center">
               <p className="text-gray-300 text-sm mb-2">Puntos Totales</p>
-              <p className="text-4xl font-bold text-yellow-400">
+              <p className="text-2xl sm:text-4xl font-bold text-yellow-400">
                 {puntajeTotal.toFixed(1)}
               </p>
             </div>
             <div className="bg-black/30 p-6 rounded-lg text-center">
               <p className="text-gray-300 text-sm mb-2">Jornadas Jugadas</p>
-              <p className="text-4xl font-bold text-blue-400">
+              <p className="text-2xl sm:text-4xl font-bold text-blue-400">
                 {historial?.jornadas.length || 0}
               </p>
             </div>
             <div className="bg-black/30 p-6 rounded-lg text-center">
               <p className="text-gray-300 text-sm mb-2">Promedio por Jornada</p>
-              <p className="text-4xl font-bold text-green-400">
+              <p className="text-2xl sm:text-4xl font-bold text-green-400">
                 {historial && historial.jornadas.length > 0
                   ? (puntajeTotal / historial.jornadas.length).toFixed(1)
                   : 0}
@@ -216,7 +216,7 @@ const JornadasUsuario = () => {
 
         {/* Filtros */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             <input
               type="text"
               value={selectedTemporada}

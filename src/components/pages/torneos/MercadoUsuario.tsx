@@ -580,7 +580,7 @@ const MercadoUsuario = () => {
 
       <div className="container mx-auto px-4 relative z-10 max-w-6xl">
         {/* Header compacto */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
             <button
               onClick={() => navigate(-1)}
@@ -605,7 +605,7 @@ const MercadoUsuario = () => {
         </div>
 
         {/* Tabs compactos */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-1 sm:gap-2 mb-4">
           {[
             {
               key: 'mercado' as const,
@@ -626,7 +626,7 @@ const MercadoUsuario = () => {
             <button
               key={tab.key}
               onClick={() => setTabActiva(tab.key)}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${
+              className={`flex-1 py-2 px-2 sm:px-4 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
                 tabActiva === tab.key
                   ? `bg-gradient-to-r ${tab.colors} text-white shadow-lg`
                   : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white/80'
@@ -757,7 +757,7 @@ const MercadoUsuario = () => {
                       key={item.id}
                       className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 hover:border-white/40 transition-all p-3"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                         {/* Foto compacta */}
                         <div className="relative flex-shrink-0">
                           {jugador.foto ? (
@@ -864,7 +864,7 @@ const MercadoUsuario = () => {
                         </button>
 
                         {/* Input puja + botón */}
-                        <div className="flex-shrink-0 flex items-center gap-2">
+                        <div className="flex-shrink-0 flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                           <MoneyInput
                             value={montoPuja[item.id] || ''}
                             onChange={(raw) =>
@@ -874,7 +874,7 @@ const MercadoUsuario = () => {
                             min={precioActual}
                             step={100000}
                             focusColor="green"
-                            className="w-40"
+                            className="w-full sm:w-40"
                           />
                           <button
                             onClick={() => handlePujar(item.id, precioActual)}
@@ -953,7 +953,7 @@ const MercadoUsuario = () => {
                       key={jugador.id}
                       className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 hover:border-emerald-500/40 transition-all p-3"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                         {/* Foto */}
                         <div className="relative flex-shrink-0">
                           {jugador.foto ? (
@@ -987,8 +987,8 @@ const MercadoUsuario = () => {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-white font-semibold text-sm truncate">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                            <h3 className="text-white font-semibold text-sm truncate max-w-[120px] sm:max-w-none">
                               {jugador.nombreCompleto || jugador.nombre}
                             </h3>
                             {jugador.posicion && (
@@ -1017,8 +1017,8 @@ const MercadoUsuario = () => {
                         </div>
 
                         {/* Precio */}
-                        <div className="flex-shrink-0 text-right mr-2">
-                          <p className="text-orange-400 font-bold text-lg leading-tight">
+                        <div className="flex-shrink-0 text-right mr-1 sm:mr-2">
+                          <p className="text-orange-400 font-bold text-sm sm:text-lg leading-tight">
                             {precioDisplay}
                           </p>
                           <p className="text-white/40 text-[10px]">

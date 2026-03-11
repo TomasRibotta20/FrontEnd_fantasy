@@ -288,10 +288,10 @@ function DetalleTorneo() {
 
         {/* Información principal del torneo */}
         <div className="backdrop-blur-lg bg-white/20 rounded-2xl p-8 shadow-2xl mb-6 border-2 border-white/30">
-          <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <h1 className="text-2xl sm:text-4xl font-bold text-white drop-shadow-lg">
                   {torneo.nombre}
                 </h1>
                 <span
@@ -320,7 +320,7 @@ function DetalleTorneo() {
             {/* Código de acceso */}
             <div className="backdrop-blur-md bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-6 rounded-xl border-2 border-white/30">
               <p className="text-sm text-white/70 mb-2">Código de Acceso:</p>
-              <p className="text-3xl font-mono font-bold text-white tracking-wider drop-shadow-md">
+              <p className="text-xl sm:text-3xl font-mono font-bold text-white tracking-wider drop-shadow-md">
                 {torneo.codigo}
               </p>
               <p className="text-xs text-white/60 mt-2">
@@ -385,7 +385,7 @@ function DetalleTorneo() {
         {/* Lista de participantes */}
         {torneo.participantes && torneo.participantes.length > 0 && (
           <div className="backdrop-blur-lg bg-white/20 rounded-2xl p-8 shadow-2xl border-2 border-white/30">
-            <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg mb-6">
               Participantes (
               {torneo.participantes.filter((p) => !p.expulsado).length})
             </h2>

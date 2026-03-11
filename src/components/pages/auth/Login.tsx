@@ -41,9 +41,9 @@ function Login() {
       // Normalizar el campo rol del backend al campo role del frontend
       const normalizedUser = {
         ...userData,
-        role: userData.rol || userData.role // El backend envía "rol" en español
+        role: userData.rol || userData.role, // El backend envía "rol" en español
       };
-      
+
       // Loguear al usuario (el token viene en la cookie automáticamente)
       login(normalizedUser);
 
@@ -108,7 +108,7 @@ function Login() {
       <div className="absolute inset-0 bg-black opacity-30 z-10"></div>
 
       {/* Contenido principal */}
-      <div className="absolute inset-0 flex items-center justify-center z-20">
+      <div className="absolute inset-0 flex items-center justify-center z-20 px-4">
         {message && (
           <div
             className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-2xl shadow-2xl backdrop-blur-lg border-2 ${
@@ -130,7 +130,8 @@ function Login() {
             onSubmit={handleLoginSubmit}
             initialValues={{ email: '', password: '' }}
             disabled={isLoading}
-            className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
+            className="flex flex-col items-center space-y-8 w-full !h-auto !p-6 sm:!p-12"
+            
           />
           <button
             onClick={() => navigate('/forgot-password')}

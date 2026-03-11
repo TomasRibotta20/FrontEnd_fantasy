@@ -272,7 +272,7 @@ const LeaderboardTorneo = () => {
             </svg>
             Volver
           </button>
-          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Leaderboard
           </h1>
           <h2 className="text-2xl text-white/90 drop-shadow-lg">
@@ -296,8 +296,8 @@ const LeaderboardTorneo = () => {
         {/* Leaderboard */}
         <div className="max-w-4xl mx-auto">
           <div className="backdrop-blur-lg bg-white/10 rounded-xl border-2 border-white/40 overflow-hidden">
-            {/* Table Header */}
-            <div className="bg-blue-500/30 p-4 border-b-2 border-white/40">
+            {/* Table Header - Desktop only */}
+            <div className="hidden md:block bg-blue-500/30 p-4 border-b-2 border-white/40">
               <div
                 className={`grid ${esCreador ? 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem_5rem]' : 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem]'} gap-4 text-white font-bold text-sm`}
               >
@@ -321,7 +321,7 @@ const LeaderboardTorneo = () => {
                 participantes.map((participante) => (
                   <div
                     key={participante.equipo_id}
-                    className={`p-4 transition-all duration-200 ${
+                    className={`p-3 sm:p-4 transition-all duration-200 ${
                       participante.expulsado
                         ? 'bg-red-900/20 opacity-60'
                         : participante.es_mi_equipo
@@ -329,8 +329,9 @@ const LeaderboardTorneo = () => {
                           : 'hover:bg-white/5'
                     }`}
                   >
+                    {/* Desktop grid layout */}
                     <div
-                      className={`grid ${esCreador ? 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem_5rem]' : 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem]'} gap-4 items-center text-white`}
+                      className={`hidden md:grid ${esCreador ? 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem_5rem]' : 'grid-cols-[3rem_1fr_1fr_5rem_4rem_6rem]'} gap-4 items-center text-white`}
                     >
                       {/* Posición */}
                       <div className="text-center">
@@ -438,6 +439,102 @@ const LeaderboardTorneo = () => {
                             )}
                         </div>
                       )}
+                    </div>
+
+                    {/* Mobile card layout */}
+                    <div className="flex md:hidden flex-col gap-2 text-white">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {/* Posición */}
+                          {participante.expulsado ? (
+                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold bg-red-500/30 text-red-300 flex-shrink-0">
+                              ✕
+                            </div>
+                          ) : (
+                            <div
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold flex-shrink-0 ${
+                                participante.pos === 1
+                                  ? 'bg-yellow-400 text-yellow-900'
+                                  : participante.pos === 2
+                                    ? 'bg-gray-300 text-gray-800'
+                                    : participante.pos === 3
+                                      ? 'bg-orange-400 text-orange-900'
+                                      : 'bg-white/20 text-white'
+                              }`}
+                            >
+                              {participante.pos}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`font-semibold text-sm truncate ${participante.expulsado ? 'line-through text-white/50' : ''}`}
+                              >
+                                {participante.usuario}
+                              </span>
+                              {participante.expulsado && (
+                                <span className="text-[10px] bg-red-500/60 px-1.5 py-0.5 rounded-full text-red-100 font-bold">
+                                  EXP
+                                </span>
+                              )}
+                              {!participante.expulsado &&
+                                participante.es_mi_equipo && (
+                                  <span className="text-[10px] bg-blue-500/60 px-1.5 py-0.5 rounded-full">
+                                    Tú
+                                  </span>
+                                )}
+                              {participante.es_admin &&
+                                !participante.expulsado && (
+                                  <span className="text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full border border-yellow-400/40">
+                                    Creador
+                                  </span>
+                                )}
+                            </div>
+                            <p
+                              className={`text-xs text-white/60 truncate ${participante.expulsado ? 'line-through' : ''}`}
+                            >
+                              {participante.nombre_equipo}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <p
+                            className={`text-lg font-bold ${participante.expulsado ? 'text-white/40' : ''}`}
+                          >
+                            {Number(participante.puntos).toFixed(2)}
+                          </p>
+                          <p className="text-[10px] text-white/50">pts</p>
+                        </div>
+                      </div>
+                      {/* Mobile action buttons */}
+                      <div className="flex gap-2 mt-1">
+                        {!participante.expulsado &&
+                          torneo.estado !== 'EN_ESPERA' && (
+                            <button
+                              onClick={() => handleVerEquipo(participante)}
+                              className={`flex-1 ${participante.es_mi_equipo ? 'bg-green-500/60 border-green-400/40' : 'bg-blue-500/60 border-blue-400/40'} text-white py-1.5 rounded-lg font-semibold text-xs transition-all border`}
+                            >
+                              {participante.es_mi_equipo
+                                ? 'Mi Equipo'
+                                : 'Ver Equipo'}
+                            </button>
+                          )}
+                        {esCreador &&
+                          !participante.es_mi_equipo &&
+                          !participante.expulsado && (
+                            <button
+                              onClick={() =>
+                                handleOpenExpulsar(
+                                  participante.usuario_id,
+                                  participante.usuario,
+                                )
+                              }
+                              className="bg-red-500/60 text-white px-3 py-1.5 rounded-lg font-semibold text-xs border border-red-400/40"
+                            >
+                              Expulsar
+                            </button>
+                          )}
+                      </div>
                     </div>
                   </div>
                 ))

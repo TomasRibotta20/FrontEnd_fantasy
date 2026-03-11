@@ -67,7 +67,7 @@ const LoggedMenu = () => {
               if (torneoActivo.mi_equipo?.id) {
                 equipoId = torneoActivo.mi_equipo.id;
                 setEquipoIdDelTorneo(equipoId);
-                setMiEquipoId(equipoId.toString());
+                setMiEquipoId(String(equipoId));
               }
             }
           } catch {
@@ -321,7 +321,7 @@ const LoggedMenu = () => {
   ];
 
   return (
-    <div className="h-screen overflow-hidden pt-20">
+    <div className="min-h-screen overflow-y-auto pt-20">
       {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
@@ -333,21 +333,18 @@ const LoggedMenu = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 h-[calc(100vh-5rem)] flex flex-col relative z-10 py-4">
+      <div className="container mx-auto px-3 sm:px-4 min-h-[calc(100vh-5rem)] flex flex-col relative z-10 py-4">
         {/* Header mejorado */}
         <div className="text-center mb-3 flex-shrink-0">
-          <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 drop-shadow-lg">
             Bienvenido a TurboFantasy
           </h1>
         </div>
 
         {/* Contenido principal en dos columnas */}
-        <div
-          className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden"
-          style={{ maxHeight: 'calc(100vh - 10rem)' }}
-        >
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-visible">
           {/* Columna izquierda: Menú de opciones */}
-          <div className="flex flex-col gap-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+          <div className="flex flex-col gap-3 overflow-visible lg:overflow-y-auto pr-0 lg:pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             {menuCards.map((card, index) => (
               <div
                 key={index}
@@ -383,18 +380,18 @@ const LoggedMenu = () => {
                       : 'bg-white/15 border-white/25 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
                     <div
-                      className={`bg-gradient-to-br ${card.color} rounded-xl p-3 flex-shrink-0 shadow-xl`}
+                      className={`bg-gradient-to-br ${card.color} rounded-xl p-2 sm:p-3 flex-shrink-0 shadow-xl`}
                     >
-                      <span className="text-4xl drop-shadow-lg">
+                      <span className="text-2xl sm:text-4xl drop-shadow-lg">
                         {card.icon}
                       </span>
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <h3
-                        className={`text-xl font-bold text-white drop-shadow-md transition-colors leading-tight ${
+                        className={`text-lg sm:text-xl font-bold text-white drop-shadow-md transition-colors leading-tight ${
                           card.enabled ? 'group-hover:text-white' : ''
                         }`}
                       >
@@ -433,7 +430,7 @@ const LoggedMenu = () => {
           </div>
 
           {/* Columna derecha: Equipo y Puntos */}
-          <div className="flex flex-col gap-2 overflow-visible pr-2">
+          <div className="flex flex-col gap-2 overflow-visible pr-0 lg:pr-2">
             {/* Widget de Puntos */}
             <div className="backdrop-blur-lg rounded-lg border-2 border-white/40 flex-shrink-0 bg-white/5 p-1.5">
               <WidgetPuntos
@@ -452,7 +449,7 @@ const LoggedMenu = () => {
                 {/* Sección del Equipo */}
                 <div className="flex flex-col w-full items-center">
                   {teamPlayers.length > 0 ? (
-                    <div className="w-full flex justify-center scale-90 origin-top mb-[-10%]">
+                    <div className="w-full flex justify-center scale-75 sm:scale-90 origin-top mb-[-15%] sm:mb-[-10%]">
                       <FormacionEquipoCompacta
                         players={teamPlayers}
                         showSuplentes={false}

@@ -198,7 +198,7 @@ const GestionJornadasAdmin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 pt-20 pb-8 px-4 sm:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Botón volver */}
         <div className="mb-6">
@@ -261,13 +261,13 @@ const GestionJornadasAdmin = () => {
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             Configuración Actual del Sistema
           </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/20 backdrop-blur-sm p-6 rounded-lg border-2 border-white/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white/20 backdrop-blur-sm p-4 sm:p-6 rounded-lg border-2 border-white/30">
               <p className="text-white/80 text-sm mb-2 font-semibold">
                 Jornada Activa
               </p>
               <div className="flex items-center gap-2">
-                <p className="text-white text-4xl font-bold">
+                <p className="text-white text-2xl sm:text-4xl font-bold">
                   {config.jornadaActiva || 'Ninguna'}
                 </p>
               </div>

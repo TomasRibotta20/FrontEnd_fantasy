@@ -53,10 +53,10 @@ const FormacionEquipo = ({
     onlyName?: boolean;
   }) => {
     const isLoaded = loadedImages.has(player.apiId);
-    const cardSize = compact ? 'w-20 h-20' : 'w-16 h-16';
-    const textSize = compact ? 'text-sm' : 'text-xs';
-    const positionTextSize = compact ? 'text-xs' : 'text-[10px]';
-    const padding = compact ? 'p-3' : 'p-2.5';
+    const cardSize = compact ? 'w-20 h-20' : 'w-12 h-12 sm:w-16 sm:h-16';
+    const textSize = compact ? 'text-sm' : 'text-[10px] sm:text-xs';
+    const positionTextSize = compact ? 'text-xs' : 'text-[9px] sm:text-[10px]';
+    const padding = compact ? 'p-3' : 'p-1.5 sm:p-2.5';
 
     // Si es solo nombre (suplentes)
     if (onlyName) {
@@ -176,21 +176,21 @@ const FormacionEquipo = ({
   const organizePlayersInFormation = (players: Player[]) => {
     // Clasificar jugadores por su posición real
     const porteros = players.filter(
-      (p) => getPositionType(p.position) === 'portero'
+      (p) => getPositionType(p.position) === 'portero',
     );
     const defensores = players.filter(
-      (p) => getPositionType(p.position) === 'defensor'
+      (p) => getPositionType(p.position) === 'defensor',
     );
     const mediocampistas = players.filter(
-      (p) => getPositionType(p.position) === 'mediocampista'
+      (p) => getPositionType(p.position) === 'mediocampista',
     );
     const delanteros = players.filter(
-      (p) => getPositionType(p.position) === 'delantero'
+      (p) => getPositionType(p.position) === 'delantero',
     );
 
     // Los que no tienen posición clara van a suplentes
     const sinPosicion = players.filter(
-      (p) => getPositionType(p.position) === 'unknown'
+      (p) => getPositionType(p.position) === 'unknown',
     );
 
     // Para formación 4-3-3: 1 portero titular, 4 defensores, 3 mediocampistas, 3 delanteros
@@ -215,19 +215,20 @@ const FormacionEquipo = ({
   }
 
   const formation = organizePlayersInFormation(players);
-  const fieldHeight = compact ? 'min-h-[580px]' : 'h-[550px]';
+  const fieldHeight = compact ? 'min-h-[580px]' : 'min-h-[400px] sm:h-[550px]';
 
   // GAP UNIFORME para todos los jugadores horizontalmente
-  const uniformGap = compact ? 'gap-8' : 'gap-7';
+  const uniformGap = compact ? 'gap-8' : 'gap-3 sm:gap-7';
 
   // Distancia UNIFORME entre todas las líneas (delanteros, medios, defensores, portero)
-  // Ajustado para que el equipo quede centrado verticalmente en el campo
-  const topMargin = compact ? 35 : 35; // margen superior
-  const lineSpacing = compact ? 125 : 125; // píxeles IGUALES entre cada línea
+  // Responsive: menor espacio en móvil
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const topMargin = compact ? 35 : isMobile ? 15 : 35;
+  const lineSpacing = compact ? 125 : isMobile ? 90 : 125;
 
   return (
     <>
-      <div className="relative w-full max-w-3xl mx-auto px-2">
+      <div className="relative w-full max-w-3xl mx-auto px-1 sm:px-2">
         {/* Campo de fútbol visual */}
         <div
           className={`relative bg-green-500/30 rounded-xl ${

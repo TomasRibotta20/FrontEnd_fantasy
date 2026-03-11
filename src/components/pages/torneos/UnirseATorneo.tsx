@@ -142,10 +142,10 @@ function UnirseATorneo() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
+          <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4 drop-shadow-lg">
             Unirse a Torneo
           </h1>
-          <p className="text-xl text-white/90 drop-shadow-md">
+          <p className="text-base sm:text-xl text-white/90 drop-shadow-md">
             {paso === 'codigo'
               ? 'Ingresa el código de acceso del torneo'
               : 'Completa los datos para unirte'}

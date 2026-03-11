@@ -50,7 +50,6 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
 
     if (onSubmit) {
       onSubmit(formValues);
-    } else {
     }
 
     resetForm();
@@ -95,7 +94,7 @@ export const CustoFormHookForm: React.FC<CustoFormHookFormProps> = ({
           variant={buttonVariant}
           size={buttonSize}
           disabled={false}
-          className={className.includes('!w-[600px]') ? 'mt-10 w-full' : ''}
+          className={className.includes('!w-[600px]') ? 'mt-10 w-full' : 'mt-6 w-auto'}
         >
           {buttonText}
         </Button_1>

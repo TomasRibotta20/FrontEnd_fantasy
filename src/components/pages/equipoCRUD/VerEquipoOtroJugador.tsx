@@ -74,6 +74,7 @@ const VerEquipoOtroJugador = () => {
     monto: number;
     miEquipoId: string;
   } | null>(null);
+  const [ejecutandoClausula, setEjecutandoClausula] = useState(false);
 
   // Estado para el modal de estadísticas del jugador
   const [statsJugador, setStatsJugador] = useState<{
@@ -301,14 +302,15 @@ const VerEquipoOtroJugador = () => {
   const handleConfirmarEjecutarClausula = async () => {
     if (!confirmClausula) return;
     const { player, miEquipoId } = confirmClausula;
-    setConfirmClausula(null);
 
+    setEjecutandoClausula(true);
     try {
       setEnviandoOferta(true);
       await apiClient.post(
         `/api/clausulas/${miEquipoId}/jugadores/${player.id}/ejecutar-clausula`,
       );
 
+      setConfirmClausula(null);
       setNotification({
         type: 'success',
         text: `¡Cláusula ejecutada! ${player.name} ahora es parte de tu equipo`,
@@ -337,6 +339,7 @@ const VerEquipoOtroJugador = () => {
       }
     } finally {
       setEnviandoOferta(false);
+      setEjecutandoClausula(false);
     }
   };
 
@@ -475,7 +478,7 @@ const VerEquipoOtroJugador = () => {
   }
 
   return (
-    <div className="h-screen overflow-hidden pt-20">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden pt-20">
       {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
@@ -487,7 +490,7 @@ const VerEquipoOtroJugador = () => {
         <div className="absolute inset-0 bg-black opacity-30"></div>
       </div>
 
-      <div className="container mx-auto px-4 h-[calc(100vh-5rem)] flex flex-col relative z-10 py-3">
+      <div className="container mx-auto px-4 lg:h-[calc(100vh-5rem)] flex flex-col relative z-10 py-3">
         {/* Header */}
         <div className="text-center mb-3 flex-shrink-0">
           <button
@@ -509,7 +512,7 @@ const VerEquipoOtroJugador = () => {
             </svg>
             Volver al Leaderboard
           </button>
-          <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 drop-shadow-lg">
             {nombreEquipo}
           </h1>
           <p className="text-lg text-white/90 drop-shadow-lg">
@@ -518,9 +521,9 @@ const VerEquipoOtroJugador = () => {
         </div>
 
         {/* Contenido principal */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-4 min-h-0 lg:overflow-hidden">
           {/* Columna izquierda: Estadísticas */}
-          <div className="lg:col-span-1 flex flex-col gap-3">
+          <div className="lg:col-span-1 flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-x-visible flex-shrink-0">
             {teamPlayers.length > 0 && (
               <>
                 <div className="backdrop-blur-lg bg-white/10 rounded-xl border-2 border-white/40 p-4 text-center">
@@ -597,11 +600,11 @@ const VerEquipoOtroJugador = () => {
                 {/* Panel flotante con botón de ejecutar cláusula */}
                 {jugadorSeleccionadoFormacion && (
                   <div className="mt-4 backdrop-blur-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 rounded-xl p-4 border-2 border-red-400/40 shadow-xl">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
                       <img
                         src={jugadorSeleccionadoFormacion.photo}
                         alt={jugadorSeleccionadoFormacion.name}
-                        className="w-16 h-16 rounded-full border-2 border-red-400/50 shadow-lg"
+                        className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-red-400/50 shadow-lg flex-shrink-0"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src =
@@ -1101,15 +1104,39 @@ const VerEquipoOtroJugador = () => {
               <div className="p-5 border-t border-white/10 flex gap-3">
                 <button
                   onClick={() => setConfirmClausula(null)}
-                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20"
+                  disabled={ejecutandoClausula}
+                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-all duration-200 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleConfirmarEjecutarClausula}
-                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 transform hover:scale-[1.02]"
+                  disabled={ejecutandoClausula}
+                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-red-500/50 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  Confirmar
+                  {ejecutandoClausula ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Ejecutando...
+                    </span>
+                  ) : (
+                    'Confirmar'
+                  )}
                 </button>
               </div>
             </div>

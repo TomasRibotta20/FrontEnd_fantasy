@@ -77,12 +77,12 @@ const PlayerCard = memo(
           onClick={() => onPlayerClick?.(player)}
         >
           {/* Imagen del jugador */}
-          <div className="relative mb-2">
+          <div className="relative mb-1 md:mb-2">
             <img
               src={player.photo}
               alt={playerName}
               loading="lazy"
-              className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-lg bg-white"
+              className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-white shadow-lg bg-white"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src =
@@ -182,11 +182,13 @@ const PlayerCard = memo(
           </div>
 
           {/* Nombre del jugador */}
-          <div className="relative text-center bg-white/95 rounded-md px-3 py-1.5 shadow-md min-w-[75px]">
-            <p className="text-xs font-bold text-gray-800 leading-tight whitespace-nowrap">
+          <div className="relative text-center bg-white/95 rounded-md px-1 py-0.5 sm:px-3 sm:py-1.5 shadow-md min-w-[50px] sm:min-w-[75px]">
+            <p className="text-[9px] sm:text-xs font-bold text-gray-800 leading-tight whitespace-nowrap">
               {shortName}
             </p>
-            <p className="text-[9px] text-gray-600 mt-0.5">{positionName}</p>
+            <p className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5 hidden sm:block">
+              {positionName}
+            </p>
             {mostrarPrecio &&
               (player.precio !== undefined ||
                 player.valor_clausula !== undefined) && (
@@ -360,10 +362,11 @@ const FormacionEquipoCompacta = ({
     return null;
   }
 
-  // Espaciado optimizado para pantallas pequeñas - MÁS GRANDE
-  const topMargin = 20;
-  const lineSpacing = 160; // Espaciado aumentado entre líneas para hacer el campo más largo
-  const bottomPadding = 160; // Padding para incluir la tarjeta completa del portero + borde redondeado
+  // Espaciado responsive: detectar pantalla pequeña
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const topMargin = isMobile ? 8 : 20;
+  const lineSpacing = isMobile ? 115 : 160;
+  const bottomPadding = isMobile ? 120 : 160;
   const totalHeight = topMargin + lineSpacing * 3 + bottomPadding; // Altura total del campo
 
   return (
@@ -371,7 +374,7 @@ const FormacionEquipoCompacta = ({
       <div className="relative w-full mx-auto">
         {/* Campo de fútbol visual - versión compacta */}
         <div
-          className="relative bg-green-500/30 rounded-xl p-6 w-full border-2 border-white/50"
+          className="relative bg-green-500/30 rounded-xl p-2 sm:p-4 md:p-6 w-full border-2 border-white/50"
           style={{
             height: `${totalHeight}px`,
             backgroundImage: `
@@ -384,7 +387,7 @@ const FormacionEquipoCompacta = ({
           {/* Delanteros */}
           {formation.delanteros.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-8 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-2 sm:gap-4 md:gap-8 z-10"
               style={{ top: `${topMargin}px` }}
             >
               {formation.delanteros.map((player, index) => (
@@ -409,7 +412,7 @@ const FormacionEquipoCompacta = ({
           {/* Mediocampistas */}
           {formation.mediocampistas.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-8 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-2 sm:gap-4 md:gap-8 z-10"
               style={{
                 top: `${topMargin + lineSpacing * 1}px`,
               }}
@@ -436,7 +439,7 @@ const FormacionEquipoCompacta = ({
           {/* Defensores */}
           {formation.defensores.length > 0 && (
             <div
-              className="absolute left-0 right-0 flex justify-center items-center gap-6 z-10"
+              className="absolute left-0 right-0 flex justify-center items-center gap-1 sm:gap-3 md:gap-6 z-10"
               style={{
                 top: `${topMargin + lineSpacing * 2}px`,
               }}

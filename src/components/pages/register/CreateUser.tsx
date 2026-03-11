@@ -138,7 +138,7 @@ function CreateUser() {
       <div className="absolute inset-0 bg-black opacity-30 z-10"></div>
 
       {/* Contenido principal */}
-      <div className="absolute inset-0 flex items-center justify-center z-20">
+      <div className="absolute inset-0 flex items-center justify-center z-20 px-4">
         {message && (
           <div
             className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 rounded-2xl shadow-2xl backdrop-blur-lg border-2 ${
@@ -159,7 +159,7 @@ function CreateUser() {
           onSubmit={handleRegistrationSubmit}
           initialValues={{ name: '' }}
           disabled={isLoading}
-          className="flex flex-col items-center space-y-8 !w-[600px] !h-auto !p-12 !max-w-none"
+          className="flex flex-col items-center space-y-8 w-full max-w-md !h-auto !p-6 sm:!p-12 "
         />
         <div className="absolute bottom-4 text-center">
           <p className="text-white text-base font-semibold drop-shadow-md">

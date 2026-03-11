@@ -85,10 +85,10 @@ const MiEquipoJornada = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
             <button
               onClick={() => navigate('/jornadas')}
@@ -96,7 +96,7 @@ const MiEquipoJornada = () => {
             >
               ← Volver a Jornadas
             </button>
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white">
               Mi Equipo -{' '}
               {jornada.nombre || `Jornada ${jornada.numero || jornada.id}`}
             </h1>
@@ -122,10 +122,10 @@ const MiEquipoJornada = () => {
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 mb-8 border border-white/20">
           <div className="text-center">
             <p className="text-gray-300 text-lg mb-2">Puntaje Total</p>
-            <p className="text-7xl font-bold text-yellow-400 mb-4">
+            <p className="text-4xl sm:text-7xl font-bold text-yellow-400 mb-4">
               {puntajes?.puntajeTotal || 0}
             </p>
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-4">
               {jornada.activa && (
                 <span className="px-4 py-2 bg-green-500 text-white font-bold rounded-full">
                   Jornada Activa
@@ -161,7 +161,7 @@ const MiEquipoJornada = () => {
                     key={jugador.jugadorId}
                     className="bg-black/30 rounded-lg p-5 border border-white/10 hover:border-white/30 transition-all"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="bg-indigo-600 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg">
                           {index + 1}
@@ -191,7 +191,7 @@ const MiEquipoJornada = () => {
 
           {puntajes && puntajes.jugadores.length > 0 && (
             <div className="mt-6 pt-6 border-t border-white/20">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                 <p className="text-gray-300 text-lg">
                   Total de jugadores: {puntajes.jugadores.length}
                 </p>
